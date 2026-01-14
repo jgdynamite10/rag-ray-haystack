@@ -1,0 +1,15 @@
+You are building a production-style, cloud-portable full-stack RAG app.
+Hard requirements:
+- Kubernetes-first deployment (KubeRay + Ray Serve).
+- Must deploy on Akamai LKE, AWS EKS, and GCP GKE with minimal drift.
+- Use Helm for packaging + Kustomize overlays for provider diffs.
+- No proprietary cloud services required for core function (use OSS defaults).
+- Provide scripts: build, push, deploy, benchmark.
+- Every manifest must be valid Kubernetes YAML; avoid pseudo fields.
+- Pin versions in charts/manifests where feasible; avoid “latest”.
+- Backend must expose /query, /ingest, /healthz, /metrics endpoints.
+- Include Prometheus-compatible metrics and structured JSON logs.
+If unsure about an API/version, write it as a TODO and isolate it to one file.
+
+
+
