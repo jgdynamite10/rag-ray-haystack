@@ -1,0 +1,53 @@
+global:
+  namespace: rag-app
+
+backend:
+  image:
+    repository: rag-ray-backend
+    tag: "0.1.0"
+  replicas: 1
+  service:
+    port: 8000
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+frontend:
+  image:
+    repository: rag-ray-frontend
+    tag: "0.1.0"
+  replicas: 1
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+qdrant:
+  image:
+    repository: qdrant/qdrant
+    tag: "v1.8.4"
+  service:
+    port: 6333
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: ""
+
+kuberay:
+  rayVersion: "2.9.3"
+  head:
+    cpu: "1"
+    memory: "2Gi"
+  worker:
+    replicas: 1
+    cpu: "1"
+    memory: "2Gi"

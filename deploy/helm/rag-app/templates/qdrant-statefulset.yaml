@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "rag-app.fullname" . }}-qdrant
+  namespace: {{ .Values.global.namespace }}
+spec:
+  serviceName: {{ include "rag-app.fullname" . }}-qdrant
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "rag-app.fullname" . }}-qdrant
+  template:
+    metadata:
+      labels:
+        app: {{ include "rag-app.fullname" . }}-qdrant
+    spec:
+      containers:
+        - name: qdrant
+          image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: {{ .Values.qdrant.service.port }}
+          volumeMounts:
+            - name: qdrant-storage
+              mountPath: /qdrant/storage
+  volumeClaimTemplates:
+    - metadata:
+        name: qdrant-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.qdrant.persistence.size }}
+        {{- if .Values.qdrant.persistence.storageClassName }}
+        storageClassName: {{ .Values.qdrant.persistence.storageClassName | quote }}
+        {{- end }}

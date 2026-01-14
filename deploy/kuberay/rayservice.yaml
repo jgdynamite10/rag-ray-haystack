@@ -1,0 +1,48 @@
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: rag-ray-service
+  namespace: rag-app
+spec:
+  serviceUnhealthySecondThreshold: 300
+  deploymentUnhealthySecondThreshold: 300
+  serveConfigV2: |
+    applications:
+      - name: rag-backend
+        import_path: app.main:deployment
+        route_prefix: /
+  rayClusterConfig:
+    rayVersion: "2.9.3"
+    headGroupSpec:
+      rayStartParams:
+        dashboard-host: "0.0.0.0"
+      template:
+        spec:
+          containers:
+            - name: ray-head
+              image: rag-ray-backend:0.1.0
+              imagePullPolicy: IfNotPresent
+              resources:
+                requests:
+                  cpu: "1"
+                  memory: "2Gi"
+                limits:
+                  cpu: "1"
+                  memory: "2Gi"
+    workerGroupSpecs:
+      - groupName: workers
+        replicas: 1
+        rayStartParams: {}
+        template:
+          spec:
+            containers:
+              - name: ray-worker
+                image: rag-ray-backend:0.1.0
+                imagePullPolicy: IfNotPresent
+                resources:
+                  requests:
+                    cpu: "1"
+                    memory: "2Gi"
+                  limits:
+                    cpu: "1"
+                    memory: "2Gi"

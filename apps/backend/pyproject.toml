@@ -1,0 +1,21 @@
+[project]
+name = "rag-ray-backend"
+version = "0.1.0"
+description = "Ray Serve + Haystack backend for cloud-portable RAG."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "fastapi==0.115.0",
+  "haystack-ai==2.6.0",
+  "pydantic==2.8.2",
+  "python-json-logger==2.0.7",
+  "python-multipart==0.0.9",
+  "prometheus-client==0.20.0",
+  "ray[serve]==2.9.3",
+  "uvicorn==0.30.6",
+]
+
+[tool.uv]
+dev-dependencies = [
+  "ruff==0.6.8",
+]

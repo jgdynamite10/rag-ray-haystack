@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rag-app-rag-app-qdrant
+  namespace: rag-app
+spec:
+  volumeClaimTemplates:
+    - metadata:
+        name: qdrant-storage
+      spec:
+        storageClassName: gp3

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rag-app
+description: Cloud-portable RAG chatbot (Ray Serve + Haystack).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

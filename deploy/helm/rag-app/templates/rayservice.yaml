@@ -1,0 +1,48 @@
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: {{ include "rag-app.fullname" . }}-rayservice
+  namespace: {{ .Values.global.namespace }}
+spec:
+  serviceUnhealthySecondThreshold: 300
+  deploymentUnhealthySecondThreshold: 300
+  serveConfigV2: |
+    applications:
+      - name: rag-backend
+        import_path: app.main:deployment
+        route_prefix: /
+  rayClusterConfig:
+    rayVersion: {{ .Values.kuberay.rayVersion | quote }}
+    headGroupSpec:
+      rayStartParams:
+        dashboard-host: "0.0.0.0"
+      template:
+        spec:
+          containers:
+            - name: ray-head
+              image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+              imagePullPolicy: IfNotPresent
+              resources:
+                requests:
+                  cpu: {{ .Values.kuberay.head.cpu | quote }}
+                  memory: {{ .Values.kuberay.head.memory | quote }}
+                limits:
+                  cpu: {{ .Values.kuberay.head.cpu | quote }}
+                  memory: {{ .Values.kuberay.head.memory | quote }}
+    workerGroupSpecs:
+      - groupName: workers
+        replicas: {{ .Values.kuberay.worker.replicas }}
+        rayStartParams: {}
+        template:
+          spec:
+            containers:
+              - name: ray-worker
+                image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+                imagePullPolicy: IfNotPresent
+                resources:
+                  requests:
+                    cpu: {{ .Values.kuberay.worker.cpu | quote }}
+                    memory: {{ .Values.kuberay.worker.memory | quote }}
+                  limits:
+                    cpu: {{ .Values.kuberay.worker.cpu | quote }}
+                    memory: {{ .Values.kuberay.worker.memory | quote }}
