@@ -5,12 +5,3 @@ namespace: rag-app
 
 resources:
   - namespace.yaml
-
-helmGlobals:
-  chartHome: ../../helm
-
-helmCharts:
-  - name: rag-app
-    releaseName: rag-app
-    version: 0.1.0
-    valuesFile: ../../helm/rag-app/values.yaml

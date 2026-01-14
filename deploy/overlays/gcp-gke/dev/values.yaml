@@ -1,0 +1,3 @@
+qdrant:
+  persistence:
+    storageClassName: standard-rwo

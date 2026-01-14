@@ -1,0 +1,10 @@
+backend:
+  replicas: 2
+frontend:
+  replicas: 2
+qdrant:
+  persistence:
+    storageClassName: linode-block-storage
+kuberay:
+  worker:
+    replicas: 2

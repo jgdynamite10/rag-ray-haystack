@@ -1,0 +1,26 @@
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: rag-app-rag-app-rayservice
+  namespace: rag-app
+spec:
+  rayClusterConfig:
+    headGroupSpec:
+      template:
+        spec:
+          nodeSelector:
+            accelerator: nvidia # TODO: align with GKE GPU node labels.
+          tolerations:
+            - key: "nvidia.com/gpu"
+              operator: "Exists"
+              effect: "NoSchedule"
+    workerGroupSpecs:
+      - groupName: workers
+        template:
+          spec:
+            nodeSelector:
+              accelerator: nvidia # TODO: align with GKE GPU node labels.
+            tolerations:
+              - key: "nvidia.com/gpu"
+                operator: "Exists"
+                effect: "NoSchedule"

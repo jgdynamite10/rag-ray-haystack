@@ -8,6 +8,23 @@ backend:
   replicas: 1
   service:
     port: 8000
+  env:
+    - name: GENERATOR_ENABLED
+      value: "true"
+    - name: GENERATOR_MODEL_ID
+      value: "sshleifer/tiny-gpt2"
+    - name: GENERATOR_MAX_NEW_TOKENS
+      value: "256"
+    - name: GENERATOR_TEMPERATURE
+      value: "0.2"
+    - name: RAG_USE_EMBEDDINGS
+      value: "true"
+    - name: EMBEDDING_MODEL_ID
+      value: "sentence-transformers/all-MiniLM-L6-v2"
+    - name: RAG_TOP_K
+      value: "4"
+    - name: RAG_MAX_HISTORY
+      value: "6"
   resources:
     requests:
       cpu: "250m"

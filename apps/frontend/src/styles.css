@@ -104,6 +104,14 @@ body {
   font-size: 13px;
 }
 
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #b6c0d6;
+}
+
 .docs {
   display: flex;
   flex-direction: column;
@@ -122,6 +130,25 @@ body {
   justify-content: space-between;
   font-size: 12px;
   color: #a8b3cc;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.metric-card {
+  background: #0f1422;
+  border: 1px solid #212a3c;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  color: #d0d8ec;
+}
+
+.error {
+  color: #ff8b8b;
 }
 
 pre {
