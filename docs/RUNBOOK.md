@@ -18,8 +18,13 @@ export IMAGE_TAG=0.1.0
 ## Verify
 
 ```bash
-kubectl -n rag-app get pods
-kubectl -n rag-app get svc
+# context + namespace discovery
+kubectl config current-context
+kubectl get ns
+kubectl -n <namespace> get svc
+
+# workload status
+kubectl -n <namespace> get pods
 ```
 
 ## Backend configuration
@@ -79,6 +84,127 @@ Example:
 }
 ```
 
+## In-cluster sanity check (Kubernetes)
+
+Note: Helm release names change service names, so discovery is required before port-forwarding.
+
+### A. vLLM streaming (direct)
+
+```bash
+# context + namespace discovery
+kubectl config current-context
+kubectl get ns
+kubectl -n <namespace> get svc
+
+# discover vLLM service name
+kubectl -n <namespace> get svc | grep vllm
+
+# port-forward vLLM service
+kubectl -n <namespace> port-forward svc/<release>-vllm 8001:8000
+
+export VLLM_MODEL_ID="Qwen/Qwen2.5-7B-Instruct"
+curl -N http://localhost:8001/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "'"$VLLM_MODEL_ID"'",
+    "messages": [{"role":"user","content":"Say hello in 20 words."}],
+    "stream": true,
+    "max_tokens": 64
+  }'
+```
+
+Expected behavior: many incremental `data:` events, not a single buffered response.
+
+### B. Ray Serve → vLLM streaming relay (SSE end-to-end)
+
+```bash
+# context + namespace discovery
+kubectl config current-context
+kubectl get ns
+kubectl -n <namespace> get svc
+
+# discover backend service name
+kubectl -n <namespace> get svc | grep backend
+
+# port-forward Ray Serve backend
+kubectl -n <namespace> port-forward svc/<release>-backend 8000:8000
+
+curl -N -X POST http://localhost:8000/query/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Explain what this system is and why vLLM matters."}'
+```
+
+Expected behavior: `meta` → `ttft` → repeated `token` → `done` events.
+
+### C. Confirm no buffering at ingress
+
+If you deploy behind an ingress, disable response buffering for SSE paths. Example
+NGINX ingress snippet (generic):
+
+```yaml
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X-Accel-Buffering "no";
+```
+
+### Troubleshooting
+
+If streaming appears chunked/delayed:
+
+1. Verify vLLM direct stream (A).
+2. Verify backend relay (B).
+3. Check ingress buffering (C).
+
+## Benchmarking (portable)
+
+Install benchmark deps:
+
+```bash
+python -m pip install -r scripts/benchmark/requirements.txt
+```
+
+Port-forward the backend:
+
+```bash
+# context + namespace discovery
+kubectl config current-context
+kubectl get ns
+kubectl -n <namespace> get svc
+
+# discover backend service name
+kubectl -n <namespace> get svc | grep backend
+
+# port-forward Ray Serve backend
+kubectl -n <namespace> port-forward svc/<release>-backend 8000:8000
+```
+
+Run benchmarks:
+
+```bash
+python scripts/benchmark/stream_bench.py \
+  --url http://localhost:8000/query/stream \
+  --concurrency 1 \
+  --requests 50
+```
+
+```bash
+python scripts/benchmark/stream_bench.py \
+  --url http://localhost:8000/query/stream \
+  --concurrency 10 \
+  --requests 100
+```
+
+```bash
+python scripts/benchmark/stream_bench.py \
+  --url http://localhost:8000/query/stream \
+  --concurrency 50 \
+  --requests 200
+```
+
+Keep prompts and max tokens identical for cross-cloud comparisons.
+
 ## Benchmark
 
 ```bash
@@ -89,6 +215,29 @@ export BENCH_TARGET=http://localhost:8000
 ## Rollback
 
 ```bash
-kubectl -n rag-app rollout undo deployment/rag-app-rag-app-frontend
-kubectl -n rag-app rollout undo deployment/rag-app-rag-app-backend
+# safety checks before rollback
+kubectl config current-context
+kubectl -n <namespace> get pods
+helm -n <namespace> list
+helm -n <namespace> history <release>
+
+# rollback workload deployments
+kubectl -n <namespace> rollout undo deployment/<release>-frontend
+kubectl -n <namespace> rollout undo deployment/<release>-backend
+```
+
+## Uninstall / cleanup
+
+```bash
+# safety checks before uninstall
+kubectl config current-context
+kubectl -n <namespace> get pods
+helm -n <namespace> list
+helm -n <namespace> history <release>
+
+# uninstall helm release
+helm -n <namespace> uninstall <release>
+
+# delete namespace if desired (optional)
+kubectl delete ns <namespace>
 ```

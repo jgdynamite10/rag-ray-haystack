@@ -23,6 +23,11 @@ npm run dev
 ./scripts/deploy.sh --provider aws --env dev
 ```
 
+## Sanity checks and benchmarking
+
+- In-cluster sanity check (Kubernetes): see `docs/RUNBOOK.md#in-cluster-sanity-check-kubernetes`
+- Benchmarking (portable): see `docs/RUNBOOK.md#benchmarking-portable`
+
 ## vLLM Helm values
 
 - `vllm.image.repository`, `vllm.image.tag`
