@@ -1,22 +1,23 @@
 import io
+import json
 import logging
 import os
 import time
 from collections import defaultdict, deque
-from typing import Any
+from typing import Any, AsyncIterator
 from uuid import uuid4
 
 import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
+from docx import Document as DocxDocument
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse, Response, StreamingResponse
 from haystack import Document
 from haystack.components.embedders import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )
-from haystack.components.generators import HuggingFaceLocalGenerator
 from haystack.components.retrievers.in_memory import (
     InMemoryBM25Retriever,
     InMemoryEmbeddingRetriever,
@@ -27,6 +28,8 @@ from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRe
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pythonjsonlogger import jsonlogger
 from ray import serve
+
+from app.vllm_client import VllmStreamingGenerator
 
 
 def configure_logging() -> None:
@@ -67,10 +70,30 @@ def extract_text_from_pdf(data: bytes) -> str:
         return data.decode("utf-8", errors="ignore")
 
 
+def extract_text_from_docx(data: bytes) -> str:
+    try:
+        doc = DocxDocument(io.BytesIO(data))
+        return "\n".join(para.text for para in doc.paragraphs)
+    except Exception:  # noqa: BLE001
+        return data.decode("utf-8", errors="ignore")
+
+
+def extract_text_from_html(data: bytes) -> str:
+    try:
+        soup = BeautifulSoup(data.decode("utf-8", errors="ignore"), "html.parser")
+        return soup.get_text(separator=" ", strip=True)
+    except Exception:  # noqa: BLE001
+        return data.decode("utf-8", errors="ignore")
+
+
 def load_text_from_upload(upload: Any) -> str:
     data = upload.file.read()
     if upload.filename and upload.filename.lower().endswith(".pdf"):
         return extract_text_from_pdf(data)
+    if upload.filename and upload.filename.lower().endswith(".docx"):
+        return extract_text_from_docx(data)
+    if upload.filename and upload.filename.lower().endswith((".html", ".htm")):
+        return extract_text_from_html(data)
     return data.decode("utf-8", errors="ignore")
 
 
@@ -127,6 +150,18 @@ class RagApp:
             "Latency in seconds",
             ["stage"],
         )
+        self.ttft_histogram = Histogram(
+            "rag_ttft_seconds",
+            "Time-to-first-token in seconds",
+        )
+        self.tokens_per_second_histogram = Histogram(
+            "rag_tokens_per_second",
+            "Tokens per second (estimated)",
+        )
+        self.token_counter = Counter(
+            "rag_tokens_total",
+            "Total tokens generated (estimated)",
+        )
         self.timings = TimingTracker()
         self.use_embeddings = env_flag("RAG_USE_EMBEDDINGS", "true")
         self.qdrant_url = os.getenv("QDRANT_URL", "")
@@ -135,11 +170,12 @@ class RagApp:
             "EMBEDDING_MODEL_ID",
             "sentence-transformers/all-MiniLM-L6-v2",
         )
-        self.generator_model = os.getenv(
-            "GENERATOR_MODEL_ID",
-            "sshleifer/tiny-gpt2",
-        )
-        self.generator_enabled = env_flag("GENERATOR_ENABLED", "true")
+        self.vllm_base_url = os.getenv("VLLM_BASE_URL", "http://vllm:8000")
+        self.vllm_model = os.getenv("VLLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        self.vllm_max_tokens = int(os.getenv("VLLM_MAX_TOKENS", "512"))
+        self.vllm_temperature = float(os.getenv("VLLM_TEMPERATURE", "0.2"))
+        self.vllm_top_p = float(os.getenv("VLLM_TOP_P", "0.95"))
+        self.vllm_timeout_seconds = int(os.getenv("VLLM_TIMEOUT_SECONDS", "30"))
         self.max_history = int(os.getenv("RAG_MAX_HISTORY", "6"))
         self.top_k = int(os.getenv("RAG_TOP_K", "4"))
         self.sessions: dict[str, list[dict[str, str]]] = {}
@@ -150,7 +186,7 @@ class RagApp:
         self.retriever = self._build_retriever()
         self.document_embedder = self._build_document_embedder()
         self.query_embedder = self._build_query_embedder()
-        self.generator = self._build_generator()
+        self.vllm = self._build_vllm_client()
 
     def _build_document_store(self) -> Any:
         if self.qdrant_url:
@@ -179,16 +215,14 @@ class RagApp:
             return None
         return SentenceTransformersTextEmbedder(model=self.embedding_model)
 
-    def _build_generator(self) -> Any | None:
-        if not self.generator_enabled:
-            self.logger.info("generator_disabled")
-            return None
-        return HuggingFaceLocalGenerator(
-            model=self.generator_model,
-            generation_kwargs={
-                "max_new_tokens": int(os.getenv("GENERATOR_MAX_NEW_TOKENS", "256")),
-                "temperature": float(os.getenv("GENERATOR_TEMPERATURE", "0.2")),
-            },
+    def _build_vllm_client(self) -> VllmStreamingGenerator:
+        return VllmStreamingGenerator(
+            base_url=self.vllm_base_url,
+            model=self.vllm_model,
+            max_tokens=self.vllm_max_tokens,
+            temperature=self.vllm_temperature,
+            top_p=self.vllm_top_p,
+            timeout_seconds=self.vllm_timeout_seconds,
         )
 
     def _get_session_history(self, session_id: str | None) -> tuple[str, list[dict[str, str]]]:
@@ -260,6 +294,30 @@ class RagApp:
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"{url}: {exc}")
 
+        sitemap_url = payload.get("sitemap_url")
+        if sitemap_url:
+            try:
+                response = requests.get(sitemap_url, timeout=10)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "xml")
+                for loc in soup.find_all("loc"):
+                    url = loc.text.strip()
+                    if not url:
+                        continue
+                    try:
+                        content = load_text_from_url(url)
+                        for chunk in chunk_text(content):
+                            documents.append(
+                                Document(
+                                    content=chunk,
+                                    meta={"source": "sitemap", "url": url},
+                                )
+                            )
+                    except Exception as exc:  # noqa: BLE001
+                        errors.append(f"{url}: {exc}")
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"sitemap: {exc}")
+
         if not documents:
             return {"ingested": 0, "errors": errors}
 
@@ -297,36 +355,32 @@ class RagApp:
         documents = result.get("documents", [])
         retrieval_time = time.perf_counter() - retrieval_start
 
-        prompt_context = "\n\n".join(
-            f"[{index + 1}] {doc.content}" for index, doc in enumerate(documents)
-        )
-        history_text = "\n".join(
-            f"{message['role']}: {message['content']}" for message in history[-self.max_history :]
-        )
-        prompt = (
-            "You are a helpful RAG assistant. Use the context to answer.\n\n"
-            f"Context:\n{prompt_context}\n\n"
-            f"Conversation:\n{history_text}\n\n"
-            f"Question: {query}\nAnswer:"
-        )
+        prompt = self._build_prompt(query, history, documents)
 
         generation_start = time.perf_counter()
-        answer = "Generator disabled."
-        if self.generator:
-            try:
-                reply = self.generator.run(prompt=prompt)
-                replies = reply.get("replies") or reply.get("results") or []
-                answer = replies[0] if replies else "No response."
-            except Exception as exc:  # noqa: BLE001
-                self.error_counter.labels("query").inc()
-                answer = f"Generation failed: {exc}"
+        ttft_start = time.perf_counter()
+        answer = ""
+        try:
+            answer = await self.vllm.complete_chat(prompt)
+        except Exception as exc:  # noqa: BLE001
+            self.error_counter.labels("query").inc()
+            answer = f"Generation failed: {exc}"
         generation_time = time.perf_counter() - generation_start
+        ttft = time.perf_counter() - ttft_start
+        # Token estimation uses whitespace splits to avoid tokenizer overhead.
+        token_count = max(1, len(answer.split())) if answer else 0
+        tokens_per_second = token_count / generation_time if generation_time > 0 else 0.0
 
         self._update_session(session_id, "assistant", answer)
         self.timings.record("retrieval", retrieval_time)
         self.timings.record("generation", generation_time)
+        self.timings.record("ttft", ttft)
         self.latency_histogram.labels("retrieval").observe(retrieval_time)
         self.latency_histogram.labels("generation").observe(generation_time)
+        self.ttft_histogram.observe(ttft)
+        if token_count:
+            self.token_counter.inc(token_count)
+            self.tokens_per_second_histogram.observe(tokens_per_second)
 
         total_time = retrieval_time + generation_time
         self.latency_histogram.labels("total").observe(total_time)
@@ -356,9 +410,167 @@ class RagApp:
                 "retrieval_ms": round(retrieval_time * 1000, 2),
                 "generation_ms": round(generation_time * 1000, 2),
                 "total_ms": round(total_time * 1000, 2),
+                "ttft_ms": round(ttft * 1000, 2),
+                "tokens_per_second": round(tokens_per_second, 2),
+                "tokens_estimated": token_count,
             },
             "history": self.sessions.get(session_id, []),
         }
+
+    async def query_stream(self, payload: dict[str, Any]) -> StreamingResponse:
+        self.request_counter.labels("query_stream").inc()
+        query = payload.get("query", "")
+        if not query:
+            return StreamingResponse(
+                self._stream_events(
+                    [
+                        {
+                            "event": "error",
+                            "data": {"message": "query is required"},
+                        }
+                    ]
+                ),
+                media_type="text/event-stream",
+            )
+
+        session_id, history = self._get_session_history(payload.get("session_id"))
+        if payload.get("history"):
+            history = payload["history"]
+
+        self._update_session(session_id, "user", query)
+
+        retrieval_start = time.perf_counter()
+        if self.use_embeddings and self.query_embedder:
+            embedding = self.query_embedder.run(text=query)["embedding"]
+            result = self.retriever.run(query_embedding=embedding, top_k=self.top_k)
+        else:
+            result = self.retriever.run(query=query, top_k=self.top_k)
+        documents = result.get("documents", [])
+        retrieval_time = time.perf_counter() - retrieval_start
+
+        prompt = self._build_prompt(query, history, documents)
+
+        async def event_stream() -> AsyncIterator[bytes]:
+            # SSE event contract:
+            # meta -> retrieval docs + timings, ttft -> time to first token,
+            # token -> incremental delta, done -> final timings + citations.
+            yield self._sse_event(
+                "meta",
+                {
+                    "session_id": session_id,
+                    "documents": [
+                        {
+                            "content": doc.content,
+                            "meta": doc.meta,
+                            "score": doc.score,
+                        }
+                        for doc in documents
+                    ],
+                    "timings": {
+                        "retrieval_ms": round(retrieval_time * 1000, 2),
+                    },
+                },
+            )
+
+            generation_start = time.perf_counter()
+            token_count = 0
+            first_token_sent = False
+            ttft_value: float | None = None
+
+            try:
+                async for delta in self.vllm.stream_chat(prompt):
+                    if not first_token_sent:
+                        ttft_value = time.perf_counter() - generation_start
+                        self.ttft_histogram.observe(ttft_value)
+                        self.timings.record("ttft", ttft_value)
+                        yield self._sse_event(
+                            "ttft",
+                            {
+                                "ttft_ms": round(ttft_value * 1000, 2),
+                            },
+                        )
+                        first_token_sent = True
+
+                    # Token estimation uses whitespace splits to avoid tokenizer overhead.
+                    token_count += max(1, len(delta.split()))
+                    yield self._sse_event("token", {"text": delta})
+
+                generation_time = time.perf_counter() - generation_start
+                tokens_per_second = (
+                    token_count / generation_time if generation_time > 0 else 0.0
+                )
+
+                self.token_counter.inc(token_count)
+                self.tokens_per_second_histogram.observe(tokens_per_second)
+                self.timings.record("retrieval", retrieval_time)
+                self.timings.record("generation", generation_time)
+                self.latency_histogram.labels("retrieval").observe(retrieval_time)
+                self.latency_histogram.labels("generation").observe(generation_time)
+                total_time = retrieval_time + generation_time
+                self.latency_histogram.labels("total").observe(total_time)
+
+                yield self._sse_event(
+                    "done",
+                    {
+                        "session_id": session_id,
+                        "documents": [
+                            {
+                                "content": doc.content,
+                                "meta": doc.meta,
+                                "score": doc.score,
+                            }
+                            for doc in documents
+                        ],
+                        "timings": {
+                            "retrieval_ms": round(retrieval_time * 1000, 2),
+                            "generation_ms": round(generation_time * 1000, 2),
+                            "total_ms": round(total_time * 1000, 2),
+                            "ttft_ms": round(ttft_value * 1000, 2)
+                            if ttft_value is not None
+                            else None,
+                            "tokens_per_second": round(tokens_per_second, 2),
+                            "tokens_estimated": token_count,
+                        },
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                self.error_counter.labels("query_stream").inc()
+                yield self._sse_event(
+                    "error",
+                    {"message": f"Streaming failed: {exc}"},
+                )
+
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+    def _build_prompt(
+        self,
+        query: str,
+        history: list[dict[str, str]],
+        documents: list[Document],
+    ) -> str:
+        prompt_context = "\n\n".join(
+            f"[{index + 1}] {doc.content}" for index, doc in enumerate(documents)
+        )
+        history_text = "\n".join(
+            f"{message['role']}: {message['content']}"
+            for message in history[-self.max_history :]
+        )
+        return (
+            "You are a helpful RAG assistant. Use the context to answer.\n\n"
+            f"Context:\n{prompt_context}\n\n"
+            f"Conversation:\n{history_text}\n\n"
+            f"Question: {query}\nAnswer:"
+        )
+
+    def _sse_event(self, name: str, data: dict[str, Any]) -> bytes:
+        return f"event: {name}\ndata: {json.dumps(data)}\n\n".encode()
+
+    def _stream_events(self, events: list[dict[str, Any]]) -> Any:
+        for event in events:
+            payload = event.get("data", {})
+            event_name = event.get("event", "message")
+            yield f"event: {event_name}\n".encode()
+            yield f"data: {json.dumps(payload)}\n\n".encode()
 
     async def __call__(self, request: Request) -> Response:
         path = request.url.path
@@ -390,6 +602,10 @@ class RagApp:
         if path == "/query" and method == "POST":
             payload = await request.json()
             return JSONResponse(await self.query(payload))
+
+        if path == "/query/stream" and method == "POST":
+            payload = await request.json()
+            return await self.query_stream(payload)
 
         return JSONResponse({"error": "not_found"}, status_code=404)
 

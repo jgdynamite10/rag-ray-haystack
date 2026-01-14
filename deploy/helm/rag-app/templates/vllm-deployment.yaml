@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rag-app.fullname" . }}-vllm
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: {{ .Values.vllm.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "rag-app.fullname" . }}-vllm
+  template:
+    metadata:
+      labels:
+        app: {{ include "rag-app.fullname" . }}-vllm
+    spec:
+      containers:
+        - name: vllm
+          image: "{{ .Values.vllm.image.repository }}:{{ .Values.vllm.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          args:
+            # OpenAI-compatible server with streaming enabled.
+            - "--model"
+            - "{{ .Values.vllm.model }}"
+            - "--served-model-name"
+            - "{{ .Values.vllm.servedModelName }}"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "{{ .Values.vllm.service.port }}"
+            - "--max-model-len"
+            - "{{ .Values.vllm.maxModelLen }}"
+            - "--gpu-memory-utilization"
+            - "{{ .Values.vllm.gpuMemoryUtilization }}"
+            - "--dtype"
+            - "{{ .Values.vllm.dtype }}"
+            {{- if .Values.vllm.quantization }}
+            - "--quantization"
+            - "{{ .Values.vllm.quantization }}"
+            {{- end }}
+          env:
+            {{- toYaml .Values.vllm.env | nindent 12 }}
+          ports:
+            - containerPort: {{ .Values.vllm.service.port }}
+          resources:
+            {{- toYaml .Values.vllm.resources | nindent 12 }}
+      {{- with .Values.vllm.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.vllm.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

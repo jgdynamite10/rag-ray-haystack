@@ -8,3 +8,10 @@ qdrant:
 kuberay:
   worker:
     replicas: 2
+vllm:
+  nodeSelector:
+    accelerator: nvidia # TODO: align with GKE GPU node labels.
+  tolerations:
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoSchedule"

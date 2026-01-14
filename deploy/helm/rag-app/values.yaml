@@ -9,14 +9,6 @@ backend:
   service:
     port: 8000
   env:
-    - name: GENERATOR_ENABLED
-      value: "true"
-    - name: GENERATOR_MODEL_ID
-      value: "sshleifer/tiny-gpt2"
-    - name: GENERATOR_MAX_NEW_TOKENS
-      value: "256"
-    - name: GENERATOR_TEMPERATURE
-      value: "0.2"
     - name: RAG_USE_EMBEDDINGS
       value: "true"
     - name: EMBEDDING_MODEL_ID
@@ -25,6 +17,18 @@ backend:
       value: "4"
     - name: RAG_MAX_HISTORY
       value: "6"
+    - name: VLLM_BASE_URL
+      value: "http://rag-app-rag-app-vllm:8000"
+    - name: VLLM_MODEL
+      value: "Qwen/Qwen2.5-7B-Instruct"
+    - name: VLLM_MAX_TOKENS
+      value: "512"
+    - name: VLLM_TEMPERATURE
+      value: "0.2"
+    - name: VLLM_TOP_P
+      value: "0.95"
+    - name: VLLM_TIMEOUT_SECONDS
+      value: "30"
   resources:
     requests:
       cpu: "250m"
@@ -68,3 +72,27 @@ kuberay:
     replicas: 1
     cpu: "1"
     memory: "2Gi"
+
+vllm:
+  image:
+    repository: vllm/vllm-openai
+    tag: "v0.6.2"
+  model: "Qwen/Qwen2.5-7B-Instruct"
+  servedModelName: "rag-default"
+  replicas: 1
+  service:
+    port: 8000
+  maxModelLen: "4096"
+  gpuMemoryUtilization: "0.9"
+  dtype: "half"
+  quantization: ""
+  env: []
+  resources:
+    requests:
+      cpu: "1"
+      memory: "4Gi"
+    limits:
+      cpu: "2"
+      memory: "8Gi"
+  nodeSelector: {}
+  tolerations: []
