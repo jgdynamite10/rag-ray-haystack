@@ -1,4 +1,4 @@
-.PHONY: terraform-apply terraform-destroy tf-apply tf-destroy kubeconfig helm-apply helm-destroy deploy destroy verify bench
+.PHONY: terraform-apply terraform-destroy tf-apply tf-destroy kubeconfig helm-apply helm-destroy deploy destroy verify bench label-gpu install-kuberay fix-gpu
 
 PROVIDER ?= akamai-lke
 ENV ?= dev
@@ -44,12 +44,13 @@ tf-destroy: terraform-destroy
 kubeconfig:
 	@echo "Writing kubeconfig to $(KUBECONFIG_PATH)"
 	@mkdir -p $(dir $(KUBECONFIG_PATH))
-	cd $(TERRAFORM_DIR) && terraform output -raw kubeconfig > $(KUBECONFIG_PATH)
+	cd $(TERRAFORM_DIR) && terraform output -raw kubeconfig | \
+		( base64 --decode 2>/dev/null || base64 -D ) > $(KUBECONFIG_PATH)
 	@echo "Run: export KUBECONFIG=$(KUBECONFIG_PATH)"
 
 helm-apply:
 	@echo "Deploying Helm chart $(RELEASE) to namespace $(NAMESPACE)"
-	helm -n $(NAMESPACE) upgrade --install $(RELEASE) deploy/helm/rag-app \
+	KUBECONFIG=$(KUBECONFIG_PATH) helm -n $(NAMESPACE) upgrade --install $(RELEASE) deploy/helm/rag-app \
 		--create-namespace \
 		-f $(BASE_VALUES) \
 		-f $(OVERLAY_VALUES) \
@@ -57,14 +58,30 @@ helm-apply:
 
 helm-destroy:
 	@echo "Uninstalling Helm release $(RELEASE) from $(NAMESPACE)"
-	helm -n $(NAMESPACE) uninstall $(RELEASE)
+	KUBECONFIG=$(KUBECONFIG_PATH) helm -n $(NAMESPACE) uninstall $(RELEASE)
 
 deploy: terraform-apply kubeconfig helm-apply
+	@if [ "$(PROVIDER)" = "akamai-lke" ]; then \
+		KUBECONFIG_PATH=$(KUBECONFIG_PATH) ./scripts/fix_gpu.sh; \
+	fi
 
 destroy: helm-destroy terraform-destroy
 
 verify:
-	./scripts/verify.sh --namespace $(NAMESPACE) --release $(RELEASE)
+	KUBECONFIG=$(KUBECONFIG_PATH) ./scripts/verify.sh --namespace $(NAMESPACE) --release $(RELEASE)
 
 bench:
 	python scripts/benchmark/stream_bench.py --url http://localhost:8000/query/stream
+
+label-gpu:
+	KUBECONFIG=$(KUBECONFIG_PATH) ./scripts/label_gpu_nodes.sh
+
+install-kuberay:
+	helm repo add kuberay https://ray-project.github.io/kuberay-helm/
+	helm repo update
+	KUBECONFIG=$(KUBECONFIG_PATH) helm upgrade --install kuberay-operator kuberay/kuberay-operator \
+		--namespace kuberay-system --create-namespace \
+		--values deploy/kuberay/operator-values.yaml
+
+fix-gpu:
+	KUBECONFIG_PATH=$(KUBECONFIG_PATH) ./scripts/fix_gpu.sh

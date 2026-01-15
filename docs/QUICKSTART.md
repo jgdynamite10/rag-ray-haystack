@@ -4,7 +4,7 @@
 
 ```bash
 cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lke/terraform.tfvars
-make deploy PROVIDER=akamai-lke ENV=dev
+GPU_FIX=1 make deploy PROVIDER=akamai-lke ENV=dev
 ```
 
 This runs:
@@ -12,6 +12,12 @@ This runs:
 1. `terraform apply` in `infra/terraform/<provider>`
 2. `make kubeconfig` (writes `~/.kube/<provider>-<env>-config.yaml`)
 3. `helm upgrade --install` with base + overlay values
+
+## Install KubeRay operator
+
+```bash
+make install-kuberay PROVIDER=akamai-lke ENV=dev
+```
 
 ## Optional overrides
 

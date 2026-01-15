@@ -16,6 +16,18 @@ cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lk
 ./scripts/deploy.sh --provider akamai-lke --env dev --action apply
 ```
 
+## Install KubeRay operator
+
+```bash
+make install-kuberay PROVIDER=akamai-lke ENV=dev
+```
+
+## GPU bring-up (automated)
+
+```bash
+make fix-gpu PROVIDER=akamai-lke ENV=dev
+```
+
 ## Verify
 
 ```bash
@@ -30,6 +42,9 @@ kubectl -n <namespace> get pods
 # automated streaming verification
 make verify NAMESPACE=<namespace> RELEASE=<release>
 ```
+
+If GPU scheduling or `nvidia.com/gpu` capacity is missing, see
+`docs/GPU_TROUBLESHOOTING.md`.
 
 ## Backend configuration
 
