@@ -12,7 +12,7 @@ export IMAGE_TAG=0.1.0
 ## Deploy
 
 ```bash
-./scripts/deploy.sh --provider aws --env dev
+./scripts/deploy.sh --provider akamai-lke --env dev --action apply
 ```
 
 ## Verify
@@ -25,6 +25,9 @@ kubectl -n <namespace> get svc
 
 # workload status
 kubectl -n <namespace> get pods
+
+# automated streaming verification
+make verify NAMESPACE=<namespace> RELEASE=<release>
 ```
 
 ## Backend configuration
