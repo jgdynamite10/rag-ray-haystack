@@ -12,6 +12,7 @@ export IMAGE_TAG=0.1.0
 ## Deploy
 
 ```bash
+cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lke/terraform.tfvars
 ./scripts/deploy.sh --provider akamai-lke --env dev --action apply
 ```
 

@@ -1,4 +1,4 @@
-.PHONY: terraform-apply terraform-destroy kubeconfig helm-apply helm-destroy deploy destroy verify bench
+.PHONY: terraform-apply terraform-destroy tf-apply tf-destroy kubeconfig helm-apply helm-destroy deploy destroy verify bench
 
 PROVIDER ?= akamai-lke
 ENV ?= dev
@@ -10,7 +10,7 @@ IMAGE_TAG ?=
 TERRAFORM_DIR := infra/terraform/$(PROVIDER)
 BASE_VALUES := deploy/helm/rag-app/values.yaml
 OVERLAY_VALUES := deploy/overlays/$(PROVIDER)/$(ENV)/values.yaml
-KUBECONFIG_PATH := $(HOME)/.kube/$(PROVIDER)-$(ENV)-config
+KUBECONFIG_PATH := $(HOME)/.kube/$(PROVIDER)-$(ENV)-config.yaml
 
 define IMAGE_OVERRIDES
 $(if $(IMAGE_REGISTRY),--set backend.image.repository=$(IMAGE_REGISTRY)/rag-ray-backend,) \
@@ -21,11 +21,25 @@ endef
 
 terraform-apply:
 	@echo "Applying Terraform in $(TERRAFORM_DIR)"
-	cd $(TERRAFORM_DIR) && terraform init && terraform apply -auto-approve
+	cd $(TERRAFORM_DIR) && terraform init && \
+	if [ -f terraform.tfvars ]; then \
+		terraform apply -auto-approve -var-file=terraform.tfvars; \
+	else \
+		terraform apply -auto-approve; \
+	fi
+
+tf-apply: terraform-apply
 
 terraform-destroy:
 	@echo "Destroying Terraform in $(TERRAFORM_DIR)"
-	cd $(TERRAFORM_DIR) && terraform init && terraform destroy -auto-approve
+	cd $(TERRAFORM_DIR) && terraform init && \
+	if [ -f terraform.tfvars ]; then \
+		terraform destroy -auto-approve -var-file=terraform.tfvars; \
+	else \
+		terraform destroy -auto-approve; \
+	fi
+
+tf-destroy: terraform-destroy
 
 kubeconfig:
 	@echo "Writing kubeconfig to $(KUBECONFIG_PATH)"
