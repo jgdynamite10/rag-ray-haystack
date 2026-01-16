@@ -18,9 +18,12 @@ def _parse_int(name: str) -> int | None:
 
 def main() -> None:
     object_store_memory = _parse_int("RAY_OBJECT_STORE_MEMORY")
+    ray_memory = _parse_int("RAY_MEMORY")
     ray_kwargs: dict[str, int] = {}
     if object_store_memory:
         ray_kwargs["object_store_memory"] = object_store_memory
+    if ray_memory:
+        ray_kwargs["memory"] = ray_memory
 
     ray.init(**ray_kwargs)
 

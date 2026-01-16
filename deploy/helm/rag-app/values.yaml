@@ -35,6 +35,8 @@ backend:
       value: "100000000"
     - name: RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE
       value: "1"
+    - name: RAY_MEMORY
+      value: "200000000"
   resources:
     requests:
       cpu: "250m"
