@@ -1,5 +1,7 @@
 global:
   namespace: rag-app
+  imagePullSecrets: []
+  sharedMemorySize: "1Gi"
 
 backend:
   image:
@@ -20,7 +22,7 @@ backend:
     - name: VLLM_BASE_URL
       value: "http://rag-app-rag-app-vllm:8000"
     - name: VLLM_MODEL
-      value: "Qwen/Qwen2.5-7B-Instruct"
+      value: "rag-default"
     - name: VLLM_MAX_TOKENS
       value: "512"
     - name: VLLM_TEMPERATURE
@@ -29,6 +31,10 @@ backend:
       value: "0.95"
     - name: VLLM_TIMEOUT_SECONDS
       value: "30"
+    - name: RAY_OBJECT_STORE_MEMORY
+      value: "100000000"
+    - name: RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE
+      value: "1"
   resources:
     requests:
       cpu: "250m"

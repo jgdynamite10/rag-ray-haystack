@@ -13,4 +13,4 @@ COPY app /app/app
 
 EXPOSE 8000
 
-CMD ["serve", "run", "app.main:deployment"]
+CMD ["python", "-m", "app.serve_runner"]

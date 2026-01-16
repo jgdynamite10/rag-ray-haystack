@@ -13,12 +13,24 @@ spec:
       labels:
         app: {{ include "rag-app.fullname" . }}-backend
     spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ .Values.global.sharedMemorySize | quote }}
       containers:
         - name: backend
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: {{ .Values.backend.service.port }}
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
           env:
             {{- toYaml .Values.backend.env | nindent 12 }}
           resources:

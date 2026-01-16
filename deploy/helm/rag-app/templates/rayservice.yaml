@@ -18,10 +18,22 @@ spec:
         dashboard-host: "0.0.0.0"
       template:
         spec:
+          {{- with .Values.global.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumes:
+            - name: dshm
+              emptyDir:
+                medium: Memory
+                sizeLimit: {{ .Values.global.sharedMemorySize | quote }}
           containers:
             - name: ray-head
               image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
               imagePullPolicy: IfNotPresent
+              volumeMounts:
+                - name: dshm
+                  mountPath: /dev/shm
               resources:
                 requests:
                   cpu: {{ .Values.kuberay.head.cpu | quote }}
@@ -35,10 +47,22 @@ spec:
         rayStartParams: {}
         template:
           spec:
+            {{- with .Values.global.imagePullSecrets }}
+            imagePullSecrets:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+            volumes:
+              - name: dshm
+                emptyDir:
+                  medium: Memory
+                  sizeLimit: {{ .Values.global.sharedMemorySize | quote }}
             containers:
               - name: ray-worker
                 image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
                 imagePullPolicy: IfNotPresent
+                volumeMounts:
+                  - name: dshm
+                    mountPath: /dev/shm
                 resources:
                   requests:
                     cpu: {{ .Values.kuberay.worker.cpu | quote }}
