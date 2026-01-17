@@ -7,11 +7,11 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 - Infrastructure: Terraform scaffolding exists for Akamai LKE.
 - Deployment: Helm chart for backend, frontend, Qdrant, RayService, and vLLM.
 - GPU: vLLM runs on GPU nodes when `nvidia.com/gpu` capacity is available.
-- Verification: Run `make verify` for end-to-end streaming checks.
+- Verification: `make verify` passes for end-to-end streaming checks on dev.
+- Images: GHCR images published for backend/frontend.
 
 ## Open items
 
-- Publish container images to a registry (GHCR/Docker Hub).
 - Run benchmark and capture TTFT/tokens/sec metrics.
 
 ## Environment (sanitized)
@@ -19,3 +19,5 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 - Provider: <provider>
 - Namespace: <namespace>
 - Release: <release>
+- Image registry: ghcr.io/<owner>
+- Image tag: 0.1.5
