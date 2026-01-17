@@ -44,11 +44,15 @@ spec:
             httpGet:
               path: /healthz
               port: {{ .Values.backend.service.port }}
-            initialDelaySeconds: 10
-            periodSeconds: 20
+            initialDelaySeconds: {{ .Values.backend.health.livenessInitialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.health.livenessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.backend.health.livenessTimeoutSeconds }}
+            failureThreshold: {{ .Values.backend.health.livenessFailureThreshold }}
           readinessProbe:
             httpGet:
               path: /healthz
               port: {{ .Values.backend.service.port }}
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            initialDelaySeconds: {{ .Values.backend.health.readinessInitialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.health.readinessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.backend.health.readinessTimeoutSeconds }}
+            failureThreshold: {{ .Values.backend.health.readinessFailureThreshold }}

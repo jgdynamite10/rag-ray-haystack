@@ -9,6 +9,10 @@ kuberay:
   worker:
     replicas: 2
 vllm:
+  model: "Qwen/Qwen2.5-7B-Instruct"
+  servedModelName: "rag-default"
+  maxModelLen: "4096"
+  gpuMemoryUtilization: "0.9"
   nodeSelector:
     accelerator: nvidia # TODO: align with Akamai LKE GPU node labels.
   tolerations:

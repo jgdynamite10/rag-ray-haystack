@@ -3,6 +3,10 @@ kind: Service
 metadata:
   name: {{ include "rag-app.fullname" . }}-frontend
   namespace: {{ .Values.global.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "rag-app.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: frontend
 spec:
   selector:
     app: {{ include "rag-app.fullname" . }}-frontend

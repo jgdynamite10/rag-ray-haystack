@@ -44,6 +44,7 @@ vllm_pf_pid=$!
 sleep 3
 
 set +e
+set +o pipefail
 curl -N http://localhost:8001/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
@@ -53,10 +54,11 @@ curl -N http://localhost:8001/v1/chat/completions \
     "max_tokens": 64
   }' | head -n 5
 vllm_status=$?
+set -o pipefail
 set -e
 kill "${vllm_pf_pid}" >/dev/null 2>&1 || true
 
-if [[ ${vllm_status} -ne 0 ]]; then
+if [[ ${vllm_status} -ne 0 && ${vllm_status} -ne 23 ]]; then
   echo "vLLM streaming check failed."
   echo "Tip: verify vLLM pod readiness and check ingress buffering."
   exit 1

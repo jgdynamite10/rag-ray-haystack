@@ -10,6 +10,15 @@ backend:
   replicas: 1
   service:
     port: 8000
+  health:
+    livenessInitialDelaySeconds: 180
+    readinessInitialDelaySeconds: 120
+    livenessTimeoutSeconds: 5
+    readinessTimeoutSeconds: 5
+    livenessFailureThreshold: 6
+    readinessFailureThreshold: 6
+    livenessPeriodSeconds: 20
+    readinessPeriodSeconds: 10
   env:
     - name: RAG_USE_EMBEDDINGS
       value: "true"
@@ -32,18 +41,16 @@ backend:
     - name: VLLM_TIMEOUT_SECONDS
       value: "30"
     - name: RAY_OBJECT_STORE_MEMORY
-      value: "100000000"
+      value: "80000000"
     - name: RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE
       value: "1"
-    - name: RAY_MEMORY
-      value: "200000000"
   resources:
     requests:
-      cpu: "250m"
-      memory: "512Mi"
-    limits:
-      cpu: "1"
+      cpu: "500m"
       memory: "1Gi"
+    limits:
+      cpu: "2"
+      memory: "3Gi"
 
 frontend:
   image:
