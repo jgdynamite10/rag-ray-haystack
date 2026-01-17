@@ -187,6 +187,15 @@ class RagApp:
         self.document_embedder = self._build_document_embedder()
         self.query_embedder = self._build_query_embedder()
         self.vllm = self._build_vllm_client()
+        self._warm_up_embedders()
+
+    def _warm_up_embedders(self) -> None:
+        for embedder in (self.document_embedder, self.query_embedder):
+            if embedder is None:
+                continue
+            warm_up = getattr(embedder, "warm_up", None)
+            if callable(warm_up):
+                warm_up()
 
     def _build_document_store(self) -> Any:
         if self.qdrant_url:
