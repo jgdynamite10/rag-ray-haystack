@@ -6,3 +6,28 @@ node_modules/
 terraform.tfstate
 terraform.tfstate.*
 terraform.tfvars
+
+# --- Local-only project context (do not commit) ---
+/docs/PROJECT_STATE.local.md
+/docs/OPERATIONS.local.md
+/docs/CONTEXT.local.md
+
+# --- Secrets / env ---
+.env
+.env.*
+**/*token*
+**/*secret*
+**/*kubeconfig*
+**/*.kubeconfig
+
+# --- Terraform state (never commit) ---
+**/.terraform/*
+**/.terraform.lock.hcl.backup
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/crash.log
+**/crash.*.log
+
+# --- Kube configs (never commit) ---
+/.kube/
+/**/*.yaml.kubeconfig

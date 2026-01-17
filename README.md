@@ -28,6 +28,11 @@ npm run dev
 - In-cluster sanity check (Kubernetes): see `docs/RUNBOOK.md#in-cluster-sanity-check-kubernetes`
 - Benchmarking (portable): see `docs/RUNBOOK.md#benchmarking-portable`
 
+## Project context (public)
+
+- `docs/PROJECT_STATE.public.md`
+- `docs/OPERATIONS.public.md`
+
 ## vLLM Helm values
 
 - `vllm.image.repository`, `vllm.image.tag`

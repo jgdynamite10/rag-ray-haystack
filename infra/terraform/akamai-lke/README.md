@@ -31,9 +31,17 @@ curl -H "Authorization: Bearer ${TF_VAR_linode_token}" \
 ```
 
 - Set `gpu_node_type` to a type available in your region.
-- GPU nodes are labeled with `accelerator=nvidia` and tainted with `nvidia.com/gpu=true:NoSchedule`.
+- GPU scheduling conventions are `accelerator=nvidia` and `nvidia.com/gpu=true:NoSchedule`.
+  Apply these via your node pool config or cluster tooling if your provider
+  does not support labels/taints in Terraform.
 
-Validate labels/taints:
+Apply labels/taints after cluster creation if needed:
+
+```bash
+./scripts/label_gpu_nodes.sh
+```
+
+Validate labels/taints after cluster creation:
 
 ```bash
 kubectl describe node | grep -A5 -i "Taints"
