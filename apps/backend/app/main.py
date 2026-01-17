@@ -205,10 +205,11 @@ class RagApp:
                     warm_up()
                     self._embedder_ready[name] = True
                 except Exception as exc:  # noqa: BLE001
-                self.logger.warning(
-                    "embedder_warmup_failed",
-                    extra={"embedder": name, "error": str(exc)},
-                )
+                    self.logger.warning(
+                        "embedder_warmup_failed",
+                        extra={"embedder": name, "error": str(exc)},
+                    )
+                    raise
 
     def _ensure_query_embedder_ready(self) -> None:
         if not self.query_embedder:
@@ -220,7 +221,10 @@ class RagApp:
                 return
             warm_up = getattr(self.query_embedder, "warm_up", None)
             if callable(warm_up):
-                warm_up()
+                try:
+                    warm_up()
+                except Exception:  # noqa: BLE001
+                    raise
             self._embedder_ready["query"] = True
 
     def _ensure_document_embedder_ready(self) -> None:
@@ -233,7 +237,10 @@ class RagApp:
                 return
             warm_up = getattr(self.document_embedder, "warm_up", None)
             if callable(warm_up):
-                warm_up()
+                try:
+                    warm_up()
+                except Exception:  # noqa: BLE001
+                    raise
             self._embedder_ready["document"] = True
 
     def _build_document_store(self) -> Any:
