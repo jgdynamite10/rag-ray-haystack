@@ -205,10 +205,10 @@ class RagApp:
                     warm_up()
                     self._embedder_ready[name] = True
                 except Exception as exc:  # noqa: BLE001
-                    self.logger.warning(
-                        "embedder_warmup_failed",
-                        extra={"name": name, "error": str(exc)},
-                    )
+                self.logger.warning(
+                    "embedder_warmup_failed",
+                    extra={"embedder": name, "error": str(exc)},
+                )
 
     def _ensure_query_embedder_ready(self) -> None:
         if not self.query_embedder:
