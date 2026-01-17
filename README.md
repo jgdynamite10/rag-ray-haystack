@@ -28,6 +28,14 @@ npm run dev
 - In-cluster sanity check (Kubernetes): see `docs/RUNBOOK.md#in-cluster-sanity-check-kubernetes`
 - Benchmarking (portable): see `docs/RUNBOOK.md#benchmarking-portable`
 
+## Why this stack
+
+- Cloud-portable: one Helm chart + overlays for Akamai LKE, AWS EKS, and GCP GKE.
+- Production-grade serving: KubeRay + Ray Serve + vLLM for scalable, streaming GPU inference.
+- Observable by default: `/metrics`, structured logs, and portable benchmarking scripts.
+- Swap-friendly: pluggable models and vector store with minimal infra changes.
+- Ops-ready: build/push/deploy/verify/benchmark scripts baked in.
+
 ## Project context (public)
 
 - `docs/PROJECT_STATE.public.md`
