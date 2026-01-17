@@ -2,6 +2,7 @@ import io
 import json
 import logging
 import os
+import threading
 import time
 from collections import defaultdict, deque
 from typing import Any, AsyncIterator
@@ -187,15 +188,53 @@ class RagApp:
         self.document_embedder = self._build_document_embedder()
         self.query_embedder = self._build_query_embedder()
         self.vllm = self._build_vllm_client()
+        self._embedder_lock = threading.Lock()
+        self._embedder_ready = {"document": False, "query": False}
         self._warm_up_embedders()
 
     def _warm_up_embedders(self) -> None:
-        for embedder in (self.document_embedder, self.query_embedder):
+        for name, embedder in (
+            ("document", self.document_embedder),
+            ("query", self.query_embedder),
+        ):
             if embedder is None:
                 continue
             warm_up = getattr(embedder, "warm_up", None)
             if callable(warm_up):
+                try:
+                    warm_up()
+                    self._embedder_ready[name] = True
+                except Exception as exc:  # noqa: BLE001
+                    self.logger.warning(
+                        "embedder_warmup_failed",
+                        extra={"name": name, "error": str(exc)},
+                    )
+
+    def _ensure_query_embedder_ready(self) -> None:
+        if not self.query_embedder:
+            return
+        if self._embedder_ready.get("query"):
+            return
+        with self._embedder_lock:
+            if self._embedder_ready.get("query"):
+                return
+            warm_up = getattr(self.query_embedder, "warm_up", None)
+            if callable(warm_up):
                 warm_up()
+            self._embedder_ready["query"] = True
+
+    def _ensure_document_embedder_ready(self) -> None:
+        if not self.document_embedder:
+            return
+        if self._embedder_ready.get("document"):
+            return
+        with self._embedder_lock:
+            if self._embedder_ready.get("document"):
+                return
+            warm_up = getattr(self.document_embedder, "warm_up", None)
+            if callable(warm_up):
+                warm_up()
+            self._embedder_ready["document"] = True
 
     def _build_document_store(self) -> Any:
         if self.qdrant_url:
@@ -331,6 +370,7 @@ class RagApp:
             return {"ingested": 0, "errors": errors}
 
         if self.use_embeddings and self.document_embedder:
+            self._ensure_document_embedder_ready()
             documents = self.document_embedder.run(documents=documents)["documents"]
 
         self.document_store.write_documents(documents)
@@ -357,6 +397,7 @@ class RagApp:
 
         retrieval_start = time.perf_counter()
         if self.use_embeddings and self.query_embedder:
+            self._ensure_query_embedder_ready()
             embedding = self.query_embedder.run(text=query)["embedding"]
             result = self.retriever.run(query_embedding=embedding, top_k=self.top_k)
         else:
@@ -450,6 +491,7 @@ class RagApp:
 
         retrieval_start = time.perf_counter()
         if self.use_embeddings and self.query_embedder:
+            self._ensure_query_embedder_ready()
             embedding = self.query_embedder.run(text=query)["embedding"]
             result = self.retriever.run(query_embedding=embedding, top_k=self.top_k)
         else:
