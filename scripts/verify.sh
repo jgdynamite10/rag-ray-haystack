@@ -47,7 +47,7 @@ set +e
 curl -N http://localhost:8001/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "'"${VLLM_MODEL_ID:-Qwen/Qwen2.5-7B-Instruct}"'",
+    "model": "'"${VLLM_MODEL_ID:-rag-default}"'",
     "messages": [{"role":"user","content":"Say hello in 20 words."}],
     "stream": true,
     "max_tokens": 64
