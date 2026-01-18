@@ -2,6 +2,10 @@ global:
   imagePullSecrets:
     - name: ghcr-cred
 
+frontend:
+  service:
+    type: LoadBalancer
+
 qdrant:
   persistence:
     storageClassName: linode-block-storage

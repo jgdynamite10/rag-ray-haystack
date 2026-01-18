@@ -58,6 +58,7 @@ frontend:
     tag: "0.1.0"
   replicas: 1
   service:
+    type: ClusterIP
     port: 80
   resources:
     requests:

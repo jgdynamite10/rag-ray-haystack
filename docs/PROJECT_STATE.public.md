@@ -28,10 +28,14 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 - Avg tokens/sec: approximate throughput computed from streamed tokens.
 - Success/errors: request-level success rate for the benchmark run.
 
+## Akamai Value
+
+- Public URL (frontend): <public-url>
+- In-cluster benchmark (dev): TTFT p50 82.03 ms, p95 479.48 ms; avg tokens/sec 43.78.
+
 ## Open items
 
-- Publish public URL (Ingress/LoadBalancer) after benchmarks.
-- Update Akamai Value section with metrics.
+- Decide if the benchmark Job should be automated (CronJob/CI).
 
 ## Environment (sanitized)
 
