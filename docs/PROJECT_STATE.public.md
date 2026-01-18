@@ -21,6 +21,13 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 - Latency p95: 11761.82 ms
 - Avg tokens/sec: 43.78
 
+## Benchmark metric definitions
+
+- TTFT p50/p95: time to first token for the 50th/95th percentile; lower is better.
+- Latency p50/p95: total time to finish streaming the response.
+- Avg tokens/sec: approximate throughput computed from streamed tokens.
+- Success/errors: request-level success rate for the benchmark run.
+
 ## Open items
 
 - Publish public URL (Ingress/LoadBalancer) after benchmarks.
