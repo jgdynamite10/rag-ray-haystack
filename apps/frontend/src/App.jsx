@@ -8,6 +8,7 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [uploadFiles, setUploadFiles] = useState([]);
+  const [uploadedFileNames, setUploadedFileNames] = useState([]);
   const [status, setStatus] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [timings, setTimings] = useState(null);
@@ -181,9 +182,52 @@ export default function App() {
         body: formData,
       });
       const data = await response.json();
+      const names = Array.from(uploadFiles).map((file) => file.name);
+      setUploadedFileNames((current) => Array.from(new Set([...current, ...names])));
       setStatus(`Ingested ${data.ingested || 0} files.`);
     } catch (error) {
       setStatus(`Ingest failed: ${error.message}`);
+    }
+  };
+
+  const handleDeleteFile = async (filename) => {
+    setStatus(`Removing ${filename}...`);
+    try {
+      const response = await fetch(`${backendUrl}/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filenames: [filename] }),
+      });
+      const data = await response.json();
+      if (data.error) {
+        setStatus(`Remove failed: ${data.error}`);
+        return;
+      }
+      setUploadedFileNames((current) => current.filter((name) => name !== filename));
+      setStatus(`Removed ${data.deleted || 0} documents for ${filename}.`);
+    } catch (error) {
+      setStatus(`Remove failed: ${error.message}`);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    setStatus("Removing all documents...");
+    try {
+      const response = await fetch(`${backendUrl}/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      const data = await response.json();
+      if (data.error) {
+        setStatus(`Remove failed: ${data.error}`);
+        return;
+      }
+      setUploadedFileNames([]);
+      setDocuments([]);
+      setStatus("Removed all documents.");
+    } catch (error) {
+      setStatus(`Remove failed: ${error.message}`);
     }
   };
 
@@ -235,6 +279,26 @@ export default function App() {
         <button type="button" className="button" onClick={handleIngest}>
           Ingest
         </button>
+        {uploadedFileNames.length > 0 && (
+          <div className="upload-list">
+            <p>Uploaded files:</p>
+            {uploadedFileNames.map((name) => (
+              <div key={name} className="upload-item">
+                <span>{name}</span>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => handleDeleteFile(name)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button type="button" className="button" onClick={handleDeleteAll}>
+              Remove all documents
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="panel">

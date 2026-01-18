@@ -180,6 +180,7 @@ class RagApp:
         self.max_history = int(os.getenv("RAG_MAX_HISTORY", "6"))
         self.top_k = int(os.getenv("RAG_TOP_K", "4"))
         self.sessions: dict[str, list[dict[str, str]]] = {}
+        self.ingest_index: dict[str, set[str]] = defaultdict(set)
 
         self.document_store = self._build_document_store()
         if self.qdrant_url:
@@ -280,6 +281,19 @@ class RagApp:
             timeout_seconds=self.vllm_timeout_seconds,
         )
 
+    def _make_document(self, content: str, meta: dict[str, Any], key: str | None = None) -> Document:
+        doc_meta = dict(meta)
+        if key:
+            doc_meta.setdefault("ingest_key", key)
+        return Document(id=str(uuid4()), content=content, meta=doc_meta)
+
+    def _track_documents(self, key: str | None, docs: list[Document]) -> None:
+        if not key:
+            return
+        for doc in docs:
+            if doc.id:
+                self.ingest_index[key].add(doc.id)
+
     def _get_session_history(self, session_id: str | None) -> tuple[str, list[dict[str, str]]]:
         if not session_id:
             session_id = str(uuid4())
@@ -323,29 +337,53 @@ class RagApp:
             for upload in files:
                 try:
                     content = load_text_from_upload(upload)
+                    file_key = upload.filename or f"upload-{uuid4()}"
+                    file_docs: list[Document] = []
                     for chunk in chunk_text(content):
-                        documents.append(
-                            Document(content=chunk, meta={"filename": upload.filename})
+                        file_docs.append(
+                            self._make_document(
+                                chunk,
+                                {"filename": upload.filename, "source": "file"},
+                                key=file_key,
+                            )
                         )
+                    documents.extend(file_docs)
+                    self._track_documents(file_key, file_docs)
                 except Exception as exc:  # noqa: BLE001
                     errors.append(str(exc))
 
         for item in payload.get("documents", []):
-            documents.append(
-                Document(content=item.get("content", ""), meta=item.get("meta", {}))
-            )
+            meta = dict(item.get("meta", {}))
+            doc_key = meta.get("filename") or meta.get("ingest_key")
+            doc = self._make_document(item.get("content", ""), meta, key=doc_key)
+            documents.append(doc)
+            if doc_key:
+                self._track_documents(doc_key, [doc])
 
-        for text in payload.get("texts", []):
+        for index, text in enumerate(payload.get("texts", [])):
+            text_key = f"text:{index}"
+            text_docs: list[Document] = []
             for chunk in chunk_text(text):
-                documents.append(Document(content=chunk, meta={"source": "text"}))
+                text_docs.append(
+                    self._make_document(chunk, {"source": "text"}, key=text_key)
+                )
+            documents.extend(text_docs)
+            self._track_documents(text_key, text_docs)
 
         for url in payload.get("urls", []):
             try:
                 content = load_text_from_url(url)
+                url_docs: list[Document] = []
                 for chunk in chunk_text(content):
-                    documents.append(
-                        Document(content=chunk, meta={"source": "url", "url": url})
+                    url_docs.append(
+                        self._make_document(
+                            chunk,
+                            {"source": "url", "url": url},
+                            key=url,
+                        )
                     )
+                documents.extend(url_docs)
+                self._track_documents(url, url_docs)
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"{url}: {exc}")
 
@@ -361,13 +399,17 @@ class RagApp:
                         continue
                     try:
                         content = load_text_from_url(url)
+                        sitemap_docs: list[Document] = []
                         for chunk in chunk_text(content):
-                            documents.append(
-                                Document(
-                                    content=chunk,
-                                    meta={"source": "sitemap", "url": url},
+                            sitemap_docs.append(
+                                self._make_document(
+                                    chunk,
+                                    {"source": "sitemap", "url": url},
+                                    key=f"sitemap:{url}",
                                 )
                             )
+                        documents.extend(sitemap_docs)
+                        self._track_documents(f"sitemap:{url}", sitemap_docs)
                     except Exception as exc:  # noqa: BLE001
                         errors.append(f"{url}: {exc}")
             except Exception as exc:  # noqa: BLE001
@@ -389,6 +431,39 @@ class RagApp:
             extra={"count": len(documents), "errors": len(errors)},
         )
         return {"ingested": len(documents), "errors": errors}
+
+    async def delete(self, payload: dict[str, Any]) -> dict[str, Any]:
+        self.request_counter.labels("delete").inc()
+        if not hasattr(self.document_store, "delete_documents"):
+            return {"deleted": 0, "error": "delete is not supported by document store"}
+
+        delete_all = bool(payload.get("all"))
+        filenames = payload.get("filenames", [])
+        keys = payload.get("keys", [])
+        document_ids = payload.get("document_ids", [])
+        ids: set[str] = set(document_ids)
+
+        for name in filenames:
+            ids.update(self.ingest_index.get(name, set()))
+        for key in keys:
+            ids.update(self.ingest_index.get(key, set()))
+
+        try:
+            if delete_all:
+                self.document_store.delete_documents()
+                self.ingest_index.clear()
+                return {"deleted": "all"}
+            if not ids:
+                return {"deleted": 0, "error": "no matching documents"}
+            self.document_store.delete_documents(list(ids))
+            for name in filenames:
+                self.ingest_index.pop(name, None)
+            for key in keys:
+                self.ingest_index.pop(key, None)
+            return {"deleted": len(ids)}
+        except Exception as exc:  # noqa: BLE001
+            self.error_counter.labels("delete").inc()
+            return {"deleted": 0, "error": str(exc)}
 
     async def query(self, payload: dict[str, Any]) -> dict[str, Any]:
         self.request_counter.labels("query").inc()
@@ -656,6 +731,10 @@ class RagApp:
                 except ValueError:
                     payload = None
             return JSONResponse(await self.ingest(files=files, payload=payload))
+
+        if path == "/delete" and method == "POST":
+            payload = await request.json()
+            return JSONResponse(await self.delete(payload))
 
         if path == "/query" and method == "POST":
             payload = await request.json()

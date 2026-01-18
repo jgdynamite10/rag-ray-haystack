@@ -23,6 +23,11 @@ npm run dev
 ./scripts/deploy.sh --provider aws --env dev
 ```
 
+## Public access (Akamai dev)
+
+- UI: `http://<public-url>/`
+- Backend API via UI proxy: `http://<public-url>/api/*`
+
 ## Sanity checks and benchmarking
 
 - In-cluster sanity check (Kubernetes): see `docs/RUNBOOK.md#in-cluster-sanity-check-kubernetes`
