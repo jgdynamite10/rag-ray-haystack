@@ -143,6 +143,11 @@ async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     if args.json_out:
         Path(args.json_out).write_text(json.dumps(summary, indent=2))
 
+    if args.show_errors and failures:
+        print("Sample errors:")
+        for item in failures[: args.show_errors]:
+            print(f"- {item.get('error')}")
+
     return summary
 
 
@@ -158,6 +163,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--prompt-file", help="Optional prompt file")
     parser.add_argument("--json-out", help="Write summary JSON to file")
     parser.add_argument("--timeout", type=int, default=120, help="Request timeout seconds")
+    parser.add_argument(
+        "--show-errors",
+        type=int,
+        default=0,
+        help="Print up to N error messages",
+    )
     return parser.parse_args()
 
 

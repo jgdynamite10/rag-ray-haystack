@@ -1,6 +1,6 @@
-# rag-ray-haystack
+# rag-ray-fabric
 
-Cloud-portable RAG chatbot using Haystack + Ray Serve (KubeRay), with vLLM
+Cloud-portable RAG service using Haystack + Ray Serve (KubeRay), with vLLM
 streaming inference and deployable to Akamai LKE, AWS EKS, and GCP GKE.
 
 ## Quick start (local)
