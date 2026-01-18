@@ -5,7 +5,7 @@ This is a public-safe runbook summary. Use placeholders for sensitive values.
 ## Deploy
 
 ```bash
-make deploy PROVIDER=<provider> ENV=<env> IMAGE_REGISTRY=ghcr.io/<owner> IMAGE_TAG=0.2.1
+make deploy PROVIDER=<provider> ENV=<env> IMAGE_REGISTRY=ghcr.io/<owner> IMAGE_TAG=0.2.2
 ```
 
 ## Verify
@@ -13,6 +13,12 @@ make deploy PROVIDER=<provider> ENV=<env> IMAGE_REGISTRY=ghcr.io/<owner> IMAGE_T
 ```bash
 make verify NAMESPACE=<namespace> RELEASE=<release>
 ```
+
+## Public access (Akamai dev)
+
+- Frontend Service is `LoadBalancer` (public IP).
+- UI: `http://<public-url>/`
+- Backend via UI proxy: `http://<public-url>/api/*`
 
 ## Benchmark
 
