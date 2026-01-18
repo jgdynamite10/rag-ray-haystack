@@ -6,6 +6,11 @@ frontend:
   service:
     type: LoadBalancer
 
+backend:
+  env:
+    - name: RAG_PROVIDER
+      value: "akamai-lke"
+
 qdrant:
   persistence:
     storageClassName: linode-block-storage

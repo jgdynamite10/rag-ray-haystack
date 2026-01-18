@@ -181,6 +181,7 @@ class RagApp:
         self.top_k = int(os.getenv("RAG_TOP_K", "4"))
         self.sessions: dict[str, list[dict[str, str]]] = {}
         self.ingest_index: dict[str, set[str]] = defaultdict(set)
+        self.provider = os.getenv("RAG_PROVIDER", "unknown")
 
         self.document_store = self._build_document_store()
         if self.qdrant_url:
@@ -317,6 +318,7 @@ class RagApp:
     async def stats(self) -> dict[str, Any]:
         self.request_counter.labels("stats").inc()
         return {
+            "provider": self.provider,
             "sessions": len(self.sessions),
             "timings": self.timings.summarize(),
         }
@@ -464,6 +466,13 @@ class RagApp:
         except Exception as exc:  # noqa: BLE001
             self.error_counter.labels("delete").inc()
             return {"deleted": 0, "error": str(exc)}
+
+    async def list_documents(self) -> dict[str, Any]:
+        self.request_counter.labels("documents").inc()
+        items = [
+            {"key": key, "count": len(ids)} for key, ids in sorted(self.ingest_index.items())
+        ]
+        return {"items": items}
 
     async def query(self, payload: dict[str, Any]) -> dict[str, Any]:
         self.request_counter.labels("query").inc()
@@ -735,6 +744,9 @@ class RagApp:
         if path == "/delete" and method == "POST":
             payload = await request.json()
             return JSONResponse(await self.delete(payload))
+
+        if path == "/documents" and method == "GET":
+            return JSONResponse(await self.list_documents())
 
         if path == "/query" and method == "POST":
             payload = await request.json()

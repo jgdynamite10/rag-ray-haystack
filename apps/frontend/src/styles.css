@@ -112,7 +112,37 @@ body {
   color: #b6c0d6;
 }
 
-.docs {
+.upload-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: #b6c0d6;
+}
+
+.upload-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #0f1422;
+  border: 1px solid #212a3c;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.upload-count {
+  margin-left: 6px;
+  color: #7f8aa3;
+  font-size: 12px;
+}
+
+.muted {
+  margin: 0;
+  color: #8c96ad;
+}
+
+.docs-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -121,15 +151,32 @@ body {
 .doc {
   background: #0f1422;
   border: 1px solid #212a3c;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 12px;
 }
 
-.doc-meta {
+.doc-header {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   font-size: 12px;
   color: #a8b3cc;
+}
+
+.doc-source {
+  color: #7f8aa3;
+  font-weight: 400;
+}
+
+.doc-score {
+  color: #b6c0d6;
+}
+
+.doc-snippet {
+  margin: 8px 0 0;
+  color: #e1e6f5;
+  line-height: 1.4;
+  font-size: 13px;
 }
 
 .metrics-grid {

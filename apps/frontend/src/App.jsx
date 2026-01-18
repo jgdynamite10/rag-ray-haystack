@@ -8,7 +8,7 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [uploadFiles, setUploadFiles] = useState([]);
-  const [uploadedFileNames, setUploadedFileNames] = useState([]);
+  const [documentIndex, setDocumentIndex] = useState([]);
   const [status, setStatus] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [timings, setTimings] = useState(null);
@@ -32,8 +32,25 @@ export default function App() {
         }
       }
     };
+    const fetchDocuments = async () => {
+      try {
+        const response = await fetch(`${backendUrl}/documents`);
+        const data = await response.json();
+        if (active) {
+          setDocumentIndex(data.items || []);
+        }
+      } catch (error) {
+        if (active) {
+          setDocumentIndex([]);
+        }
+      }
+    };
     fetchStats();
-    const interval = setInterval(fetchStats, 5000);
+    fetchDocuments();
+    const interval = setInterval(() => {
+      fetchStats();
+      fetchDocuments();
+    }, 5000);
     return () => {
       active = false;
       clearInterval(interval);
@@ -182,29 +199,34 @@ export default function App() {
         body: formData,
       });
       const data = await response.json();
-      const names = Array.from(uploadFiles).map((file) => file.name);
-      setUploadedFileNames((current) => Array.from(new Set([...current, ...names])));
       setStatus(`Ingested ${data.ingested || 0} files.`);
+      try {
+        const docsResponse = await fetch(`${backendUrl}/documents`);
+        const docsData = await docsResponse.json();
+        setDocumentIndex(docsData.items || []);
+      } catch (error) {
+        setDocumentIndex([]);
+      }
     } catch (error) {
       setStatus(`Ingest failed: ${error.message}`);
     }
   };
 
-  const handleDeleteFile = async (filename) => {
-    setStatus(`Removing ${filename}...`);
+  const handleDeleteKey = async (key) => {
+    setStatus(`Removing ${key}...`);
     try {
       const response = await fetch(`${backendUrl}/delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filenames: [filename] }),
+        body: JSON.stringify({ keys: [key] }),
       });
       const data = await response.json();
       if (data.error) {
         setStatus(`Remove failed: ${data.error}`);
         return;
       }
-      setUploadedFileNames((current) => current.filter((name) => name !== filename));
-      setStatus(`Removed ${data.deleted || 0} documents for ${filename}.`);
+      setDocumentIndex((current) => current.filter((entry) => entry.key !== key));
+      setStatus(`Removed ${data.deleted || 0} documents for ${key}.`);
     } catch (error) {
       setStatus(`Remove failed: ${error.message}`);
     }
@@ -223,7 +245,7 @@ export default function App() {
         setStatus(`Remove failed: ${data.error}`);
         return;
       }
-      setUploadedFileNames([]);
+      setDocumentIndex([]);
       setDocuments([]);
       setStatus("Removed all documents.");
     } catch (error) {
@@ -231,10 +253,33 @@ export default function App() {
     }
   };
 
+  const formatDocLabel = (doc) =>
+    doc?.meta?.filename || doc?.meta?.url || doc?.meta?.source || "Document";
+
+  const formatKeyLabel = (key) => {
+    if (key.startsWith("sitemap:")) {
+      return key.replace("sitemap:", "Sitemap: ");
+    }
+    if (key.startsWith("text:")) {
+      return key.replace("text:", "Text ");
+    }
+    return key;
+  };
+
+  const trimSnippet = (text, max = 280) => {
+    if (!text) {
+      return "";
+    }
+    if (text.length <= max) {
+      return text;
+    }
+    return `${text.slice(0, max)}…`;
+  };
+
   return (
     <div className="page">
       <header className="header">
-        <h1>RAG Ray Chat</h1>
+        <h1>RAG Ray Fabric</h1>
         <p>Haystack + Ray Serve</p>
       </header>
 
@@ -257,6 +302,7 @@ export default function App() {
         </label>
         <div className="meta">
           <span>Session: {sessionId || "new"}</span>
+          <span>Provider: {stats?.provider || "unknown"}</span>
           {timings && (
             <span>
               Latency: {timings.total_ms} ms (retrieval {timings.retrieval_ms} ms, generation{" "}
@@ -279,26 +325,32 @@ export default function App() {
         <button type="button" className="button" onClick={handleIngest}>
           Ingest
         </button>
-        {uploadedFileNames.length > 0 && (
-          <div className="upload-list">
-            <p>Uploaded files:</p>
-            {uploadedFileNames.map((name) => (
-              <div key={name} className="upload-item">
-                <span>{name}</span>
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => handleDeleteFile(name)}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
+        <div className="upload-list">
+          <p>Uploaded files (after ingest):</p>
+          {documentIndex.length === 0 && (
+            <p className="muted">No files ingested in this session yet.</p>
+          )}
+          {documentIndex.map((entry) => (
+            <div key={entry.key} className="upload-item">
+              <span>
+                {formatKeyLabel(entry.key)}
+                <span className="upload-count">({entry.count})</span>
+              </span>
+              <button
+                type="button"
+                className="button"
+                onClick={() => handleDeleteKey(entry.key)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          {documentIndex.length > 0 && (
             <button type="button" className="button" onClick={handleDeleteAll}>
               Remove all documents
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
       <section className="panel">
@@ -326,16 +378,23 @@ export default function App() {
       </section>
 
       <section className="panel">
-        <h2>Top documents</h2>
-        <div className="docs">
+        <h2>Top sources</h2>
+        <div className="docs-list">
           {documents.length === 0 && <p>No documents returned yet.</p>}
           {documents.map((doc, index) => (
             <div key={index} className="doc">
-              <div className="doc-meta">
-                <span>{doc.meta?.filename || "Document"}</span>
-                <span>Score: {doc.score?.toFixed?.(3) ?? doc.score}</span>
+              <div className="doc-header">
+                <div>
+                  <strong>{formatDocLabel(doc)}</strong>
+                  <span className="doc-source">
+                    {doc.meta?.source ? ` · ${doc.meta.source}` : ""}
+                  </span>
+                </div>
+                <span className="doc-score">
+                  Score: {doc.score?.toFixed?.(3) ?? doc.score}
+                </span>
               </div>
-              <pre>{doc.content}</pre>
+              <p className="doc-snippet">{trimSnippet(doc.content)}</p>
             </div>
           ))}
         </div>
