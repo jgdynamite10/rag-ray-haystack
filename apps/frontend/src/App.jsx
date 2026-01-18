@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-const defaultBackend = import.meta.env.VITE_BACKEND_URL || "http://rag-app-backend:8000";
+const defaultBackend = import.meta.env.VITE_BACKEND_URL || `${window.location.origin}/api`;
 
 export default function App() {
   const [backendUrl, setBackendUrl] = useState(defaultBackend);
