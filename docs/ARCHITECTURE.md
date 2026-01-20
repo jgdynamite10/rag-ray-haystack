@@ -26,8 +26,8 @@ flowchart LR
   Ray -->|retrieve| Qdrant[(Qdrant)]
   Ray -->|stream chat| VLLM[vLLM OpenAI Server]
   Ray -->|SSE tokens| UI
-  Ray -->|metrics| Prom[Prometheus]
-  subgraph Optional Edge
+  Ray -->|/metrics scrape| Prom[(Prometheus - optional/external)]
+  subgraph Optional (future) gateway
     Zuplo[Zuplo Gateway]
   end
   UI -.-> Zuplo -.-> Ray
@@ -41,15 +41,16 @@ flowchart LR
 
 ## SSE event contract
 
-- `meta`: `session_id`, `request_id`, `replica_id`, `model_id`, `k` (+ documents/optional timings)
-- `token`: incremental text payloads
-- `done`: `session_id`, `request_id`, `replica_id`, `model_id`, `k`, `timings` (`ttft_ms`, `total_ms`),
-  `token_count`, `tokens_per_sec`
+- `meta`: `session_id`, `request_id`, `replica_id`, `model_id`, `k` (optional: `documents`)
+- `token`: `{ "text": "<string>" }`
+- `done`: `session_id`, `request_id`, `replica_id`, `model_id`, `k`, `documents`, `timings`
+  (`ttft_ms`, `total_ms`), `token_count`, `tokens_per_sec`
 - `error`: safe message + request/session identifiers
 
 Streaming metrics:
-- TTFT shown in UI is client-measured (send → first token event).
-- Total latency shown is client-measured (send → done/error).
+- TTFT shown in UI is client-measured (send → first token event) and is the source of truth.
+- Total latency shown in UI is client-measured (send → done/error) and is the source of truth.
+- `done.timings.*` are server-side measurements for diagnostics and correlation.
 - Tokens/sec uses `done.tokens_per_sec` if present; else `token_count / stream_duration`.
 - Token count uses `done.token_count` if present; else best-effort (# token events).
 - `replica_id` uses the backend pod hostname for debugging.

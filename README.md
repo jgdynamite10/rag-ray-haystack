@@ -32,17 +32,27 @@ npm run dev
 
 Event types: `meta`, `token`, `done`, `error`.
 
+`token` payload:
+- `{ "text": "<string>" }`
+
 `done` payload fields:
-- `session_id`, `request_id`, `replica_id`, `model_id`, `k`
-- `timings` (`ttft_ms`, `total_ms`)
+- `session_id`, `request_id`, `replica_id`, `model_id`, `k`, `documents`
+- `timings` (`ttft_ms`, `total_ms`) (server-side diagnostics)
 - `token_count`, `tokens_per_sec`
 
 Metric definitions:
-- TTFT shown in UI is client-measured (send → first token event).
-- Total latency shown is client-measured (send → done/error).
+- TTFT shown in UI is client-measured (send → first token event) and is the source of truth.
+- Total latency shown is client-measured (send → done/error) and is the source of truth.
+- `done.timings.*` are server-side measurements used for diagnostics/correlation.
 - Tokens/sec uses `done.tokens_per_sec` if present; else `token_count / stream_duration`.
 - Token count uses `done.token_count` if present; else best-effort (# token events).
 - `replica_id` uses the backend pod hostname for debugging.
+
+Quick verification:
+1) Open the UI and ingest a small PDF/text file.
+2) Send 3 prompts with streaming enabled.
+3) Confirm per-message metrics panels populate and the rolling widget updates; Top sources should
+   show retrieved snippets for at least one request (`k > 0`).
 
 ## Sanity checks and benchmarking
 
