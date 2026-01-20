@@ -1,6 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 
 const defaultBackend = import.meta.env.VITE_BACKEND_URL || `${window.location.origin}/api`;
+const ROLLING_WINDOW = 50;
+
+const percentile = (values, pct) => {
+  if (!values.length) {
+    return null;
+  }
+  const ordered = [...values].sort((a, b) => a - b);
+  const index = Math.max(0, Math.ceil(ordered.length * pct) - 1);
+  return ordered[index];
+};
+
+const formatMetric = (value, suffix = "ms") => {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+  return `${value.toFixed(2)} ${suffix}`;
+};
 
 export default function App() {
   const [backendUrl, setBackendUrl] = useState(defaultBackend);
@@ -16,6 +33,7 @@ export default function App() {
   const [useStreaming, setUseStreaming] = useState(true);
   const [ttftMs, setTtftMs] = useState(null);
   const [tokensPerSecond, setTokensPerSecond] = useState(null);
+  const [rollingMetrics, setRollingMetrics] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -58,6 +76,30 @@ export default function App() {
   }, [backendUrl]);
 
   const canSubmit = useMemo(() => query.trim().length > 0, [query]);
+  const rollingSummary = useMemo(() => {
+    const ttftValues = rollingMetrics
+      .map((entry) => entry.ttft_ms)
+      .filter((value) => value !== null && value !== undefined);
+    const totalValues = rollingMetrics
+      .map((entry) => entry.total_ms)
+      .filter((value) => value !== null && value !== undefined);
+    const tokenValues = rollingMetrics
+      .map((entry) => entry.tokens_per_sec)
+      .filter((value) => value !== null && value !== undefined);
+    const successes = rollingMetrics.filter((entry) => entry.success).length;
+    const errors = rollingMetrics.length - successes;
+    return {
+      ttft_p50: percentile(ttftValues, 0.5),
+      ttft_p95: percentile(ttftValues, 0.95),
+      total_p50: percentile(totalValues, 0.5),
+      total_p95: percentile(totalValues, 0.95),
+      avg_tokens_per_sec: tokenValues.length
+        ? tokenValues.reduce((sum, value) => sum + value, 0) / tokenValues.length
+        : null,
+      successes,
+      errors,
+    };
+  }, [rollingMetrics]);
 
   const handleQuery = async (event) => {
     event.preventDefault();
@@ -66,6 +108,20 @@ export default function App() {
     }
     setStatus(useStreaming ? "Streaming..." : "Querying...");
     const nextMessages = [...messages, { role: "user", content: query }];
+    const clientStart = performance.now();
+    const assistantMetrics = {
+      request_id: null,
+      replica_id: null,
+      model_id: null,
+      k: null,
+      ttft_ms: null,
+      tokens_per_sec: null,
+      total_ms: null,
+      token_count: 0,
+      _client_start_ms: clientStart,
+      _first_token_ms: null,
+      _last_token_ms: null,
+    };
     setTtftMs(null);
     setTokensPerSecond(null);
     setQuery("");
@@ -73,7 +129,10 @@ export default function App() {
     try {
       if (useStreaming) {
         const assistantIndex = nextMessages.length;
-        setMessages([...nextMessages, { role: "assistant", content: "" }]);
+        setMessages([
+          ...nextMessages,
+          { role: "assistant", content: "", metrics: assistantMetrics },
+        ]);
 
         const response = await fetch(`${backendUrl}/query/stream`, {
           method: "POST",
@@ -88,6 +147,9 @@ export default function App() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let localTokenCount = 0;
+        let localRequestId = null;
+        let localSessionId = sessionId || null;
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
@@ -113,21 +175,37 @@ export default function App() {
             }
             const payload = JSON.parse(dataLine);
             if (eventType === "token") {
+              if (!assistantMetrics._first_token_ms) {
+                const ttftValue = performance.now() - clientStart;
+                assistantMetrics._first_token_ms = performance.now();
+                assistantMetrics.ttft_ms = ttftValue;
+                setTtftMs(ttftValue);
+              }
+              assistantMetrics._last_token_ms = performance.now();
+              localTokenCount += 1;
+              assistantMetrics.token_count = localTokenCount;
               setMessages((current) => {
                 const updated = [...current];
                 const existing = updated[assistantIndex]?.content || "";
                 updated[assistantIndex] = {
                   role: "assistant",
                   content: `${existing}${payload.text}`,
+                  metrics: { ...(updated[assistantIndex]?.metrics || {}), ...assistantMetrics },
                 };
                 return updated;
               });
             }
             if (eventType === "meta") {
               setDocuments(payload.documents || []);
+              localRequestId = payload.request_id || localRequestId;
+              localSessionId = payload.session_id || localSessionId;
               if (payload.session_id) {
                 setSessionId(payload.session_id);
               }
+              assistantMetrics.request_id = payload.request_id || assistantMetrics.request_id;
+              assistantMetrics.replica_id = payload.replica_id || assistantMetrics.replica_id;
+              assistantMetrics.model_id = payload.model_id || assistantMetrics.model_id;
+              assistantMetrics.k = payload.k ?? assistantMetrics.k;
               if (payload.timings?.retrieval_ms) {
                 setTimings((current) => ({
                   ...(current || {}),
@@ -139,43 +217,120 @@ export default function App() {
               setTtftMs(payload.ttft_ms ?? null);
             }
             if (eventType === "done") {
+              const totalMs = performance.now() - clientStart;
+              assistantMetrics.total_ms = totalMs;
+              assistantMetrics.request_id = payload.request_id || assistantMetrics.request_id;
+              assistantMetrics.replica_id = payload.replica_id || assistantMetrics.replica_id;
+              assistantMetrics.model_id = payload.model_id || assistantMetrics.model_id;
+              assistantMetrics.k = payload.k ?? assistantMetrics.k;
+              const streamDuration =
+                assistantMetrics._first_token_ms && assistantMetrics._last_token_ms
+                  ? (assistantMetrics._last_token_ms - assistantMetrics._first_token_ms) / 1000
+                  : null;
+              const tokensPerSec =
+                payload.tokens_per_sec ??
+                (streamDuration && localTokenCount
+                  ? localTokenCount / streamDuration
+                  : null);
+              assistantMetrics.tokens_per_sec = tokensPerSec;
               setDocuments(payload.documents || []);
-              setTimings(payload.timings || null);
+              setTimings({ total_ms: totalMs, retrieval_ms: timings?.retrieval_ms });
               if (payload.session_id) {
                 setSessionId(payload.session_id);
               }
-              if (payload.timings?.tokens_per_second) {
-                setTokensPerSecond(payload.timings.tokens_per_second);
-              }
-              if (payload.timings?.ttft_ms) {
-                setTtftMs(payload.timings.ttft_ms);
-              }
+              setTokensPerSecond(tokensPerSec);
+              setTtftMs(assistantMetrics.ttft_ms);
+              setMessages((current) => {
+                const updated = [...current];
+                updated[assistantIndex] = {
+                  role: "assistant",
+                  content: updated[assistantIndex]?.content || "",
+                  metrics: { ...(updated[assistantIndex]?.metrics || {}), ...assistantMetrics },
+                };
+                return updated;
+              });
+              setRollingMetrics((current) => {
+                const next = [
+                  ...current,
+                  {
+                    request_id: payload.request_id || localRequestId,
+                    ttft_ms: assistantMetrics.ttft_ms,
+                    total_ms: totalMs,
+                    tokens_per_sec: tokensPerSec,
+                    success: true,
+                  },
+                ];
+                return next.slice(-ROLLING_WINDOW);
+              });
               setStatus("Ready");
             }
             if (eventType === "error") {
+              const totalMs = performance.now() - clientStart;
+              setRollingMetrics((current) => {
+                const next = [
+                  ...current,
+                  {
+                    request_id: payload.request_id || localRequestId,
+                    ttft_ms: assistantMetrics.ttft_ms,
+                    total_ms: totalMs,
+                    tokens_per_sec: assistantMetrics.tokens_per_sec,
+                    success: false,
+                  },
+                ];
+                return next.slice(-ROLLING_WINDOW);
+              });
               setStatus(payload.message || "Streaming error.");
             }
           }
         }
       } else {
-        setMessages(nextMessages);
+        const assistantIndex = nextMessages.length;
+        setMessages([
+          ...nextMessages,
+          { role: "assistant", content: "", metrics: assistantMetrics },
+        ]);
         const response = await fetch(`${backendUrl}/query`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query, session_id: sessionId || undefined }),
         });
         const data = await response.json();
+        const totalMs = performance.now() - clientStart;
         setDocuments(data.documents || []);
-        setTimings(data.timings || null);
+        setTimings({ total_ms: totalMs, retrieval_ms: data.timings?.retrieval_ms });
         setTokensPerSecond(data.timings?.tokens_per_second ?? null);
         setTtftMs(data.timings?.ttft_ms ?? null);
         if (data.session_id) {
           setSessionId(data.session_id);
         }
-        setMessages((current) => [
-          ...current,
-          { role: "assistant", content: data.answers?.[0]?.answer || "No answer." },
-        ]);
+        setMessages((current) => {
+          const updated = [...current];
+          updated[assistantIndex] = {
+            role: "assistant",
+            content: data.answers?.[0]?.answer || "No answer.",
+            metrics: {
+              ...assistantMetrics,
+              total_ms: totalMs,
+              ttft_ms: data.timings?.ttft_ms ?? null,
+              tokens_per_sec: data.timings?.tokens_per_second ?? null,
+              k: data.documents?.length ?? null,
+            },
+          };
+          return updated;
+        });
+        setRollingMetrics((current) => {
+          const next = [
+            ...current,
+            {
+              request_id: null,
+              ttft_ms: data.timings?.ttft_ms ?? null,
+              total_ms: totalMs,
+              tokens_per_sec: data.timings?.tokens_per_second ?? null,
+              success: true,
+            },
+          ];
+          return next.slice(-ROLLING_WINDOW);
+        });
         setStatus("Ready");
       }
     } catch (error) {
@@ -278,6 +433,41 @@ export default function App() {
 
   return (
     <div className="page">
+      <div className="rolling-metrics">
+        <h3>Rolling metrics (last {ROLLING_WINDOW})</h3>
+        <div className="rolling-grid">
+          <div>
+            <span>TTFT p50</span>
+            <strong>{formatMetric(rollingSummary.ttft_p50)}</strong>
+          </div>
+          <div>
+            <span>TTFT p95</span>
+            <strong>{formatMetric(rollingSummary.ttft_p95)}</strong>
+          </div>
+          <div>
+            <span>Total p50</span>
+            <strong>{formatMetric(rollingSummary.total_p50)}</strong>
+          </div>
+          <div>
+            <span>Total p95</span>
+            <strong>{formatMetric(rollingSummary.total_p95)}</strong>
+          </div>
+          <div>
+            <span>Avg tokens/sec</span>
+            <strong>
+              {rollingSummary.avg_tokens_per_sec !== null
+                ? rollingSummary.avg_tokens_per_sec.toFixed(2)
+                : "—"}
+            </strong>
+          </div>
+          <div>
+            <span>Success / Errors</span>
+            <strong>
+              {rollingSummary.successes} / {rollingSummary.errors}
+            </strong>
+          </div>
+        </div>
+      </div>
       <header className="header">
         <h1>RAG Ray Fabric</h1>
         <p>Haystack + Ray Serve</p>
@@ -358,8 +548,26 @@ export default function App() {
         <div className="chat">
           {messages.map((message, index) => (
             <div key={index} className={`bubble ${message.role}`}>
-              <strong>{message.role === "user" ? "You" : "Assistant"}:</strong>
-              <span>{message.content}</span>
+              <div>
+                <strong>{message.role === "user" ? "You" : "Assistant"}:</strong>
+                <span>{message.content}</span>
+                {message.role === "assistant" && message.metrics && (
+                  <div className="metrics-panel">
+                    <span>TTFT: {formatMetric(message.metrics.ttft_ms)}</span>
+                    <span>Total: {formatMetric(message.metrics.total_ms)}</span>
+                    <span>
+                      Tokens/sec:{" "}
+                      {message.metrics.tokens_per_sec !== null &&
+                      message.metrics.tokens_per_sec !== undefined
+                        ? message.metrics.tokens_per_sec.toFixed(2)
+                        : "—"}
+                    </span>
+                    <span>K: {message.metrics.k ?? "—"}</span>
+                    <span>Model: {message.metrics.model_id || "unknown"}</span>
+                    <span>Replica: {message.metrics.replica_id || "unknown"}</span>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

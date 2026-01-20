@@ -46,6 +46,10 @@ def env_flag(name: str, default: str = "false") -> bool:
     return os.getenv(name, default).lower() in {"1", "true", "yes", "on"}
 
 
+def sse(event: str, data: dict[str, Any]) -> bytes:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n".encode()
+
+
 def chunk_text(text: str, chunk_size: int = 800, overlap: int = 120) -> list[str]:
     if len(text) <= chunk_size:
         return [text]
@@ -574,9 +578,17 @@ class RagApp:
                 media_type="text/event-stream",
             )
 
+        request_id = uuid4().hex
         session_id, history = self._get_session_history(payload.get("session_id"))
         if payload.get("history"):
             history = payload["history"]
+        replica_id = os.getenv("HOSTNAME", "unknown")
+        model_id = (
+            os.getenv("VLLM_MODEL_ID")
+            or os.getenv("MODEL_ID")
+            or os.getenv("VLLM_MODEL")
+            or "unknown"
+        )
 
         self._update_session(session_id, "user", query)
 
@@ -589,6 +601,7 @@ class RagApp:
             result = self.retriever.run(query=query, top_k=self.top_k)
         documents = result.get("documents", [])
         retrieval_time = time.perf_counter() - retrieval_start
+        k = len(documents)
 
         prompt = self._build_prompt(query, history, documents)
 
@@ -596,10 +609,14 @@ class RagApp:
             # SSE event contract:
             # meta -> retrieval docs + timings, ttft -> time to first token,
             # token -> incremental delta, done -> final timings + citations.
-            yield self._sse_event(
+            yield sse(
                 "meta",
                 {
                     "session_id": session_id,
+                    "request_id": request_id,
+                    "replica_id": replica_id,
+                    "model_id": model_id,
+                    "k": k,
                     "documents": [
                         {
                             "content": doc.content,
@@ -615,35 +632,50 @@ class RagApp:
             )
 
             generation_start = time.perf_counter()
+            server_start = generation_start
             token_count = 0
-            first_token_sent = False
-            ttft_value: float | None = None
+            server_first_token_at: float | None = None
 
             try:
                 async for delta in self.vllm.stream_chat(prompt):
-                    if not first_token_sent:
-                        ttft_value = time.perf_counter() - generation_start
+                    if server_first_token_at is None:
+                        server_first_token_at = time.perf_counter()
+                        ttft_value = server_first_token_at - server_start
                         self.ttft_histogram.observe(ttft_value)
                         self.timings.record("ttft", ttft_value)
-                        yield self._sse_event(
+                        yield sse(
                             "ttft",
                             {
                                 "ttft_ms": round(ttft_value * 1000, 2),
+                                "request_id": request_id,
+                                "session_id": session_id,
                             },
                         )
-                        first_token_sent = True
 
-                    # Token estimation uses whitespace splits to avoid tokenizer overhead.
-                    token_count += max(1, len(delta.split()))
-                    yield self._sse_event("token", {"text": delta})
+                    token_count += 1
+                    yield sse("token", {"text": delta})
 
                 generation_time = time.perf_counter() - generation_start
+                total_ms = (time.perf_counter() - server_start) * 1000
+                ttft_ms = (
+                    (server_first_token_at - server_start) * 1000
+                    if server_first_token_at is not None
+                    else None
+                )
+                stream_duration_sec = (
+                    (time.perf_counter() - server_first_token_at)
+                    if server_first_token_at is not None
+                    else None
+                )
                 tokens_per_second = (
-                    token_count / generation_time if generation_time > 0 else 0.0
+                    token_count / stream_duration_sec
+                    if stream_duration_sec and stream_duration_sec > 0
+                    else None
                 )
 
                 self.token_counter.inc(token_count)
-                self.tokens_per_second_histogram.observe(tokens_per_second)
+                if tokens_per_second is not None:
+                    self.tokens_per_second_histogram.observe(tokens_per_second)
                 self.timings.record("retrieval", retrieval_time)
                 self.timings.record("generation", generation_time)
                 self.latency_histogram.labels("retrieval").observe(retrieval_time)
@@ -651,10 +683,14 @@ class RagApp:
                 total_time = retrieval_time + generation_time
                 self.latency_histogram.labels("total").observe(total_time)
 
-                yield self._sse_event(
+                yield sse(
                     "done",
                     {
                         "session_id": session_id,
+                        "request_id": request_id,
+                        "replica_id": replica_id,
+                        "model_id": model_id,
+                        "k": k,
                         "documents": [
                             {
                                 "content": doc.content,
@@ -664,22 +700,24 @@ class RagApp:
                             for doc in documents
                         ],
                         "timings": {
-                            "retrieval_ms": round(retrieval_time * 1000, 2),
-                            "generation_ms": round(generation_time * 1000, 2),
-                            "total_ms": round(total_time * 1000, 2),
-                            "ttft_ms": round(ttft_value * 1000, 2)
-                            if ttft_value is not None
-                            else None,
-                            "tokens_per_second": round(tokens_per_second, 2),
-                            "tokens_estimated": token_count,
+                            "ttft_ms": round(ttft_ms, 2) if ttft_ms is not None else None,
+                            "total_ms": round(total_ms, 2),
                         },
+                        "token_count": token_count,
+                        "tokens_per_sec": round(tokens_per_second, 2)
+                        if tokens_per_second is not None
+                        else None,
                     },
                 )
             except Exception as exc:  # noqa: BLE001
                 self.error_counter.labels("query_stream").inc()
-                yield self._sse_event(
+                yield sse(
                     "error",
-                    {"message": f"Streaming failed: {exc}"},
+                    {
+                        "message": "Streaming failed",
+                        "session_id": session_id,
+                        "request_id": request_id,
+                    },
                 )
 
         return StreamingResponse(event_stream(), media_type="text/event-stream")

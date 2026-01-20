@@ -28,6 +28,17 @@ npm run dev
 - UI: `http://<public-url>/`
 - Backend API via UI proxy: `http://<public-url>/api/*`
 
+## Streaming metrics (SSE)
+
+Event types: `meta`, `token`, `done`, `error`.
+
+`done` payload fields:
+- `session_id`, `request_id`, `replica_id`, `model_id`, `k`
+- `timings` (`ttft_ms`, `total_ms`)
+- `token_count`, `tokens_per_sec`
+
+Client-side TTFT and total latency are computed from send → first token/done.
+
 ## Sanity checks and benchmarking
 
 - In-cluster sanity check (Kubernetes): see `docs/RUNBOOK.md#in-cluster-sanity-check-kubernetes`

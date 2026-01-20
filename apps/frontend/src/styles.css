@@ -18,6 +18,43 @@ body {
   gap: 24px;
 }
 
+.rolling-metrics {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(21, 26, 40, 0.95);
+  border: 1px solid #2a3146;
+  border-radius: 12px;
+  padding: 12px 14px;
+  width: 260px;
+  z-index: 10;
+  font-size: 12px;
+}
+
+.rolling-metrics h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #d6ddf0;
+}
+
+.rolling-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.rolling-grid span {
+  display: block;
+  color: #9aa3b2;
+  font-size: 11px;
+}
+
+.rolling-grid strong {
+  display: block;
+  color: #f5f7ff;
+  font-size: 12px;
+}
+
 .header h1 {
   margin: 0;
   font-size: 32px;
@@ -102,6 +139,15 @@ body {
 .status {
   color: #a0aac4;
   font-size: 13px;
+}
+
+.metrics-panel {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 12px;
+  color: #b6c0d6;
 }
 
 .meta {
