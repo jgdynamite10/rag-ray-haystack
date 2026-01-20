@@ -32,6 +32,8 @@ spec:
             - name: dshm
               mountPath: /dev/shm
           env:
+            - name: RAG_PROVIDER
+              value: {{ .Values.global.provider | default "unknown" | quote }}
             {{- toYaml .Values.backend.env | nindent 12 }}
           resources:
             requests:

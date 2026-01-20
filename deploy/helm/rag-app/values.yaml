@@ -2,6 +2,7 @@ global:
   namespace: rag-app
   imagePullSecrets: []
   sharedMemorySize: "1Gi"
+  provider: "unknown"
 
 backend:
   image:

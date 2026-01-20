@@ -1,15 +1,11 @@
 global:
   imagePullSecrets:
     - name: ghcr-cred
+  provider: "akamai-lke"
 
 frontend:
   service:
     type: LoadBalancer
-
-backend:
-  env:
-    - name: RAG_PROVIDER
-      value: "akamai-lke"
 
 qdrant:
   persistence:
