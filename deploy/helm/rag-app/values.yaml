@@ -23,8 +23,6 @@ backend:
   env:
     - name: RAG_USE_EMBEDDINGS
       value: "true"
-    - name: RAG_PROVIDER
-      value: "unknown"
     - name: EMBEDDING_MODEL_ID
       value: "sentence-transformers/all-MiniLM-L6-v2"
     - name: RAG_TOP_K
