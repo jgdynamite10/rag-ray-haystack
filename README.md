@@ -37,7 +37,12 @@ Event types: `meta`, `token`, `done`, `error`.
 - `timings` (`ttft_ms`, `total_ms`)
 - `token_count`, `tokens_per_sec`
 
-Client-side TTFT and total latency are computed from send → first token/done.
+Metric definitions:
+- TTFT shown in UI is client-measured (send → first token event).
+- Total latency shown is client-measured (send → done/error).
+- Tokens/sec uses `done.tokens_per_sec` if present; else `token_count / stream_duration`.
+- Token count uses `done.token_count` if present; else best-effort (# token events).
+- `replica_id` uses the backend pod hostname for debugging.
 
 ## Sanity checks and benchmarking
 

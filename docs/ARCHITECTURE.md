@@ -47,8 +47,12 @@ flowchart LR
   `token_count`, `tokens_per_sec`
 - `error`: safe message + request/session identifiers
 
-Client-side TTFT and total latency are computed from send → first token/done; server values are
-included for reference.
+Streaming metrics:
+- TTFT shown in UI is client-measured (send → first token event).
+- Total latency shown is client-measured (send → done/error).
+- Tokens/sec uses `done.tokens_per_sec` if present; else `token_count / stream_duration`.
+- Token count uses `done.token_count` if present; else best-effort (# token events).
+- `replica_id` uses the backend pod hostname for debugging.
 
 ## Deployment
 

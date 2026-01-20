@@ -161,19 +161,24 @@ export default function App() {
             buffer = rest;
             const lines = rawEvent.split("\n");
             let eventType = "message";
-            let dataLine = "";
+            const dataLines = [];
             lines.forEach((line) => {
               if (line.startsWith("event:")) {
                 eventType = line.replace("event:", "").trim();
               }
               if (line.startsWith("data:")) {
-                dataLine = line.replace("data:", "").trim();
+                dataLines.push(line.replace("data:", "", 1).trim());
               }
             });
-            if (!dataLine) {
+            if (!dataLines.length) {
               continue;
             }
-            const payload = JSON.parse(dataLine);
+            let payload;
+            try {
+              payload = JSON.parse(dataLines.join("\n"));
+            } catch (error) {
+              continue;
+            }
             if (eventType === "token") {
               if (!assistantMetrics._first_token_ms) {
                 const ttftValue = performance.now() - clientStart;
@@ -213,9 +218,6 @@ export default function App() {
                 }));
               }
             }
-            if (eventType === "ttft") {
-              setTtftMs(payload.ttft_ms ?? null);
-            }
             if (eventType === "done") {
               const totalMs = performance.now() - clientStart;
               assistantMetrics.total_ms = totalMs;
@@ -223,6 +225,9 @@ export default function App() {
               assistantMetrics.replica_id = payload.replica_id || assistantMetrics.replica_id;
               assistantMetrics.model_id = payload.model_id || assistantMetrics.model_id;
               assistantMetrics.k = payload.k ?? assistantMetrics.k;
+              assistantMetrics.token_count = payload.token_count ?? localTokenCount;
+              assistantMetrics.server_ttft_ms = payload.timings?.ttft_ms ?? null;
+              assistantMetrics.server_total_ms = payload.timings?.total_ms ?? null;
               const streamDuration =
                 assistantMetrics._first_token_ms && assistantMetrics._last_token_ms
                   ? (assistantMetrics._last_token_ms - assistantMetrics._first_token_ms) / 1000
@@ -234,7 +239,14 @@ export default function App() {
                   : null);
               assistantMetrics.tokens_per_sec = tokensPerSec;
               setDocuments(payload.documents || []);
-              setTimings({ total_ms: totalMs, retrieval_ms: timings?.retrieval_ms });
+              const retrievalMs = timings?.retrieval_ms ?? null;
+              const generationMs =
+                retrievalMs !== null ? Math.max(totalMs - retrievalMs, 0) : null;
+              setTimings({
+                total_ms: totalMs,
+                retrieval_ms: retrievalMs,
+                generation_ms: generationMs,
+              });
               if (payload.session_id) {
                 setSessionId(payload.session_id);
               }
@@ -297,7 +309,14 @@ export default function App() {
         const data = await response.json();
         const totalMs = performance.now() - clientStart;
         setDocuments(data.documents || []);
-        setTimings({ total_ms: totalMs, retrieval_ms: data.timings?.retrieval_ms });
+              const retrievalMs = data.timings?.retrieval_ms ?? null;
+              const generationMs =
+                retrievalMs !== null ? Math.max(totalMs - retrievalMs, 0) : null;
+              setTimings({
+                total_ms: totalMs,
+                retrieval_ms: retrievalMs,
+                generation_ms: generationMs,
+              });
         setTokensPerSecond(data.timings?.tokens_per_second ?? null);
         setTtftMs(data.timings?.ttft_ms ?? null);
         if (data.session_id) {
@@ -495,12 +514,20 @@ export default function App() {
           <span>Provider: {stats?.provider || "unknown"}</span>
           {timings && (
             <span>
-              Latency: {timings.total_ms} ms (retrieval {timings.retrieval_ms} ms, generation{" "}
-              {timings.generation_ms} ms)
+              Latency: {formatMetric(timings.total_ms)}
+              {timings.retrieval_ms !== null && timings.retrieval_ms !== undefined
+                ? ` (retrieval ${formatMetric(timings.retrieval_ms)}, generation ${
+                    timings.generation_ms !== null && timings.generation_ms !== undefined
+                      ? formatMetric(timings.generation_ms)
+                      : "—"
+                  })`
+                : ""}
             </span>
           )}
-          {ttftMs !== null && <span>TTFT: {ttftMs} ms</span>}
-          {tokensPerSecond !== null && <span>Tokens/sec: {tokensPerSecond}</span>}
+          {ttftMs !== null && <span>TTFT: {formatMetric(ttftMs)}</span>}
+          {tokensPerSecond !== null && (
+            <span>Tokens/sec: {tokensPerSecond.toFixed(2)}</span>
+          )}
         </div>
       </section>
 
