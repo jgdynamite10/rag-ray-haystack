@@ -6,12 +6,18 @@ streaming inference and deployable to Akamai LKE, AWS EKS, and GCP GKE.
 ## Quick start (local)
 
 ```bash
+git clone https://github.com/jgdynamite10/rag-ray-haystack
+cd rag-ray-haystack
+```
+
+```bash
 cd apps/backend
 uv sync --python 3.11
 uv run --python 3.11 serve run app.main:deployment
 ```
 
 ```bash
+# keep the backend terminal running; open a new terminal for the frontend
 cd ../frontend
 npm install
 npm run dev

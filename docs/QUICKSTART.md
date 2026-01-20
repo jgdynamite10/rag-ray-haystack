@@ -1,5 +1,59 @@
 # Quickstart
 
+## End-to-end Akamai LKE (cluster → app)
+
+This assumes you have Akamai/Linode credentials and will create a new LKE cluster.
+
+1) Clone the repo
+
+```bash
+git clone https://github.com/jgdynamite10/rag-ray-haystack
+cd rag-ray-haystack
+```
+
+2) Create the cluster (Terraform)
+
+```bash
+cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lke/terraform.tfvars
+terraform -chdir=infra/terraform/akamai-lke init
+terraform -chdir=infra/terraform/akamai-lke apply
+```
+
+3) Fetch kubeconfig and deploy the app
+
+```bash
+# write kubeconfig to ~/.kube/akamai-lke-dev-config.yaml
+make kubeconfig PROVIDER=akamai-lke ENV=dev
+
+# deploy app images
+export IMAGE_REGISTRY=ghcr.io/<owner>
+export IMAGE_TAG=<tag>
+make deploy PROVIDER=akamai-lke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
+```
+
+4) Verify workloads
+
+```bash
+make verify PROVIDER=akamai-lke ENV=dev NAMESPACE=rag-app RELEASE=rag-app
+kubectl -n rag-app get svc
+```
+
+5) Optional: in-cluster streaming check (no public UI)
+
+```bash
+kubectl -n rag-app port-forward svc/rag-app-rag-app-backend 8000:8000
+```
+
+Second terminal:
+
+```bash
+curl -N -X POST http://localhost:8000/query/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Explain what this system is and why vLLM matters."}'
+```
+
+Expected behavior: `meta` → repeated `token` → `done` events.
+
 ## One-command flow
 
 ```bash
