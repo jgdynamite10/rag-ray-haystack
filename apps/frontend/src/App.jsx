@@ -402,6 +402,15 @@ export default function App() {
 
       <section className="panel">
         <h2>Performance snapshot</h2>
+        <p className="metric-help">
+          This panel uses in-memory stats from <code>/stats</code>. Avg and P95 are in ms.
+        </p>
+        <div className="metric-legend">
+          <span>ingest: embed + store documents</span>
+          <span>retrieval: fetch relevant docs</span>
+          <span>generation: model response time</span>
+          <span>ttft: time to first token</span>
+        </div>
         {!stats && <p>Loading metrics...</p>}
         {stats?.error && <p className="error">{stats.error}</p>}
         {stats?.timings && (

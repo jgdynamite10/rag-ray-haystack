@@ -185,6 +185,28 @@ body {
   gap: 12px;
 }
 
+.metric-help {
+  margin: 0;
+  font-size: 13px;
+  color: #b6c0d6;
+}
+
+.metric-help code {
+  background: #0f1422;
+  border: 1px solid #212a3c;
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: #d6ddf0;
+}
+
+.metric-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 6px 12px;
+  font-size: 12px;
+  color: #9aa3b2;
+}
+
 .metric-card {
   background: #0f1422;
   border: 1px solid #212a3c;
