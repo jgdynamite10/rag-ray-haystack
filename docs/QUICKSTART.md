@@ -31,9 +31,9 @@ make install-kuberay PROVIDER=akamai-lke ENV=dev
 # apply GPU labels/taints (required for vLLM scheduling)
 make fix-gpu PROVIDER=akamai-lke ENV=dev
 
-# deploy app images
-export IMAGE_REGISTRY=ghcr.io/<owner>
-export IMAGE_TAG=<tag>
+# deploy app images (replace with your registry/tag)
+export IMAGE_REGISTRY=ghcr.io/jgdynamite10
+export IMAGE_TAG=0.2.11
 make deploy PROVIDER=akamai-lke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
 ```
 
