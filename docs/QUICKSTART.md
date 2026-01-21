@@ -25,6 +25,12 @@ terraform -chdir=infra/terraform/akamai-lke apply
 # write kubeconfig to ~/.kube/akamai-lke-dev-config.yaml
 make kubeconfig PROVIDER=akamai-lke ENV=dev
 
+# install KubeRay operator
+make install-kuberay PROVIDER=akamai-lke ENV=dev
+
+# apply GPU labels/taints (required for vLLM scheduling)
+make fix-gpu PROVIDER=akamai-lke ENV=dev
+
 # deploy app images
 export IMAGE_REGISTRY=ghcr.io/<owner>
 export IMAGE_TAG=<tag>
