@@ -22,14 +22,31 @@ terraform -chdir=infra/terraform/akamai-lke apply
 3) Fetch kubeconfig and deploy the app
 
 ```bash
-# write kubeconfig to ~/.kube/akamai-lke-dev-config.yaml
+# write kubeconfig to ~/.kube/<provider>-<env>-config.yaml
 make kubeconfig PROVIDER=akamai-lke ENV=dev
+export KUBECONFIG=~/.kube/akamai-lke-dev-config.yaml
+```
+
+If your kubeconfig file name differs (ex: cluster label-specific), use:
+
+```bash
+export KUBECONFIG="/Users/$USER/.kube/<cluster>-kubeconfig.yaml"
+```
 
 # install KubeRay operator
-make install-kuberay PROVIDER=akamai-lke ENV=dev
+KUBECONFIG_PATH="$KUBECONFIG" make install-kuberay PROVIDER=akamai-lke ENV=dev
+
+# install GPU Operator + Node Feature Discovery
+helm repo add nvidia-gpu https://nvidia.github.io/gpu-operator
+helm repo add nfd https://kubernetes-sigs.github.io/node-feature-discovery/charts
+helm repo update
+helm upgrade --install gpu-operator nvidia-gpu/gpu-operator \
+  --namespace gpu-operator --create-namespace
+helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
+  --namespace node-feature-discovery --create-namespace
 
 # apply GPU labels/taints (required for vLLM scheduling)
-make fix-gpu PROVIDER=akamai-lke ENV=dev
+KUBECONFIG_PATH="$KUBECONFIG" make fix-gpu PROVIDER=akamai-lke ENV=dev
 
 # deploy app images (replace with your registry/tag)
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10

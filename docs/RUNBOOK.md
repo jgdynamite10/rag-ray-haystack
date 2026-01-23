@@ -19,13 +19,27 @@ cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lk
 ## Install KubeRay operator
 
 ```bash
-make install-kuberay PROVIDER=akamai-lke ENV=dev
+export KUBECONFIG=~/.kube/akamai-lke-dev-config.yaml
+KUBECONFIG_PATH="$KUBECONFIG" make install-kuberay PROVIDER=akamai-lke ENV=dev
 ```
 
 ## GPU bring-up (automated)
 
 ```bash
-make fix-gpu PROVIDER=akamai-lke ENV=dev
+# install GPU Operator + Node Feature Discovery
+helm repo add nvidia-gpu https://nvidia.github.io/gpu-operator
+helm repo add nfd https://kubernetes-sigs.github.io/node-feature-discovery/charts
+helm repo update
+helm upgrade --install gpu-operator nvidia-gpu/gpu-operator \
+  --namespace gpu-operator --create-namespace
+helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
+  --namespace node-feature-discovery --create-namespace
+
+# apply GPU labels/taints (required for vLLM scheduling)
+KUBECONFIG_PATH="$KUBECONFIG" make fix-gpu PROVIDER=akamai-lke ENV=dev
+
+# verify GPU capacity (should be non-empty on GPU node)
+kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}{' -> '}{.status.capacity['nvidia.com/gpu']}{'\n'}{end}"
 ```
 
 ## Verify

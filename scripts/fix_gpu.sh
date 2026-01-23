@@ -9,7 +9,7 @@ export KUBECONFIG="${KUBECONFIG_PATH}"
 echo "Using KUBECONFIG=${KUBECONFIG_PATH}"
 
 # Step 0: If GPUs are already advertised, skip.
-gpu_capacity=$(kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}{' -> '}{.status.capacity['nvidia.com/gpu']}{'\n'}{end}" | grep -E '-> [1-9]' || true)
+gpu_capacity=$(kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}{' -> '}{.status.capacity['nvidia.com/gpu']}{'\n'}{end}" | grep -E -- '-> [1-9]' || true)
 if [[ -n "${gpu_capacity}" ]]; then
   echo "GPU capacity already advertised. Skipping GPU fix."
   exit 0
