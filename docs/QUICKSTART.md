@@ -73,6 +73,29 @@ KUBECONFIG_PATH="$KUBECONFIG" make verify PROVIDER=akamai-lke ENV=dev NAMESPACE=
 kubectl -n rag-app get svc
 ```
 
+Expected output (abridged):
+
+```text
+NAME                                        READY   STATUS    RESTARTS   AGE
+rag-app-rag-app-backend-7bcc875cbc-xxxxx    1/1     Running   0          5m
+rag-app-rag-app-frontend-5867fc4f99-xxxxx   1/1     Running   0          5m
+rag-app-rag-app-qdrant-0                    1/1     Running   0          5m
+rag-app-rag-app-vllm-54cdbb8b59-xxxxx       1/1     Running   0          2m
+
+NAME                       TYPE           EXTERNAL-IP
+rag-app-rag-app-frontend   LoadBalancer   <public-ip>
+
+Checking vLLM streaming via rag-app-rag-app-vllm...
+data: {"object":"chat.completion.chunk", ... "model":"rag-default", ...}
+
+Checking Ray Serve SSE relay via rag-app-rag-app-backend...
+event: meta
+event: token
+```
+
+Note: `curl: (23) Failure writing output to destination` can appear during streaming checks and
+is expected; success is indicated by streamed `data:` or `event:` lines.
+
 6. Optional: in-cluster streaming check (no public UI)
 
 ```bash
