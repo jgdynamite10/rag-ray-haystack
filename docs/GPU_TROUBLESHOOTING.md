@@ -77,6 +77,37 @@ kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}{' -> '}{.status
 
 Once you see a non-empty GPU value, the vLLM pod should schedule.
 
+## GPU allocatable is still empty after fix-gpu
+
+If the NVIDIA device plugin is running and logs show it registered with kubelet,
+but `nvidia.com/gpu` is still missing from `Capacity`/`Allocatable`, the node
+likely needs a reboot to complete driver registration. `fix-gpu` labels nodes and
+restarts daemonsets, but it cannot restart kubelet or reinitialize the kernel
+driver stack.
+
+### Symptoms
+
+- `kubectl get nodes ... allocatable['nvidia.com/gpu']` is empty
+- `kubectl describe node <gpu-node> | grep -A10 -i "Capacity"` does not list `nvidia.com/gpu`
+- `kubectl -n gpu-operator logs -l app=nvidia-device-plugin-daemonset` shows device plugin started
+
+### Recovery
+
+1. Reboot the GPU node (LKE UI or provider console).
+2. Wait for the node to rejoin.
+3. Re-run the capacity check:
+
+```bash
+KUBECONFIG=~/.kube/akamai-lke-dev-config.yaml \
+kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}{' -> '}{.status.allocatable['nvidia.com/gpu']}{'\n'}{end}"
+```
+
+### Example (Akamai LKE)
+
+- Working: RTX4000 Ada x1 **small** (us-sea) with `fix-gpu` only.
+- Ashley's deployment: RTX4000 Ada x1 **medium** in a different region required a node reboot
+  before `nvidia.com/gpu` appeared in `allocatable`.
+
 ## vLLM scheduling check
 
 ```bash
