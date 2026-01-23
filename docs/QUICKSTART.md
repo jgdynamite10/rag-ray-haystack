@@ -4,14 +4,14 @@
 
 This assumes you have Akamai/Linode credentials and will create a new LKE cluster.
 
-1) Clone the repo
+1. Clone the repo
 
 ```bash
 git clone https://github.com/jgdynamite10/rag-ray-haystack
 cd rag-ray-haystack
 ```
 
-2) Create the cluster (Terraform)
+2. Create the cluster (Terraform)
 
 ```bash
 cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lke/terraform.tfvars
@@ -19,7 +19,7 @@ terraform -chdir=infra/terraform/akamai-lke init
 terraform -chdir=infra/terraform/akamai-lke apply
 ```
 
-3) Fetch kubeconfig and deploy the app
+3. Fetch kubeconfig and deploy the app
 
 ```bash
 # write kubeconfig to ~/.kube/<provider>-<env>-config.yaml
@@ -33,10 +33,15 @@ If your kubeconfig file name differs (ex: cluster label-specific), use:
 export KUBECONFIG="/Users/$USER/.kube/<cluster>-kubeconfig.yaml"
 ```
 
-# install KubeRay operator
-KUBECONFIG_PATH="$KUBECONFIG" make install-kuberay PROVIDER=akamai-lke ENV=dev
+Install KubeRay operator:
 
-# install GPU Operator + Node Feature Discovery
+```bash
+KUBECONFIG_PATH="$KUBECONFIG" make install-kuberay PROVIDER=akamai-lke ENV=dev
+```
+
+Install GPU Operator + Node Feature Discovery:
+
+```bash
 helm repo add nvidia-gpu https://nvidia.github.io/gpu-operator
 helm repo add nfd https://kubernetes-sigs.github.io/node-feature-discovery/charts
 helm repo update
@@ -44,24 +49,30 @@ helm upgrade --install gpu-operator nvidia-gpu/gpu-operator \
   --namespace gpu-operator --create-namespace
 helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
   --namespace node-feature-discovery --create-namespace
+```
 
-# apply GPU labels/taints (required for vLLM scheduling)
+Apply GPU labels/taints (required for vLLM scheduling):
+
+```bash
 KUBECONFIG_PATH="$KUBECONFIG" make fix-gpu PROVIDER=akamai-lke ENV=dev
+```
 
-# deploy app images (replace with your registry/tag)
+Deploy app images (replace with your registry/tag):
+
+```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
 export IMAGE_TAG=0.2.11
 make deploy PROVIDER=akamai-lke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
 ```
 
-4) Verify workloads
+4. Verify workloads
 
 ```bash
 make verify PROVIDER=akamai-lke ENV=dev NAMESPACE=rag-app RELEASE=rag-app
 kubectl -n rag-app get svc
 ```
 
-5) Optional: in-cluster streaming check (no public UI)
+5. Optional: in-cluster streaming check (no public UI)
 
 ```bash
 kubectl -n rag-app port-forward svc/rag-app-rag-app-backend 8000:8000
