@@ -19,7 +19,7 @@ terraform -chdir=infra/terraform/akamai-lke init
 terraform -chdir=infra/terraform/akamai-lke apply
 ```
 
-3. Fetch kubeconfig and deploy the app
+3. Fetch kubeconfig and install dependencies
 
 ```bash
 # write kubeconfig to ~/.kube/<provider>-<env>-config.yaml
@@ -27,10 +27,11 @@ make kubeconfig PROVIDER=akamai-lke ENV=dev
 export KUBECONFIG=~/.kube/akamai-lke-dev-config.yaml
 ```
 
-If your kubeconfig file name differs (ex: cluster label-specific), use:
+If your kubeconfig file name differs (ex: cluster label-specific), use a real
+path (avoid angle brackets):
 
 ```bash
-export KUBECONFIG="/Users/$USER/.kube/<cluster>-kubeconfig.yaml"
+export KUBECONFIG="$HOME/.kube/rag-ray-haystack-ashely-kubeconfig.yaml"
 ```
 
 Install KubeRay operator:
@@ -57,7 +58,7 @@ Apply GPU labels/taints (required for vLLM scheduling):
 KUBECONFIG_PATH="$KUBECONFIG" make fix-gpu PROVIDER=akamai-lke ENV=dev
 ```
 
-Deploy app images (replace with your registry/tag):
+4. Deploy app images (replace with your registry/tag):
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
@@ -65,14 +66,14 @@ export IMAGE_TAG=0.2.11
 make deploy PROVIDER=akamai-lke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
 ```
 
-4. Verify workloads
+5. Verify workloads
 
 ```bash
-make verify PROVIDER=akamai-lke ENV=dev NAMESPACE=rag-app RELEASE=rag-app
+KUBECONFIG_PATH="$KUBECONFIG" make verify PROVIDER=akamai-lke ENV=dev NAMESPACE=rag-app RELEASE=rag-app
 kubectl -n rag-app get svc
 ```
 
-5. Optional: in-cluster streaming check (no public UI)
+6. Optional: in-cluster streaming check (no public UI)
 
 ```bash
 kubectl -n rag-app port-forward svc/rag-app-rag-app-backend 8000:8000
@@ -92,7 +93,7 @@ Expected behavior: `meta` → repeated `token` → `done` events.
 
 ```bash
 cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lke/terraform.tfvars
-GPU_FIX=1 make deploy PROVIDER=akamai-lke ENV=dev
+KUBECONFIG_PATH="$KUBECONFIG" GPU_FIX=1 make deploy PROVIDER=akamai-lke ENV=dev
 ```
 
 This runs:
