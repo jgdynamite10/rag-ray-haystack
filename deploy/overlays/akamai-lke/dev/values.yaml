@@ -17,7 +17,7 @@ vllm:
   maxModelLen: "2048"
   gpuMemoryUtilization: "0.85"
   nodeSelector:
-    accelerator: nvidia
+    nvidia.com/gpu.present: "true"
   tolerations:
     - key: "nvidia.com/gpu"
       operator: "Exists"

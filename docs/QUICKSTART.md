@@ -31,7 +31,7 @@ If your kubeconfig file name differs (ex: cluster label-specific), use a real
 path (avoid angle brackets):
 
 ```bash
-export KUBECONFIG="$HOME/.kube/rag-ray-haystack-ashely-kubeconfig.yaml"
+export KUBECONFIG="$HOME/.kube/<your-kubeconfig-file>kubeconfig.yaml"
 ```
 
 Install KubeRay operator:
