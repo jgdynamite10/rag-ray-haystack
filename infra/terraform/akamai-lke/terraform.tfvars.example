@@ -1,7 +1,7 @@
 # Akamai LKE defaults (dev-friendly)
 cluster_label       = "rag-ray-haystack"
 region              = "us-ord"
-k8s_version          = "1.29"
+k8s_version         = "1.34"
 
 cpu_node_type       = "g6-standard-2"
 cpu_node_count      = 2
@@ -9,7 +9,7 @@ cpu_autoscaler_enabled = false
 cpu_autoscaler_min  = 2
 cpu_autoscaler_max  = 4
 
-gpu_node_type       = "g6-gpu-rtx6000-1"
+gpu_node_type       = "g2-gpu-rtx4000a1-s"
 gpu_node_count      = 1
 gpu_autoscaler_enabled = false
 gpu_autoscaler_min  = 1
