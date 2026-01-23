@@ -10,7 +10,7 @@ IMAGE_TAG ?=
 TERRAFORM_DIR := infra/terraform/$(PROVIDER)
 BASE_VALUES := deploy/helm/rag-app/values.yaml
 OVERLAY_VALUES := deploy/overlays/$(PROVIDER)/$(ENV)/values.yaml
-KUBECONFIG_PATH := $(HOME)/.kube/$(PROVIDER)-$(ENV)-config.yaml
+KUBECONFIG_PATH ?= $(HOME)/.kube/$(PROVIDER)-$(ENV)-config.yaml
 
 define IMAGE_OVERRIDES
 $(if $(IMAGE_REGISTRY),--set backend.image.repository=$(IMAGE_REGISTRY)/rag-ray-backend,) \
