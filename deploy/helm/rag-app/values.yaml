@@ -111,5 +111,6 @@ vllm:
     limits:
       cpu: "2"
       memory: "8Gi"
-  nodeSelector: {}
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
   tolerations: []
