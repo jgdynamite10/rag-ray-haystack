@@ -13,6 +13,7 @@ spec:
       labels:
         app: {{ include "rag-app.fullname" . }}-backend
     spec:
+      serviceAccountName: {{ include "rag-app.backendServiceAccountName" . }}
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -34,6 +35,12 @@ spec:
           env:
             - name: RAG_PROVIDER
               value: {{ .Values.global.provider | default "unknown" | quote }}
+            - name: KUBE_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: BENCH_TARGET_URL
+              value: "http://{{ include \"rag-app.fullname\" . }}-backend:{{ .Values.backend.service.port }}/query/stream"
             {{- toYaml .Values.backend.env | nindent 12 }}
           resources:
             requests:

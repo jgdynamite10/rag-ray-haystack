@@ -5,7 +5,9 @@ import os
 import threading
 import time
 from collections import defaultdict, deque
+from pathlib import Path
 from typing import Any, AsyncIterator
+from urllib.parse import quote
 from uuid import uuid4
 
 import requests
@@ -49,6 +51,192 @@ def env_flag(name: str, default: str = "false") -> bool:
 def sse(event: str, data: dict[str, Any]) -> bytes:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n".encode()
 
+
+BENCH_REQUIREMENTS = "httpx==0.27.2\n"
+
+BENCH_SCRIPT = """#!/usr/bin/env python3
+\"\"\"
+Lightweight streaming benchmark for /query/stream.
+
+Measures TTFT, tokens/sec (approx), and total latency.
+Portable across Akamai LKE, AWS EKS, and GCP GKE.
+\"\"\"
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import statistics
+import time
+from pathlib import Path
+from typing import Any, Optional
+
+import httpx
+
+
+def percentile(values: list[float], pct: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    index = max(0, int(len(ordered) * pct) - 1)
+    return ordered[index]
+
+
+async def run_request(
+    client: httpx.AsyncClient,
+    url: str,
+    prompt: str,
+    request_id: int,
+) -> dict[str, Any]:
+    payload = {"query": prompt}
+    start = time.perf_counter()
+    ttft: Optional[float] = None
+    token_count = 0
+
+    try:
+        async with client.stream("POST", url, json=payload) as response:
+            response.raise_for_status()
+            event_name = None
+            event_data = None
+
+            async for line in response.aiter_lines():
+                if line.startswith("event:"):
+                    event_name = line.replace("event:", "", 1).strip()
+                elif line.startswith("data:"):
+                    event_data = line.replace("data:", "", 1).strip()
+                elif line == "":
+                    if not event_name or not event_data:
+                        event_name = None
+                        event_data = None
+                        continue
+                    payload = json.loads(event_data)
+                    if event_name == "ttft" and ttft is None:
+                        ttft = time.perf_counter() - start
+                    if event_name == "token":
+                        if ttft is None:
+                            ttft = time.perf_counter() - start
+                        token_count += max(1, len(payload.get("text", "").split()))
+                    if event_name == "done":
+                        break
+                    event_name = None
+                    event_data = None
+
+        total = time.perf_counter() - start
+        tokens_per_second = token_count / total if total > 0 else 0.0
+        return {
+            "id": request_id,
+            "success": True,
+            "ttft": ttft or total,
+            "total": total,
+            "tokens_per_second": tokens_per_second,
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "id": request_id,
+            "success": False,
+            "error": str(exc),
+        }
+
+
+async def worker(
+    name: int,
+    client: httpx.AsyncClient,
+    url: str,
+    prompt: str,
+    counter: asyncio.Lock,
+    remaining: list[int],
+    results: list[dict[str, Any]],
+) -> None:
+    while True:
+        async with counter:
+            if remaining[0] <= 0:
+                return
+            remaining[0] -= 1
+            request_id = remaining[0]
+        result = await run_request(client, url, prompt, request_id)
+        results.append(result)
+
+
+async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
+    prompt = "Explain what this system is and why vLLM matters."
+    if args.prompt_file:
+        prompt = Path(args.prompt_file).read_text().strip()
+
+    timeout = httpx.Timeout(args.timeout)
+    limits = httpx.Limits(max_keepalive_connections=args.concurrency)
+    results: list[dict[str, Any]] = []
+    remaining = [args.requests]
+    lock = asyncio.Lock()
+
+    async with httpx.AsyncClient(timeout=timeout, limits=limits) as client:
+        tasks = [
+            asyncio.create_task(worker(i, client, args.url, prompt, lock, remaining, results))
+            for i in range(args.concurrency)
+        ]
+        await asyncio.gather(*tasks)
+
+    success = [r for r in results if r.get("success")]
+    failures = [r for r in results if not r.get("success")]
+    ttft_values = [r["ttft"] for r in success]
+    total_values = [r["total"] for r in success]
+    tokens_per_second = [r["tokens_per_second"] for r in success]
+
+    summary = {
+        "requests": args.requests,
+        "concurrency": args.concurrency,
+        "success": len(success),
+        "errors": len(failures),
+        "ttft_p50_ms": round(percentile(ttft_values, 0.50) * 1000, 2),
+        "ttft_p95_ms": round(percentile(ttft_values, 0.95) * 1000, 2),
+        "latency_p50_ms": round(percentile(total_values, 0.50) * 1000, 2),
+        "latency_p95_ms": round(percentile(total_values, 0.95) * 1000, 2),
+        "avg_tokens_per_sec": round(
+            statistics.mean(tokens_per_second) if tokens_per_second else 0.0, 2
+        ),
+    }
+
+    if args.json_out:
+        Path(args.json_out).write_text(json.dumps(summary, indent=2))
+
+    if args.show_errors and failures:
+        print("Sample errors:")
+        for item in failures[: args.show_errors]:
+            print(f"- {item.get('error')}")
+
+    return summary
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Stream benchmark for /query/stream")
+    parser.add_argument(
+        "--url",
+        default="http://localhost:8000/query/stream",
+        help="Streaming endpoint URL",
+    )
+    parser.add_argument("--concurrency", type=int, default=10, help="Concurrent requests")
+    parser.add_argument("--requests", type=int, default=100, help="Total requests")
+    parser.add_argument("--prompt-file", help="Optional prompt file")
+    parser.add_argument("--json-out", help="Write summary JSON to file")
+    parser.add_argument("--timeout", type=int, default=120, help="Request timeout seconds")
+    parser.add_argument(
+        "--show-errors",
+        type=int,
+        default=0,
+        help="Print up to N error messages",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    summary = asyncio.run(run_benchmark(args))
+    print(json.dumps(summary, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+"""
 
 def chunk_text(text: str, chunk_size: int = 800, overlap: int = 120) -> list[str]:
     if len(text) <= chunk_size:
@@ -186,6 +374,14 @@ class RagApp:
         self.sessions: dict[str, list[dict[str, str]]] = {}
         self.ingest_index: dict[str, set[str]] = defaultdict(set)
         self.provider = os.getenv("RAG_PROVIDER", "unknown")
+        self.kube_namespace = os.getenv("KUBE_NAMESPACE") or os.getenv("KUBERNETES_NAMESPACE", "rag-app")
+        self.bench_target_url = os.getenv(
+            "BENCH_TARGET_URL",
+            "http://rag-app-rag-app-backend:8000/query/stream",
+        )
+        self.bench_image = os.getenv("BENCH_IMAGE", "python:3.11-slim")
+        self.bench_ttl_seconds = int(os.getenv("BENCH_TTL_SECONDS", "3600"))
+        self._kube_api = self._build_kube_api()
 
         self.document_store = self._build_document_store()
         if self.qdrant_url:
@@ -285,6 +481,237 @@ class RagApp:
             top_p=self.vllm_top_p,
             timeout_seconds=self.vllm_timeout_seconds,
         )
+
+    def _build_kube_api(self) -> dict[str, Any] | None:
+        host = os.getenv("KUBERNETES_SERVICE_HOST")
+        port = os.getenv("KUBERNETES_SERVICE_PORT")
+        if not host or not port:
+            return None
+        token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        if not os.path.exists(token_path):
+            return None
+        token = Path(token_path).read_text().strip()
+        verify = ca_path if os.path.exists(ca_path) else True
+        return {
+            "base_url": f"https://{host}:{port}",
+            "token": token,
+            "verify": verify,
+        }
+
+    def _kube_request(
+        self,
+        method: str,
+        path: str,
+        json_body: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> requests.Response:
+        if not self._kube_api:
+            raise ValueError("Kubernetes API is not available in this environment.")
+        url = f"{self._kube_api['base_url']}{path}"
+        request_headers = {
+            "Authorization": f"Bearer {self._kube_api['token']}",
+            "Accept": "application/json",
+        }
+        if headers:
+            request_headers.update(headers)
+        response = requests.request(
+            method,
+            url,
+            headers=request_headers,
+            json=json_body,
+            timeout=15,
+            verify=self._kube_api["verify"],
+        )
+        if not response.ok:
+            raise ValueError(f"kubernetes_api_error: {response.status_code} {response.text}")
+        return response
+
+    def _coerce_int(self, value: Any, default: int, minimum: int = 1) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return default
+        return parsed if parsed >= minimum else default
+
+    def _benchmark_configmap(self, name: str) -> dict[str, Any]:
+        return {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {
+                "name": name,
+                "namespace": self.kube_namespace,
+                "labels": {"app": "rag-stream-bench"},
+            },
+            "data": {
+                "requirements.txt": BENCH_REQUIREMENTS,
+                "stream_bench.py": BENCH_SCRIPT,
+            },
+        }
+
+    def _benchmark_job(
+        self,
+        name: str,
+        configmap_name: str,
+        concurrency: int,
+        requests_total: int,
+        timeout: int,
+        show_errors: int,
+    ) -> dict[str, Any]:
+        command = (
+            "python -m pip install --no-cache-dir -r /bench/requirements.txt && "
+            "python /bench/stream_bench.py "
+            "--url \"$BENCH_URL\" "
+            "--concurrency \"$BENCH_CONCURRENCY\" "
+            "--requests \"$BENCH_REQUESTS\" "
+            "--timeout \"$BENCH_TIMEOUT\" "
+            "--show-errors \"$BENCH_SHOW_ERRORS\""
+        )
+        return {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "metadata": {
+                "name": name,
+                "namespace": self.kube_namespace,
+                "labels": {"app": "rag-stream-bench"},
+            },
+            "spec": {
+                "backoffLimit": 0,
+                "ttlSecondsAfterFinished": self.bench_ttl_seconds,
+                "template": {
+                    "metadata": {"labels": {"app": "rag-stream-bench"}},
+                    "spec": {
+                        "restartPolicy": "Never",
+                        "containers": [
+                            {
+                                "name": "bench",
+                                "image": self.bench_image,
+                                "imagePullPolicy": "IfNotPresent",
+                                "env": [
+                                    {"name": "PIP_DISABLE_PIP_VERSION_CHECK", "value": "1"},
+                                    {"name": "PYTHONUNBUFFERED", "value": "1"},
+                                    {"name": "BENCH_URL", "value": self.bench_target_url},
+                                    {
+                                        "name": "BENCH_CONCURRENCY",
+                                        "value": str(concurrency),
+                                    },
+                                    {"name": "BENCH_REQUESTS", "value": str(requests_total)},
+                                    {"name": "BENCH_TIMEOUT", "value": str(timeout)},
+                                    {"name": "BENCH_SHOW_ERRORS", "value": str(show_errors)},
+                                ],
+                                "command": ["/bin/sh", "-c", command],
+                                "volumeMounts": [{"name": "bench", "mountPath": "/bench"}],
+                            }
+                        ],
+                        "volumes": [
+                            {
+                                "name": "bench",
+                                "configMap": {"name": configmap_name},
+                            }
+                        ],
+                    },
+                },
+            },
+        }
+
+    def _benchmark_run(self, payload: dict[str, Any]) -> dict[str, Any]:
+        concurrency = self._coerce_int(payload.get("concurrency"), 10)
+        requests_total = self._coerce_int(payload.get("requests"), 100)
+        timeout = self._coerce_int(payload.get("timeout"), 120)
+        show_errors = self._coerce_int(payload.get("show_errors"), 3, minimum=0)
+        run_id = uuid4().hex[:8]
+        job_name = f"rag-stream-bench-{run_id}"
+        configmap_name = f"rag-stream-bench-{run_id}"
+
+        configmap_body = self._benchmark_configmap(configmap_name)
+        job_body = self._benchmark_job(
+            job_name,
+            configmap_name,
+            concurrency,
+            requests_total,
+            timeout,
+            show_errors,
+        )
+
+        self._kube_request(
+            "POST",
+            f"/api/v1/namespaces/{self.kube_namespace}/configmaps",
+            json_body=configmap_body,
+        )
+        job_response = self._kube_request(
+            "POST",
+            f"/apis/batch/v1/namespaces/{self.kube_namespace}/jobs",
+            json_body=job_body,
+        ).json()
+
+        job_uid = job_response.get("metadata", {}).get("uid")
+        if job_uid:
+            patch_body = {
+                "metadata": {
+                    "ownerReferences": [
+                        {
+                            "apiVersion": "batch/v1",
+                            "kind": "Job",
+                            "name": job_name,
+                            "uid": job_uid,
+                        }
+                    ]
+                }
+            }
+            self._kube_request(
+                "PATCH",
+                f"/api/v1/namespaces/{self.kube_namespace}/configmaps/{configmap_name}",
+                json_body=patch_body,
+                headers={"Content-Type": "application/merge-patch+json"},
+            )
+
+        return {
+            "job_name": job_name,
+            "namespace": self.kube_namespace,
+            "concurrency": concurrency,
+            "requests": requests_total,
+            "timeout": timeout,
+            "show_errors": show_errors,
+        }
+
+    def _benchmark_status(self, job_name: str) -> dict[str, Any]:
+        job_response = self._kube_request(
+            "GET",
+            f"/apis/batch/v1/namespaces/{self.kube_namespace}/jobs/{job_name}",
+        ).json()
+        status = job_response.get("status", {})
+        phase = "pending"
+        if status.get("active"):
+            phase = "running"
+        if status.get("succeeded"):
+            phase = "succeeded"
+        if status.get("failed"):
+            phase = "failed"
+        return {
+            "job_name": job_name,
+            "phase": phase,
+            "start_time": status.get("startTime"),
+            "completion_time": status.get("completionTime"),
+            "failed": status.get("failed", 0),
+        }
+
+    def _benchmark_logs(self, job_name: str) -> str:
+        label_selector = quote(f"job-name={job_name}")
+        pods_response = self._kube_request(
+            "GET",
+            f"/api/v1/namespaces/{self.kube_namespace}/pods?labelSelector={label_selector}",
+            headers={"Accept": "application/json"},
+        )
+        pods = pods_response.json().get("items", [])
+        if not pods:
+            raise ValueError("benchmark_logs_not_ready")
+        pod_name = pods[0]["metadata"]["name"]
+        logs_response = self._kube_request(
+            "GET",
+            f"/api/v1/namespaces/{self.kube_namespace}/pods/{pod_name}/log",
+            headers={"Accept": "text/plain"},
+        )
+        return logs_response.text
 
     def _make_document(self, content: str, meta: dict[str, Any], key: str | None = None) -> Document:
         doc_meta = dict(meta)
@@ -785,6 +1212,46 @@ class RagApp:
 
         if path == "/documents" and method == "GET":
             return JSONResponse(await self.list_documents())
+
+        if path == "/benchmark/run" and method == "POST":
+            try:
+                payload = await request.json()
+            except ValueError:
+                payload = {}
+            try:
+                result = self._benchmark_run(payload or {})
+                return JSONResponse(result)
+            except ValueError as exc:
+                return JSONResponse({"error": str(exc)}, status_code=400)
+            except Exception as exc:  # noqa: BLE001
+                self.logger.error("benchmark_run_failed", extra={"error": str(exc)})
+                return JSONResponse({"error": "benchmark_run_failed"}, status_code=500)
+
+        if path == "/benchmark/status" and method == "GET":
+            job_name = request.query_params.get("job")
+            if not job_name:
+                return JSONResponse({"error": "job is required"}, status_code=400)
+            try:
+                result = self._benchmark_status(job_name)
+                return JSONResponse(result)
+            except ValueError as exc:
+                return JSONResponse({"error": str(exc)}, status_code=400)
+            except Exception as exc:  # noqa: BLE001
+                self.logger.error("benchmark_status_failed", extra={"error": str(exc)})
+                return JSONResponse({"error": "benchmark_status_failed"}, status_code=500)
+
+        if path == "/benchmark/logs" and method == "GET":
+            job_name = request.query_params.get("job")
+            if not job_name:
+                return JSONResponse({"error": "job is required"}, status_code=400)
+            try:
+                logs = self._benchmark_logs(job_name)
+                return PlainTextResponse(logs)
+            except ValueError as exc:
+                return JSONResponse({"error": str(exc)}, status_code=400)
+            except Exception as exc:  # noqa: BLE001
+                self.logger.error("benchmark_logs_failed", extra={"error": str(exc)})
+                return JSONResponse({"error": "benchmark_logs_failed"}, status_code=500)
 
         if path == "/query" and method == "POST":
             payload = await request.json()

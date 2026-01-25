@@ -9,6 +9,11 @@ backend:
     repository: rag-ray-backend
     tag: "0.1.0"
   replicas: 1
+  serviceAccount:
+    create: true
+    name: ""
+  rbac:
+    create: true
   service:
     port: 8000
   health:
