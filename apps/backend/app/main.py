@@ -723,11 +723,18 @@ class RagApp:
         if not pods:
             raise ValueError("benchmark_logs_not_ready")
         pod_name = pods[0]["metadata"]["name"]
-        logs_response = self._kube_request(
-            "GET",
-            f"/api/v1/namespaces/{self.kube_namespace}/pods/{pod_name}/log",
-            headers={"Accept": "*/*"},
+        # Fetch logs directly without _kube_request to avoid default Accept header issues.
+        # The /log endpoint returns plain text which some K8s distributions reject with
+        # Accept: application/json or Accept: */*.
+        log_url = f"{self._kube_api['base_url']}/api/v1/namespaces/{self.kube_namespace}/pods/{pod_name}/log"
+        logs_response = requests.get(
+            log_url,
+            headers={"Authorization": f"Bearer {self._kube_api['token']}"},
+            timeout=15,
+            verify=self._kube_api["verify"],
         )
+        if not logs_response.ok:
+            raise ValueError(f"kubernetes_api_error: {logs_response.status_code} {logs_response.text}")
         return logs_response.text
 
     def _make_document(self, content: str, meta: dict[str, Any], key: str | None = None) -> Document:
