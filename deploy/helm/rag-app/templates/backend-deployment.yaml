@@ -40,7 +40,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: BENCH_TARGET_URL
-              value: "http://{{ include \"rag-app.fullname\" . }}-backend:{{ .Values.backend.service.port }}/query/stream"
+              value: {{ printf "http://%s-backend:%v/query/stream" (include "rag-app.fullname" .) .Values.backend.service.port | quote }}
             {{- toYaml .Values.backend.env | nindent 12 }}
           resources:
             requests:
