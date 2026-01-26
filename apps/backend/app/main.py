@@ -515,14 +515,31 @@ class RagApp:
         }
         if headers:
             request_headers.update(headers)
-        response = requests.request(
-            method,
-            url,
-            headers=request_headers,
-            json=json_body,
-            timeout=15,
-            verify=self._kube_api["verify"],
-        )
+
+        # Determine how to send the body:
+        # - If a custom Content-Type is provided (e.g., merge-patch), use data= to avoid
+        #   requests overriding Content-Type with application/json.
+        # - Otherwise, use json= for automatic serialization.
+        custom_content_type = headers and "Content-Type" in headers
+        if json_body is not None and custom_content_type:
+            body_data = json.dumps(json_body)
+            response = requests.request(
+                method,
+                url,
+                headers=request_headers,
+                data=body_data,
+                timeout=15,
+                verify=self._kube_api["verify"],
+            )
+        else:
+            response = requests.request(
+                method,
+                url,
+                headers=request_headers,
+                json=json_body,
+                timeout=15,
+                verify=self._kube_api["verify"],
+            )
         if not response.ok:
             raise ValueError(f"kubernetes_api_error: {response.status_code} {response.text}")
         return response

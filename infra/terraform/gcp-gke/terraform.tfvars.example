@@ -1,0 +1,23 @@
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+# zone     = "us-central1-a"
+
+cluster_name = "rag-ray-haystack"
+k8s_version  = "1.29"
+
+network    = "default"
+subnetwork = "default"
+
+cpu_machine_type      = "e2-standard-4"
+cpu_node_count        = 2
+cpu_autoscaler_enabled = false
+cpu_autoscaler_min    = 2
+cpu_autoscaler_max    = 4
+
+gpu_machine_type      = "n1-standard-8"
+gpu_type              = "nvidia-tesla-t4"
+gpu_count             = 1
+gpu_node_count         = 1
+gpu_autoscaler_enabled = false
+gpu_autoscaler_min    = 1
+gpu_autoscaler_max    = 2
