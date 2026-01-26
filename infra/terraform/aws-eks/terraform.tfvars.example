@@ -1,0 +1,22 @@
+region       = "us-east-1"
+cluster_name = "rag-ray-haystack"
+k8s_version  = "1.29"
+
+# Optional: set if you want a non-default VPC/subnets.
+# vpc_id     = "vpc-xxxxxxxx"
+# subnet_ids = ["subnet-xxxxxxxx", "subnet-yyyyyyyy"]
+
+# Optional: set if you want a specific AWS CLI profile.
+# aws_profile = "default"
+
+cpu_instance_type       = "m5.large"
+cpu_node_count          = 2
+cpu_autoscaler_enabled  = false
+cpu_autoscaler_min      = 2
+cpu_autoscaler_max      = 4
+
+gpu_instance_type       = "g4dn.xlarge"
+gpu_node_count          = 1
+gpu_autoscaler_enabled  = false
+gpu_autoscaler_min      = 1
+gpu_autoscaler_max      = 2
