@@ -709,7 +709,6 @@ class RagApp:
         logs_response = self._kube_request(
             "GET",
             f"/api/v1/namespaces/{self.kube_namespace}/pods/{pod_name}/log",
-            headers={"Accept": "text/plain"},
         )
         return logs_response.text
 
