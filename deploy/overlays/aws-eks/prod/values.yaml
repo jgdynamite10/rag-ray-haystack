@@ -6,7 +6,7 @@ frontend:
     type: LoadBalancer
 qdrant:
   persistence:
-    storageClassName: gp3
+    storageClassName: gp2
 kuberay:
   worker:
     replicas: 2
