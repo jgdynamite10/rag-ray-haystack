@@ -394,7 +394,58 @@ kubectl get nodes
 
 Expected: 3 nodes (2 CPU + 1 GPU) in `Ready` status.
 
-### 6. Install dependencies
+### 6. Install EBS CSI Driver (required for Qdrant storage)
+
+EKS requires the EBS CSI driver addon with an IAM role for persistent volumes:
+
+```bash
+# Get OIDC provider ID
+OIDC_ID=$(aws eks describe-cluster --name rag-ray-haystack --region us-east-1 \
+  --query 'cluster.identity.oidc.issuer' --output text | cut -d'/' -f5)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# Create OIDC provider (if not exists)
+aws iam create-open-id-connect-provider \
+  --url https://oidc.eks.us-east-1.amazonaws.com/id/$OIDC_ID \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list 9e99a48a9960b14926bb7f3b02e22da2b0ab7280 2>/dev/null || true
+
+# Create trust policy for EBS CSI
+cat > /tmp/ebs-trust.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Federated": "arn:aws:iam::${ACCOUNT_ID}:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/${OIDC_ID}"},
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "oidc.eks.us-east-1.amazonaws.com/id/${OIDC_ID}:aud": "sts.amazonaws.com",
+        "oidc.eks.us-east-1.amazonaws.com/id/${OIDC_ID}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+      }
+    }
+  }]
+}
+EOF
+
+# Create IAM role
+aws iam create-role \
+  --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --assume-role-policy-document file:///tmp/ebs-trust.json 2>/dev/null || true
+
+aws iam attach-role-policy \
+  --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy 2>/dev/null || true
+
+# Install EBS CSI addon
+aws eks create-addon \
+  --cluster-name rag-ray-haystack \
+  --addon-name aws-ebs-csi-driver \
+  --service-account-role-arn arn:aws:iam::${ACCOUNT_ID}:role/AmazonEKS_EBS_CSI_DriverRole \
+  --region us-east-1
+```
+
+### 7. Install Kubernetes dependencies
 
 ```bash
 # KubeRay operator
@@ -413,7 +464,7 @@ helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
   --namespace node-feature-discovery --create-namespace
 ```
 
-### 7. Deploy app
+### 8. Deploy app
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
@@ -429,7 +480,7 @@ helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --set frontend.image.tag=$IMAGE_TAG
 ```
 
-### 8. Verify workloads
+### 9. Verify workloads
 
 ```bash
 # Watch pods start (vLLM takes 2-3 min to download model)
@@ -454,7 +505,7 @@ NAME                       TYPE           EXTERNAL-IP
 rag-app-rag-app-frontend   LoadBalancer   <public-ip>
 ```
 
-### 9. Access the UI
+### 10. Access the UI
 
 Get the LoadBalancer external IP:
 ```bash
@@ -463,15 +514,48 @@ kubectl -n rag-app get svc rag-app-rag-app-frontend -o jsonpath='{.status.loadBa
 
 Open `http://<hostname>/` in your browser.
 
-### 10. Destroy (when done)
+### 11. Destroy (when done)
 
 ```bash
 # Delete app
 helm -n rag-app uninstall rag-app
 
+# Delete EBS CSI addon
+aws eks delete-addon --cluster-name rag-ray-haystack --addon-name aws-ebs-csi-driver --region us-east-1
+
+# Delete IAM role (optional cleanup)
+aws iam detach-role-policy --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+aws iam delete-role --role-name AmazonEKS_EBS_CSI_DriverRole
+
 # Delete cluster
 terraform -chdir=infra/terraform/aws-eks destroy
 ```
+
+### Troubleshooting
+
+**"401 Unauthorized" when running kubectl**
+EKS requires explicit access entries. See step 4 for IAM access configuration.
+
+**Qdrant PVC stuck in Pending**
+Ensure the EBS CSI driver addon is installed with proper IAM role (step 6).
+
+**vLLM pod fails with "no space left on device"**
+The GPU node needs 100GB disk for the vLLM image. The Terraform config uses `block_device_mappings` 
+to provision 100GB gp3 volumes. If you see this error, verify the GPU node has sufficient ephemeral storage:
+```bash
+kubectl get nodes -o custom-columns='NAME:.metadata.name,EPHEMERAL:.status.allocatable.ephemeral-storage'
+```
+GPU node should show ~90GB+ allocatable.
+
+**"VcpuLimitExceeded" during node group creation**
+Your AWS account has a vCPU quota limit for G-type instances. Either:
+- Request quota increase (see Prerequisites step 4)
+- Terminate existing GPU instances to free quota
+
+**Ray worker pending (Insufficient cpu)**
+This is expected with the default cluster size. The Ray worker is optional for basic RAG functionality.
+To fix, increase CPU node count in `terraform.tfvars` or use larger instance types.
 
 ---
 

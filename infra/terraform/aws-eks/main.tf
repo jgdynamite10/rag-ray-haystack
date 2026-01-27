@@ -66,7 +66,6 @@ module "eks" {
       max_size       = local.gpu_max
       desired_size   = var.gpu_node_count
       ami_type       = "AL2023_x86_64_NVIDIA"
-      disk_size      = 100  # vLLM image is ~20GB+, needs larger disk
       labels = {
         "node.kubernetes.io/role"  = "gpu"
         "nvidia.com/gpu.present"   = "true"
@@ -76,6 +75,17 @@ module "eks" {
         value  = "true"
         effect = "NO_SCHEDULE"
       }]
+      # vLLM image is ~20GB+, needs larger root disk
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 100
+            volume_type           = "gp3"
+            delete_on_termination = true
+          }
+        }
+      }
     }
   }
 }
