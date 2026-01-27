@@ -141,7 +141,7 @@ fi
 # Get results
 echo "" >&2
 echo "Fetching results..." >&2
-RESULT=$(kubectl logs job/netprobe-iperf3-client --namespace="$NAMESPACE" 2>/dev/null | grep -A 1000 '^{' | head -n -0)
+RESULT=$(kubectl logs job/netprobe-iperf3-client --namespace="$NAMESPACE" 2>/dev/null | grep -A 1000 '^{')
 
 # Add metadata
 RESULT_WITH_META=$(echo "$RESULT" | jq --arg sn "$SERVER_NODE" --arg cn "$CLIENT_NODE" \

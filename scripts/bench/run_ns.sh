@@ -222,12 +222,22 @@ if [[ -z "$LOGS" ]]; then
     exit 1
 fi
 
-# Extract JSON result from logs (last JSON object)
-RESULT=$(echo "$LOGS" | grep -E '^\s*\{' | tail -1)
+# Extract JSON result from logs
+# The benchmark output ends with pretty-printed JSON starting with lone { and ending with }
+# Simple approach: find line numbers for last { and }, extract between them
+LAST_OPEN=$(echo "$LOGS" | grep -n '^{$' | tail -1 | cut -d: -f1)
+LAST_CLOSE=$(echo "$LOGS" | grep -n '^}$' | tail -1 | cut -d: -f1)
 
-if [[ -z "$RESULT" ]]; then
-    echo "Warning: Could not extract JSON from logs, saving raw output" >&2
-    RESULT="$LOGS"
+if [[ -n "$LAST_OPEN" ]] && [[ -n "$LAST_CLOSE" ]] && [[ "$LAST_CLOSE" -gt "$LAST_OPEN" ]]; then
+    RESULT=$(echo "$LOGS" | sed -n "${LAST_OPEN},${LAST_CLOSE}p")
+fi
+
+# Validate JSON
+if [[ -z "$RESULT" ]] || ! echo "$RESULT" | jq . &>/dev/null; then
+    echo "Warning: Could not extract valid JSON from logs" >&2
+    echo "$LOGS" > "${OUTPUT_FILE%.json}.raw.txt"
+    echo "Raw logs saved to: ${OUTPUT_FILE%.json}.raw.txt" >&2
+    RESULT="{}"
 fi
 
 # Add metadata
