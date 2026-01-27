@@ -1,0 +1,70 @@
+---
+# iperf3 Server Deployment for East-West Network Probing
+# Runs iperf3 in server mode to receive bandwidth/latency tests
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netprobe-iperf3-server
+  namespace: default
+  labels:
+    app: netprobe-iperf3-server
+    component: network-probe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: netprobe-iperf3-server
+  template:
+    metadata:
+      labels:
+        app: netprobe-iperf3-server
+        component: network-probe
+    spec:
+      # Prefer scheduling on CPU nodes (not GPU)
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: nvidia.com/gpu.present
+                    operator: DoesNotExist
+      containers:
+        - name: iperf3-server
+          image: networkstatic/iperf3:latest
+          args:
+            - "-s"  # Server mode
+            - "-J"  # JSON output (for logs)
+          ports:
+            - containerPort: 5201
+              protocol: TCP
+            - containerPort: 5201
+              protocol: UDP
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: netprobe-iperf3-server
+  namespace: default
+  labels:
+    app: netprobe-iperf3-server
+spec:
+  selector:
+    app: netprobe-iperf3-server
+  ports:
+    - name: tcp
+      port: 5201
+      protocol: TCP
+      targetPort: 5201
+    - name: udp
+      port: 5201
+      protocol: UDP
+      targetPort: 5201
+  type: ClusterIP

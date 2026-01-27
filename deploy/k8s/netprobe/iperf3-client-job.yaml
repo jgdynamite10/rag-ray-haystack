@@ -1,0 +1,134 @@
+---
+# iperf3 Client Job for East-West Network Probing
+# Runs bandwidth and latency tests against the iperf3 server
+# IMPORTANT: Uses podAntiAffinity to ensure it runs on a DIFFERENT node than server
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: netprobe-iperf3-client
+  namespace: default
+  labels:
+    app: netprobe-iperf3-client
+    component: network-probe
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 300  # Clean up after 5 minutes
+  template:
+    metadata:
+      labels:
+        app: netprobe-iperf3-client
+        component: network-probe
+    spec:
+      restartPolicy: Never
+      
+      # CRITICAL: Must run on a DIFFERENT node than the server
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: netprobe-iperf3-server
+              topologyKey: kubernetes.io/hostname
+        # Also prefer CPU nodes
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: nvidia.com/gpu.present
+                    operator: DoesNotExist
+      
+      containers:
+        - name: iperf3-client
+          image: networkstatic/iperf3:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              
+              SERVER="netprobe-iperf3-server.default.svc.cluster.local"
+              
+              # Get node info
+              CLIENT_NODE="${NODE_NAME:-unknown}"
+              
+              echo "Starting East-West network probe..." >&2
+              echo "Client node: $CLIENT_NODE" >&2
+              echo "Server: $SERVER" >&2
+              echo "" >&2
+              
+              # Wait for server to be ready
+              echo "Waiting for server..." >&2
+              for i in $(seq 1 30); do
+                if nc -z $SERVER 5201 2>/dev/null; then
+                  echo "Server is ready" >&2
+                  break
+                fi
+                sleep 1
+              done
+              
+              # Run TCP bandwidth test (10 seconds)
+              echo "Running TCP bandwidth test..." >&2
+              TCP_RESULT=$(iperf3 -c $SERVER -t 10 -J 2>/dev/null || echo '{"error": "tcp_test_failed"}')
+              
+              # Run UDP test for jitter/loss (5 seconds, 100Mbps target)
+              echo "Running UDP jitter test..." >&2
+              UDP_RESULT=$(iperf3 -c $SERVER -u -b 100M -t 5 -J 2>/dev/null || echo '{"error": "udp_test_failed"}')
+              
+              # Run ping for latency (best effort, may not work in all clusters)
+              echo "Running ping latency test..." >&2
+              PING_RESULT=$(ping -c 10 -q $SERVER 2>/dev/null | tail -1 || echo "ping_unavailable")
+              
+              # Parse ping results if available
+              if echo "$PING_RESULT" | grep -q "min/avg/max"; then
+                PING_MIN=$(echo "$PING_RESULT" | cut -d'=' -f2 | cut -d'/' -f1 | tr -d ' ')
+                PING_AVG=$(echo "$PING_RESULT" | cut -d'=' -f2 | cut -d'/' -f2)
+                PING_MAX=$(echo "$PING_RESULT" | cut -d'=' -f2 | cut -d'/' -f3)
+                PING_JSON="{\"min_ms\": $PING_MIN, \"avg_ms\": $PING_AVG, \"max_ms\": $PING_MAX}"
+              else
+                PING_JSON="{\"error\": \"ping_unavailable\"}"
+              fi
+              
+              # Extract key metrics from iperf3 results
+              TCP_BW_MBPS=$(echo "$TCP_RESULT" | grep -o '"bits_per_second":[^,}]*' | head -1 | cut -d':' -f2 | awk '{printf "%.2f", $1/1000000}')
+              TCP_RETRANS=$(echo "$TCP_RESULT" | grep -o '"retransmits":[^,}]*' | tail -1 | cut -d':' -f2)
+              
+              UDP_BW_MBPS=$(echo "$UDP_RESULT" | grep -o '"bits_per_second":[^,}]*' | head -1 | cut -d':' -f2 | awk '{printf "%.2f", $1/1000000}')
+              UDP_JITTER=$(echo "$UDP_RESULT" | grep -o '"jitter_ms":[^,}]*' | cut -d':' -f2)
+              UDP_LOSS=$(echo "$UDP_RESULT" | grep -o '"lost_percent":[^,}]*' | cut -d':' -f2)
+              
+              # Output consolidated JSON
+              cat <<RESULT_EOF
+              {
+                "probe_type": "east_west",
+                "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+                "client_node": "$CLIENT_NODE",
+                "server_endpoint": "$SERVER",
+                "tcp_bandwidth": {
+                  "mbps": ${TCP_BW_MBPS:-0},
+                  "retransmits": ${TCP_RETRANS:-0},
+                  "duration_sec": 10
+                },
+                "udp_test": {
+                  "mbps": ${UDP_BW_MBPS:-0},
+                  "jitter_ms": ${UDP_JITTER:-0},
+                  "loss_percent": ${UDP_LOSS:-0},
+                  "duration_sec": 5
+                },
+                "ping_latency": $PING_JSON,
+                "raw_tcp_result": $TCP_RESULT,
+                "raw_udp_result": $UDP_RESULT
+              }
+              RESULT_EOF
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
