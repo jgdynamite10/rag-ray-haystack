@@ -723,14 +723,13 @@ class RagApp:
         if not pods:
             raise ValueError("benchmark_logs_not_ready")
         pod_name = pods[0]["metadata"]["name"]
-        # Fetch logs directly - K8s API requires explicit Accept header.
-        # Some distributions (e.g., LKE) reject Accept: */* for the /log endpoint.
+        # Fetch logs - LKE requires Accept header from allowed list even for plain text logs.
         log_url = f"{self._kube_api['base_url']}/api/v1/namespaces/{self.kube_namespace}/pods/{pod_name}/log"
         logs_response = requests.get(
             log_url,
             headers={
                 "Authorization": f"Bearer {self._kube_api['token']}",
-                "Accept": "text/plain, */*;q=0.9",
+                "Accept": "application/json",
             },
             timeout=30,
             verify=self._kube_api["verify"],
