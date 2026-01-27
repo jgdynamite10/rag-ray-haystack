@@ -10,6 +10,10 @@ qdrant:
     storageClassName: standard-rwo
 
 vllm:
+  model: "Qwen/Qwen2.5-3B-Instruct"
+  servedModelName: "rag-default"
+  maxModelLen: "2048"
+  gpuMemoryUtilization: "0.85"
   nodeSelector:
     nvidia.com/gpu.present: "true"
   tolerations:

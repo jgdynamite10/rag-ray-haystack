@@ -130,6 +130,34 @@ Expected behavior: `meta` → repeated `token` → `done` events.
 
 This assumes you have GCP credentials configured (`gcloud auth login`).
 
+### Prerequisites
+
+1. **Google Cloud CLI** installed:
+   ```bash
+   brew install --cask google-cloud-sdk
+   gcloud --version
+   ```
+
+2. **GKE auth plugin** (required for kubectl):
+   ```bash
+   gcloud components install gke-gcloud-auth-plugin
+   ```
+   
+   If kubectl still fails with "gke-gcloud-auth-plugin not found", add the SDK bin to your PATH:
+   ```bash
+   # Find SDK location
+   gcloud info --format="value(installation.sdk_root)"
+   
+   # Add to PATH (add to ~/.zshrc for persistence)
+   export PATH="$(gcloud info --format='value(installation.sdk_root)')/bin:$PATH"
+   ```
+
+3. **GPU quota** — new GCP projects have 0 GPU quota by default. Request increase:
+   - Go to **GCP Console → IAM & Admin → Quotas**
+   - Filter: `Compute Engine API`, metric `GPUS_ALL_REGIONS`
+   - Request increase to at least 1 (or 2 for headroom)
+   - Approval typically takes 5-15 minutes
+
 ### 1. Create GCP project and enable APIs
 
 ```bash
@@ -150,64 +178,118 @@ gcloud config set project rag-ray-haystack
 gcloud services enable container.googleapis.com compute.googleapis.com
 ```
 
-### 2. Configure Terraform
+### 2. Authenticate for Terraform
+
+```bash
+gcloud auth application-default login
+```
+
+### 3. Configure Terraform
 
 ```bash
 cp infra/terraform/gcp-gke/terraform.tfvars.example infra/terraform/gcp-gke/terraform.tfvars
 # Edit terraform.tfvars and set your project_id
 ```
 
-### 3. Create the cluster
+### 4. Create the cluster
 
 ```bash
+cd /path/to/rag-ray-haystack  # Must be in repo root
 terraform -chdir=infra/terraform/gcp-gke init
 terraform -chdir=infra/terraform/gcp-gke apply
 ```
 
-### 4. Fetch kubeconfig and install dependencies
+### 5. Configure kubectl access
 
 ```bash
-make kubeconfig PROVIDER=gcp-gke ENV=dev
-export KUBECONFIG=~/.kube/gcp-gke-dev-config.yaml
+# Use gcloud to configure kubectl (recommended over Terraform-generated kubeconfig)
+gcloud container clusters get-credentials rag-ray-haystack \
+  --zone us-central1-a \
+  --project rag-ray-haystack
+
+# Verify connection
+kubectl get nodes
 ```
 
-Install KubeRay operator:
+### 6. Install dependencies
 
 ```bash
-KUBECONFIG_PATH="$KUBECONFIG" make install-kuberay PROVIDER=gcp-gke ENV=dev
-```
-
-Install GPU Operator + Node Feature Discovery:
-
-```bash
-helm repo add nvidia-gpu https://nvidia.github.io/gpu-operator
-helm repo add nfd https://kubernetes-sigs.github.io/node-feature-discovery/charts
+# KubeRay operator
+helm repo add kuberay https://ray-project.github.io/kuberay-helm/
 helm repo update
-helm upgrade --install gpu-operator nvidia-gpu/gpu-operator \
-  --namespace gpu-operator --create-namespace
-helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
-  --namespace node-feature-discovery --create-namespace
+helm upgrade --install kuberay-operator kuberay/kuberay-operator \
+  --namespace kuberay-system --create-namespace
+
+# Verify GPU node has label
+kubectl get nodes -L nvidia.com/gpu.present
 ```
 
-### 5. Deploy app images
+Note: GKE automatically installs GPU drivers. The GPU Operator and NFD are optional but can be installed for consistency with other providers.
+
+### 7. Deploy app images
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
 export IMAGE_TAG=0.3.0
-make deploy PROVIDER=gcp-gke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
+
+helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
+  --create-namespace \
+  -f deploy/helm/rag-app/values.yaml \
+  -f deploy/overlays/gcp-gke/dev/values.yaml \
+  --set backend.image.repository=$IMAGE_REGISTRY/rag-ray-backend \
+  --set frontend.image.repository=$IMAGE_REGISTRY/rag-ray-frontend \
+  --set backend.image.tag=$IMAGE_TAG \
+  --set frontend.image.tag=$IMAGE_TAG
 ```
 
-### 6. Verify workloads
+### 8. Verify workloads
 
 ```bash
-KUBECONFIG_PATH="$KUBECONFIG" make verify PROVIDER=gcp-gke ENV=dev NAMESPACE=rag-app RELEASE=rag-app
+# Watch pods start (vLLM takes 1-2 min to load 3B model)
+kubectl -n rag-app get pods -w
+
+# Check services
 kubectl -n rag-app get svc
+
+# Verify vLLM is ready
+kubectl -n rag-app logs deployment/rag-app-rag-app-vllm --tail=10
+# Look for: "Uvicorn running on http://0.0.0.0:8000"
 ```
 
-### 7. Destroy (when done)
+### 9. Access the UI
 
 ```bash
-make destroy PROVIDER=gcp-gke ENV=dev
+kubectl -n rag-app get svc rag-app-rag-app-frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+```
+
+Open `http://<ip>/` in your browser.
+
+### 10. Destroy (when done)
+
+```bash
+# Delete app
+helm -n rag-app uninstall rag-app
+
+# Delete cluster
+terraform -chdir=infra/terraform/gcp-gke destroy
+```
+
+### Troubleshooting
+
+**"gke-gcloud-auth-plugin not found"**
+```bash
+gcloud components install gke-gcloud-auth-plugin
+export PATH="$(gcloud info --format='value(installation.sdk_root)')/bin:$PATH"
+```
+
+**"GPUS_ALL_REGIONS quota exceeded"**
+Request GPU quota increase via GCP Console (see Prerequisites above).
+
+**vLLM pod keeps restarting (OOMKilled)**
+The GCP overlay uses the smaller 3B model. If you see OOM errors, check that the overlay is applied:
+```bash
+kubectl -n rag-app logs deployment/rag-app-rag-app-vllm | grep "model="
+# Should show: model='Qwen/Qwen2.5-3B-Instruct'
 ```
 
 ---
