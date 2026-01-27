@@ -4,7 +4,7 @@
 
 ```bash
 export IMAGE_REGISTRY=registry.example.com/your-team
-export IMAGE_TAG=0.1.0
+export IMAGE_TAG=0.3.0
 ./scripts/build-images.sh
 ./scripts/push-images.sh
 ```

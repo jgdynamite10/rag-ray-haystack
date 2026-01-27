@@ -74,7 +74,7 @@ KUBECONFIG_PATH="$KUBECONFIG" make fix-gpu PROVIDER=akamai-lke ENV=dev
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
-export IMAGE_TAG=0.2.11
+export IMAGE_TAG=0.3.0
 make deploy PROVIDER=akamai-lke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
 ```
 
@@ -193,7 +193,7 @@ helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
-export IMAGE_TAG=0.2.11
+export IMAGE_TAG=0.3.0
 make deploy PROVIDER=gcp-gke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
 ```
 
@@ -335,7 +335,7 @@ helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
-export IMAGE_TAG=0.2.11
+export IMAGE_TAG=0.3.0
 
 helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --create-namespace \
@@ -416,7 +416,7 @@ make install-kuberay PROVIDER=akamai-lke ENV=dev
 
 ```bash
 IMAGE_REGISTRY=registry.example.com/your-team \
-IMAGE_TAG=0.1.0 \
+IMAGE_TAG=0.3.0 \
 make deploy PROVIDER=aws-eks ENV=prod RELEASE=rag-app NAMESPACE=rag-app
 ```
 

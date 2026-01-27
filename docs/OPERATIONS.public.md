@@ -5,7 +5,7 @@ This is a public-safe runbook summary. Use placeholders for sensitive values.
 ## Deploy
 
 ```bash
-make deploy PROVIDER=<provider> ENV=<env> IMAGE_REGISTRY=ghcr.io/<owner> IMAGE_TAG=0.2.2
+make deploy PROVIDER=<provider> ENV=<env> IMAGE_REGISTRY=ghcr.io/<owner> IMAGE_TAG=0.3.0
 ```
 
 ## Verify

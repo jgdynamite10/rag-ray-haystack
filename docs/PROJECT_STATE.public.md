@@ -8,7 +8,7 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 - Deployment: Helm chart for backend, frontend, Qdrant, RayService, and vLLM.
 - GPU: vLLM runs on GPU nodes when `nvidia.com/gpu` capacity is available.
 - Verification: vLLM streaming check passes on dev; backend pods Ready with service endpoints.
-- Images: GHCR images published for backend/frontend (tag `0.2.2`).
+- Images: GHCR images published for backend/frontend (tag `0.3.0`).
 
 ## Benchmark results (dev, in-cluster)
 
@@ -44,4 +44,4 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 - Namespace: <namespace>
 - Release: <release>
 - Image registry: ghcr.io/<owner>
-- Image tag: 0.2.2
+- Image tag: 0.3.0
