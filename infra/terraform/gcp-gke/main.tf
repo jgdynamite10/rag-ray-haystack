@@ -50,7 +50,7 @@ resource "google_container_node_pool" "cpu" {
       disable-legacy-endpoints = "true"
     }
     labels = {
-      "node.kubernetes.io/role" = "cpu"
+      "workload-type" = "cpu"
     }
   }
 }
@@ -85,8 +85,8 @@ resource "google_container_node_pool" "gpu" {
       count = var.gpu_count
     }
     labels = {
-      "node.kubernetes.io/role" = "gpu"
-      "nvidia.com/gpu.present"  = "true"
+      "workload-type"          = "gpu"
+      "nvidia.com/gpu.present" = "true"
     }
     taint {
       key    = "nvidia.com/gpu"

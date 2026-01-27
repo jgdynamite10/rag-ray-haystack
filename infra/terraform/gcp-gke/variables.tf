@@ -24,7 +24,7 @@ variable "cluster_name" {
 variable "k8s_version" {
   description = "Kubernetes version for GKE."
   type        = string
-  default     = "1.29"
+  default     = "1.34"
 }
 
 variable "network" {
@@ -72,13 +72,13 @@ variable "cpu_autoscaler_max" {
 variable "gpu_machine_type" {
   description = "Machine type for GPU node pool."
   type        = string
-  default     = "n1-standard-8"
+  default     = "g2-standard-8"
 }
 
 variable "gpu_type" {
   description = "GPU accelerator type."
   type        = string
-  default     = "nvidia-tesla-t4"
+  default     = "nvidia-l4"
 }
 
 variable "gpu_count" {
