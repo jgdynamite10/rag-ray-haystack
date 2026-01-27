@@ -7,7 +7,7 @@ frontend:
 
 qdrant:
   persistence:
-    storageClassName: gp3
+    storageClassName: gp2
 
 vllm:
   nodeSelector:
