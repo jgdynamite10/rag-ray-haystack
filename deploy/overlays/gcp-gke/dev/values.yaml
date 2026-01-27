@@ -1,3 +1,27 @@
+global:
+  provider: "gcp-gke"
+
+frontend:
+  service:
+    type: LoadBalancer
+
 qdrant:
   persistence:
     storageClassName: standard-rwo
+
+vllm:
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+  tolerations:
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoSchedule"
+  resources:
+    requests:
+      cpu: "1"
+      memory: "4Gi"
+      nvidia.com/gpu: "1"
+    limits:
+      cpu: "2"
+      memory: "8Gi"
+      nvidia.com/gpu: "1"

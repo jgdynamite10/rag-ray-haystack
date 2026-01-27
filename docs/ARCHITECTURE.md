@@ -59,3 +59,13 @@ Streaming metrics:
 
 - Helm chart `deploy/helm/rag-app` installs backend, frontend, Qdrant, and RayService.
 - Kustomize overlays in `deploy/overlays` customize storage class per provider.
+
+## GPU instances by provider
+
+All providers use comparable Ada Lovelace architecture GPUs:
+
+| Provider | Instance | GPU | vRAM |
+|----------|----------|-----|------|
+| Akamai | g2-gpu-rtx4000a1-s | RTX 4000 Ada | 20 GB |
+| AWS | g6.xlarge | NVIDIA L4 | 24 GB |
+| GCP | g2-standard-8 | NVIDIA L4 | 24 GB |

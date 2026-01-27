@@ -34,6 +34,17 @@ export default function App() {
   const [ttftMs, setTtftMs] = useState(null);
   const [tokensPerSecond, setTokensPerSecond] = useState(null);
   const [rollingMetrics, setRollingMetrics] = useState([]);
+  const [benchConfig, setBenchConfig] = useState({
+    concurrency: 10,
+    requests: 100,
+    timeout: 120,
+    show_errors: 3,
+  });
+  const [benchJob, setBenchJob] = useState(null);
+  const [benchStatus, setBenchStatus] = useState(null);
+  const [benchLogs, setBenchLogs] = useState("");
+  const [benchError, setBenchError] = useState("");
+  const [benchRunning, setBenchRunning] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -427,6 +438,53 @@ export default function App() {
     }
   };
 
+  const handleRunBenchmark = async () => {
+    setBenchRunning(true);
+    setBenchError("");
+    setBenchLogs("");
+    setBenchStatus(null);
+    try {
+      const response = await fetch(`${backendUrl}/benchmark/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(benchConfig),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Benchmark start failed");
+      }
+      const data = await response.json();
+      setBenchJob(data.job_name);
+      let phase = "pending";
+      while (phase === "pending" || phase === "running") {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const statusResponse = await fetch(
+          `${backendUrl}/benchmark/status?job=${encodeURIComponent(data.job_name)}`
+        );
+        if (!statusResponse.ok) {
+          const errorText = await statusResponse.text();
+          throw new Error(errorText || "Benchmark status failed");
+        }
+        const statusData = await statusResponse.json();
+        setBenchStatus(statusData);
+        phase = statusData.phase;
+      }
+      const logsResponse = await fetch(
+        `${backendUrl}/benchmark/logs?job=${encodeURIComponent(data.job_name)}`
+      );
+      if (!logsResponse.ok) {
+        const errorText = await logsResponse.text();
+        throw new Error(errorText || "Benchmark logs failed");
+      }
+      const logsText = await logsResponse.text();
+      setBenchLogs(logsText);
+    } catch (error) {
+      setBenchError(error.message);
+    } finally {
+      setBenchRunning(false);
+    }
+  };
+
   const formatDocLabel = (doc) =>
     doc?.meta?.filename || doc?.meta?.url || doc?.meta?.source || "Document";
 
@@ -660,6 +718,84 @@ export default function App() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="panel">
+        <h2>In-cluster benchmark</h2>
+        <div className="benchmark-grid">
+          <label className="label">
+            Concurrency
+            <input
+              className="input"
+              type="number"
+              min="1"
+              value={benchConfig.concurrency}
+              onChange={(event) =>
+                setBenchConfig((current) => ({
+                  ...current,
+                  concurrency: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+          <label className="label">
+            Requests
+            <input
+              className="input"
+              type="number"
+              min="1"
+              value={benchConfig.requests}
+              onChange={(event) =>
+                setBenchConfig((current) => ({
+                  ...current,
+                  requests: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+          <label className="label">
+            Timeout (seconds)
+            <input
+              className="input"
+              type="number"
+              min="10"
+              value={benchConfig.timeout}
+              onChange={(event) =>
+                setBenchConfig((current) => ({
+                  ...current,
+                  timeout: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+          <label className="label">
+            Show errors
+            <input
+              className="input"
+              type="number"
+              min="0"
+              value={benchConfig.show_errors}
+              onChange={(event) =>
+                setBenchConfig((current) => ({
+                  ...current,
+                  show_errors: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          className="button"
+          onClick={handleRunBenchmark}
+          disabled={benchRunning}
+        >
+          {benchRunning ? "Running..." : "Run benchmark"}
+        </button>
+        {benchJob && <p>Job: {benchJob}</p>}
+        {benchStatus?.phase && <p>Status: {benchStatus.phase}</p>}
+        {benchError && <p className="error">{benchError}</p>}
+        {benchLogs && <pre className="benchmark-logs">{benchLogs}</pre>}
       </section>
     </div>
   );
