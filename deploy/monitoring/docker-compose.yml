@@ -1,0 +1,41 @@
+version: '3.8'
+
+# Central Monitoring Stack for Cross-Provider Benchmarking
+# Grafana connects to Prometheus instances in each Kubernetes cluster
+#
+# Usage:
+#   cp .env.example .env
+#   # Edit .env with your Prometheus endpoints
+#   docker-compose up -d
+#
+# Access Grafana at http://localhost:3000 (admin/admin)
+
+services:
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: rag-central-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=${GRAFANA_ANONYMOUS:-false}
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      # Datasource URLs from environment
+      - PROMETHEUS_LKE_URL=${PROMETHEUS_LKE_URL:-}
+      - PROMETHEUS_EKS_URL=${PROMETHEUS_EKS_URL:-}
+      - PROMETHEUS_GKE_URL=${PROMETHEUS_GKE_URL:-}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../grafana/dashboards:/var/lib/grafana/dashboards:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  grafana-data:

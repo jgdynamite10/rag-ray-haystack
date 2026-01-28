@@ -1,0 +1,92 @@
+# Prometheus Stack Values for RAG Benchmarking
+# Use with: helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -f prometheus-values.yaml
+#
+# Customize the 'provider' and 'cluster' labels for each environment:
+#   --set prometheus.prometheusSpec.externalLabels.provider=akamai-lke
+
+prometheus:
+  prometheusSpec:
+    # External labels added to all metrics (for cross-cluster identification)
+    externalLabels:
+      provider: "akamai-lke"  # Change to: aws-eks, gcp-gke
+      cluster: "rag-ray-dev"
+      region: "us-ord"        # Change to your region
+    
+    # Retention
+    retention: 7d
+    retentionSize: "10GB"
+    
+    # Resource limits
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    
+    # Scrape configs for RAG app (in addition to default configs)
+    additionalScrapeConfigs:
+      - job_name: 'rag-backend'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['rag-app']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: rag-app-backend
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            regex: "8000"
+            action: keep
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+      
+      - job_name: 'vllm'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['rag-app']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: rag-app-vllm
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            regex: "8000"
+            action: keep
+
+  # Expose Prometheus externally (for central Grafana)
+  service:
+    type: LoadBalancer
+    # For internal-only access, use ClusterIP and port-forward or VPN
+    # type: ClusterIP
+
+# Grafana (disabled - using central Grafana instead)
+grafana:
+  enabled: false
+
+# Alertmanager (optional)
+alertmanager:
+  enabled: false
+
+# Node exporter for host metrics
+nodeExporter:
+  enabled: true
+
+# Kube-state-metrics for K8s object metrics
+kubeStateMetrics:
+  enabled: true
+
+# Service monitors for core K8s components
+kubeApiServer:
+  enabled: true
+kubeControllerManager:
+  enabled: false  # Often not accessible in managed K8s
+kubeScheduler:
+  enabled: false  # Often not accessible in managed K8s
+kubeProxy:
+  enabled: true
+kubeEtcd:
+  enabled: false  # Often not accessible in managed K8s

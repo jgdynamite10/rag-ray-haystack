@@ -1,0 +1,50 @@
+# Grafana Datasource Provisioning
+# Auto-configures Prometheus datasources for each cluster
+#
+# Note: URLs are read from environment variables set in docker-compose.yml
+# If a URL is empty, that datasource will show as unreachable (which is fine)
+
+apiVersion: 1
+
+datasources:
+  # Akamai LKE Prometheus
+  - name: Prometheus-LKE
+    type: prometheus
+    access: proxy
+    url: ${PROMETHEUS_LKE_URL}
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: "15s"
+      # Add provider label to all queries from this datasource
+      customQueryParameters: ""
+    # Custom labels for this datasource (shown in dashboard variables)
+    orgId: 1
+    version: 1
+
+  # AWS EKS Prometheus
+  - name: Prometheus-EKS
+    type: prometheus
+    access: proxy
+    url: ${PROMETHEUS_EKS_URL}
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: "15s"
+    orgId: 1
+    version: 1
+
+  # GCP GKE Prometheus
+  - name: Prometheus-GKE
+    type: prometheus
+    access: proxy
+    url: ${PROMETHEUS_GKE_URL}
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: "15s"
+    orgId: 1
+    version: 1

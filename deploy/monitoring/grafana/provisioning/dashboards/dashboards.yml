@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning
+# Auto-imports dashboards from the dashboards folder
+
+apiVersion: 1
+
+providers:
+  - name: 'RAG Benchmarking'
+    orgId: 1
+    folder: 'RAG Benchmarking'
+    folderUid: 'rag-benchmarking'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
