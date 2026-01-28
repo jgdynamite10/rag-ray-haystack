@@ -17,10 +17,10 @@ Use this to systematically close gaps across Phase 1 and Phase 2 features.
 |------|---------|--------|
 | Cost computation script | `scripts/cost/compute_cost.py` | [x] |
 | Cost config example | `cost/cost-config.example.yaml` | [x] |
-| Cost documentation | `docs/COST_MODEL.md` | [ ] |
-| Integration with benchmark output | embedded in JSON | [~] Partial |
+| Cost documentation | `docs/COST_MODEL.md` | [x] Complete |
+| Integration with benchmark output | `run_ns.sh --with-cost` | [x] Complete |
 
-**Gap:** Cost docs missing. Cost script exists but doesn't auto-run with benchmarks.
+**Status:** Complete. Cost model fully documented with cross-provider comparison guide.
 
 ### 1.2 Network Probes
 
@@ -233,7 +233,7 @@ prompts:
 ### Priority 1 (Blocking)
 1. ~~`scripts/benchmark/run_ns.sh`~~ - [x] Complete
 2. ~~`docs/OBSERVABILITY.md`~~ - [x] Complete
-3. `docs/COST_MODEL.md` - Cost computation guide
+3. ~~`docs/COST_MODEL.md`~~ - [x] Complete
 
 ### Priority 2 (Important)
 4. `deploy/netprobe/ew-netprobe-job.yaml` - East-West probe manifest
@@ -253,7 +253,7 @@ prompts:
 ### High Priority
 | Gap | Impact | Effort |
 |-----|--------|--------|
-| Cost documentation | Users can't understand cost model | Low |
+| ~~Cost documentation~~ | ~~Users can't understand cost model~~ | ~~[x] Complete~~ |
 | `max_output_tokens` control | Benchmark results vary with response length | Medium |
 | Prompt token counting | Incomplete token accounting | Medium |
 
