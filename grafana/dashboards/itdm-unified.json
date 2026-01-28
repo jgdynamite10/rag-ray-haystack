@@ -29,7 +29,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -67,7 +67,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -105,7 +105,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -143,7 +143,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -181,7 +181,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -219,7 +219,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -266,7 +266,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -305,7 +305,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -344,7 +344,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -383,7 +383,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -422,7 +422,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -519,19 +519,25 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "histogram_quantile(0.95, rate(rag_ttft_seconds_bucket[5m])) * 1000",
-          "legendFormat": "{{provider}} TTFT p95 (Primary)",
+          "legendFormat": "Akamai LKE",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${ds_compare}" },
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
           "expr": "histogram_quantile(0.95, rate(rag_ttft_seconds_bucket[5m])) * 1000",
-          "legendFormat": "{{provider}} TTFT p95 (Compare)",
+          "legendFormat": "AWS EKS",
           "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "histogram_quantile(0.95, rate(rag_ttft_seconds_bucket[5m])) * 1000",
+          "legendFormat": "GCP GKE",
+          "refId": "C"
         }
       ],
-      "title": "TTFT p95 - Provider Comparison",
+      "title": "TTFT p95 - All Providers",
       "type": "timeseries"
     },
     {
@@ -574,19 +580,25 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "histogram_quantile(0.95, rate(rag_tpot_seconds_bucket[5m])) * 1000",
-          "legendFormat": "{{provider}} TPOT p95 (Primary)",
+          "legendFormat": "Akamai LKE",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${ds_compare}" },
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
           "expr": "histogram_quantile(0.95, rate(rag_tpot_seconds_bucket[5m])) * 1000",
-          "legendFormat": "{{provider}} TPOT p95 (Compare)",
+          "legendFormat": "AWS EKS",
           "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "histogram_quantile(0.95, rate(rag_tpot_seconds_bucket[5m])) * 1000",
+          "legendFormat": "GCP GKE",
+          "refId": "C"
         }
       ],
-      "title": "TPOT p95 - Provider Comparison",
+      "title": "TPOT p95 - All Providers",
       "type": "timeseries"
     },
     {
@@ -629,19 +641,25 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "rate(rag_tokens_total[5m])",
-          "legendFormat": "{{provider}} tokens/sec (Primary)",
+          "legendFormat": "Akamai LKE",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${ds_compare}" },
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
           "expr": "rate(rag_tokens_total[5m])",
-          "legendFormat": "{{provider}} tokens/sec (Compare)",
+          "legendFormat": "AWS EKS",
           "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "rate(rag_tokens_total[5m])",
+          "legendFormat": "GCP GKE",
+          "refId": "C"
         }
       ],
-      "title": "Throughput - Provider Comparison",
+      "title": "Throughput (tokens/sec) - All Providers",
       "type": "timeseries"
     },
     {
@@ -684,19 +702,25 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) * 1000",
-          "legendFormat": "{{provider}} Total Latency p95 (Primary)",
+          "legendFormat": "Akamai LKE",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${ds_compare}" },
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
           "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) * 1000",
-          "legendFormat": "{{provider}} Total Latency p95 (Compare)",
+          "legendFormat": "AWS EKS",
           "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) * 1000",
+          "legendFormat": "GCP GKE",
+          "refId": "C"
         }
       ],
-      "title": "Total Latency p95 - Provider Comparison",
+      "title": "Total Latency p95 - All Providers",
       "type": "timeseries"
     },
     {
@@ -708,7 +732,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_primary}" },
+      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -779,9 +803,9 @@
         "current": { "selected": false, "text": "Prometheus-LKE", "value": "prometheus-lke" },
         "hide": 0,
         "includeAll": false,
-        "label": "Primary Provider",
+        "label": "LKE (Akamai)",
         "multi": false,
-        "name": "ds_primary",
+        "name": "ds_lke",
         "options": [],
         "query": "prometheus",
         "refresh": 1,
@@ -793,9 +817,23 @@
         "current": { "selected": false, "text": "-- None --", "value": "" },
         "hide": 0,
         "includeAll": false,
-        "label": "Compare With",
+        "label": "EKS (AWS)",
         "multi": false,
-        "name": "ds_compare",
+        "name": "ds_eks",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": { "selected": false, "text": "-- None --", "value": "" },
+        "hide": 0,
+        "includeAll": false,
+        "label": "GKE (GCP)",
+        "multi": false,
+        "name": "ds_gke",
         "options": [],
         "query": "prometheus",
         "refresh": 1,
