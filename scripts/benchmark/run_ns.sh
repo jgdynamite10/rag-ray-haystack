@@ -112,14 +112,15 @@ case "$PROVIDER" in
 esac
 
 # Export additional metadata from environment (if set)
+# Only export non-empty values to avoid int() parse errors
 export PROVIDER="${RAG_PROVIDER}"
 export REGION="${RAG_REGION:-}"
-export CLUSTER_LABEL="${CLUSTER_LABEL:-}"
-export GPU_MODEL="${GPU_MODEL:-}"
-export GPU_COUNT="${GPU_COUNT:-}"
-export MODEL_ID="${MODEL_ID:-}"
-export VLLM_VERSION="${VLLM_VERSION:-}"
-export BACKEND_IMAGE_TAG="${BACKEND_IMAGE_TAG:-}"
+[[ -n "${CLUSTER_LABEL:-}" ]] && export CLUSTER_LABEL
+[[ -n "${GPU_MODEL:-}" ]] && export GPU_MODEL
+[[ -n "${GPU_COUNT:-}" ]] && export GPU_COUNT
+[[ -n "${MODEL_ID:-}" ]] && export MODEL_ID
+[[ -n "${VLLM_VERSION:-}" ]] && export VLLM_VERSION
+[[ -n "${BACKEND_IMAGE_TAG:-}" ]] && export BACKEND_IMAGE_TAG
 
 # Create output directory
 OUTPUT_DIR="$PROJECT_ROOT/benchmarks/ns/$RAG_PROVIDER"
