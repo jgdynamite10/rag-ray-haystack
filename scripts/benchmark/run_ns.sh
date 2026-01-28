@@ -18,6 +18,21 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+VENV_DIR="$PROJECT_ROOT/.venv"
+
+# Setup virtual environment if needed
+setup_venv() {
+    if [[ ! -d "$VENV_DIR" ]]; then
+        echo "[run_ns] Creating virtual environment at $VENV_DIR..."
+        python3 -m venv "$VENV_DIR"
+    fi
+    
+    # Install dependencies if httpx not available
+    if ! "$VENV_DIR/bin/python" -c "import httpx" 2>/dev/null; then
+        echo "[run_ns] Installing dependencies..."
+        "$VENV_DIR/bin/pip" install -q -r "$SCRIPT_DIR/requirements.txt"
+    fi
+}
 
 # Colors for output
 RED='\033[0;31m'
@@ -136,9 +151,13 @@ log "URL: $URL"
 log "Requests: $REQUESTS (warmup: $WARMUP, concurrency: $CONCURRENCY)"
 log "Output: $OUTPUT_FILE"
 
+# Setup Python virtual environment
+setup_venv
+PYTHON="$VENV_DIR/bin/python"
+
 # Build command
 CMD=(
-    python3 "$SCRIPT_DIR/stream_bench.py"
+    "$PYTHON" "$SCRIPT_DIR/stream_bench.py"
     --url "$URL"
     --requests "$REQUESTS"
     --concurrency "$CONCURRENCY"
@@ -170,7 +189,7 @@ if $WITH_COST; then
     if [[ -f "$COST_SCRIPT" && -f "$COST_CONFIG" ]]; then
         log "Running cost computation..."
         COST_OUTPUT="${OUTPUT_FILE%.json}-cost.json"
-        python3 "$COST_SCRIPT" "$OUTPUT_FILE" "$COST_CONFIG" --provider "$RAG_PROVIDER" --output "$COST_OUTPUT"
+        "$PYTHON" "$COST_SCRIPT" "$OUTPUT_FILE" "$COST_CONFIG" --provider "$RAG_PROVIDER" --output "$COST_OUTPUT"
         log "Cost results saved to: $COST_OUTPUT"
     else
         warn "Cost script or config not found, skipping cost computation"
