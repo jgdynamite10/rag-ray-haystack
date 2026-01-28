@@ -53,10 +53,12 @@ Use this to systematically close gaps across Phase 1 and Phase 2 features.
 
 | Task | File(s) | Status |
 |------|---------|--------|
-| Grafana dashboards (JSON) | `grafana/dashboards/*.json` | [x] |
-| Central Grafana docker-compose | `deploy/monitoring/docker-compose.yml` | [x] |
-| Prometheus values (per-cluster) | `deploy/monitoring/prometheus-values.yaml` | [x] |
-| Central monitoring docs | `docs/CENTRAL_MONITORING.md` | [x] |
+| Grafana dashboards (JSON) | `grafana/dashboards/*.json` | [x] Complete |
+| Provider comparison dashboard | `grafana/dashboards/provider-comparison.json` | [x] Complete |
+| Central Grafana docker-compose | `deploy/monitoring/docker-compose.yml` | [x] Complete |
+| Prometheus values (per-cluster) | `deploy/monitoring/prometheus-values.yaml` | [x] Complete |
+| Central monitoring docs | `docs/CENTRAL_MONITORING.md` | [x] Complete |
+| Benchmarking guide | `docs/BENCHMARKING.md` | [x] Complete |
 | Observability overview doc | `docs/OBSERVABILITY.md` | [ ] |
 
 **Gap:** `docs/OBSERVABILITY.md` missing - should describe:
@@ -73,12 +75,12 @@ Use this to systematically close gaps across Phase 1 and Phase 2 features.
 
 | Metric | Backend Prometheus | Benchmark Script | Dashboard | Status |
 |--------|-------------------|------------------|-----------|--------|
-| TTFT (Time To First Token) | `rag_ttft_seconds` | [x] `ttft` | [x] | [x] |
-| TPOT (Time Per Output Token) | `rag_tpot_seconds` | [x] `tpot_p50_ms` | [x] | [x] |
-| Total Latency | `rag_latency_seconds` | [x] `latency_p50_ms` | [x] | [x] |
-| Tokens/sec | computed | [x] `avg_tokens_per_sec` | [x] | [x] |
+| TTFT (Time To First Token) | `rag_ttft_seconds` | [x] `ttft` | [x] | [x] Complete |
+| TPOT (Time Per Output Token) | `rag_tpot_seconds` | [x] `tpot_p50_ms` | [x] | [x] Complete (0.3.4) |
+| Total Latency | `rag_latency_seconds` | [x] `latency_p50_ms` | [x] | [x] Complete |
+| Tokens/sec | `rag_tokens_per_second` | [x] `avg_tokens_per_sec` | [x] | [x] Complete |
 
-**Status:** Core ITDMs implemented.
+**Status:** All core ITDMs implemented including Prometheus metrics.
 
 ### 2.2 Output Length Control
 
@@ -115,11 +117,12 @@ request_payload = {"query": prompt, "max_tokens": args.max_output_tokens}
 
 | Task | File(s) | Status |
 |------|---------|--------|
-| `--warmup-requests` argument | `stream_bench.py` | [x] |
-| Separate phase stats in output | JSON output | [x] |
-| Embedded script updated | `main.py` BENCH_SCRIPT | [x] (pending 0.3.2) |
+| `--warmup-requests` argument | `stream_bench.py` | [x] Complete |
+| Separate phase stats in output | JSON output | [x] Complete |
+| Embedded script updated | `main.py` BENCH_SCRIPT | [x] Complete (0.3.2) |
+| API passthrough to Job | `main.py` _benchmark_run | [x] Complete (0.3.3) |
 
-**Status:** Complete (pending image rebuild).
+**Status:** Complete. Warmup phases work in both standalone and in-cluster benchmarks.
 
 ### 2.5 Workload Manifest Schema
 
@@ -302,4 +305,25 @@ Update the following sections:
 1. Current status - reflect actual Phase 1/2 completion
 2. Benchmark results - use Phase 2 format with TPOT
 3. Open items - remove completed, add remaining gaps
-4. Image tag - update to 0.3.2 after deployment
+4. Image tag - update to 0.3.4 after deployment
+
+---
+
+## Recent Progress (Session Log)
+
+| Version | Changes |
+|---------|---------|
+| 0.3.2 | Embedded BENCH_SCRIPT with Phase 2 features (TPOT, warmup, run_metadata) |
+| 0.3.3 | Fixed warmup_requests passthrough in /benchmark/run API |
+| 0.3.4 | Added rag_tpot_seconds Prometheus histogram for Grafana |
+
+**Documentation created:**
+- `docs/BENCHMARKING.md` - Explains all measurement methods (UI, N-S, in-cluster)
+- `docs/CENTRAL_MONITORING.md` - Central Grafana setup guide
+- `docs/IMPLEMENTATION_CHECKLIST.md` - This file
+
+**Dashboards created:**
+- `grafana/dashboards/rag-overview.json` - ITDMs overview
+- `grafana/dashboards/vllm-metrics.json` - vLLM inference metrics
+- `grafana/dashboards/gpu-utilization.json` - DCGM GPU metrics
+- `grafana/dashboards/provider-comparison.json` - Side-by-side provider comparison
