@@ -138,7 +138,7 @@ log "Output: $OUTPUT_FILE"
 
 # Build command
 CMD=(
-    python "$SCRIPT_DIR/stream_bench.py"
+    python3 "$SCRIPT_DIR/stream_bench.py"
     --url "$URL"
     --requests "$REQUESTS"
     --concurrency "$CONCURRENCY"
@@ -170,7 +170,7 @@ if $WITH_COST; then
     if [[ -f "$COST_SCRIPT" && -f "$COST_CONFIG" ]]; then
         log "Running cost computation..."
         COST_OUTPUT="${OUTPUT_FILE%.json}-cost.json"
-        python "$COST_SCRIPT" "$OUTPUT_FILE" "$COST_CONFIG" --provider "$RAG_PROVIDER" --output "$COST_OUTPUT"
+        python3 "$COST_SCRIPT" "$OUTPUT_FILE" "$COST_CONFIG" --provider "$RAG_PROVIDER" --output "$COST_OUTPUT"
         log "Cost results saved to: $COST_OUTPUT"
     else
         warn "Cost script or config not found, skipping cost computation"
