@@ -40,14 +40,15 @@ Use this to systematically close gaps across Phase 1 and Phase 2 features.
 #### North-South (Client-to-Service) Probe
 | Task | File(s) | Status |
 |------|---------|--------|
-| Runner wrapper script | `scripts/benchmark/run_ns.sh` | [ ] |
-| Runner documentation | `docs/NORTH_SOUTH_RUNNER.md` | [ ] |
+| Runner wrapper script | `scripts/benchmark/run_ns.sh` | [x] Complete |
+| Runner documentation | `docs/NORTH_SOUTH_BENCHMARK.md` | [x] Complete |
 
-**Gap:** `run_ns.sh` wrapper missing. Should:
-- Set environment variables for run_metadata
-- Call `stream_bench.py` with standard args
-- Optionally call `compute_cost.py` on output
-- Save results to `benchmarks/ns/<provider>/<timestamp>.json`
+**Status:** Complete. `run_ns.sh` features:
+- Auto-creates Python venv and installs dependencies
+- Sets environment variables for run_metadata
+- Calls `stream_bench.py` with standard args
+- Optionally calls `compute_cost.py` on output (`--with-cost`)
+- Saves results to `benchmarks/ns/<provider>/<timestamp>.json`
 
 ### 1.3 Observability
 
@@ -56,16 +57,15 @@ Use this to systematically close gaps across Phase 1 and Phase 2 features.
 | Grafana dashboards (JSON) | `grafana/dashboards/*.json` | [x] Complete |
 | Provider comparison dashboard | `grafana/dashboards/provider-comparison.json` | [x] Complete |
 | Central Grafana docker-compose | `deploy/monitoring/docker-compose.yml` | [x] Complete |
+| Central Grafana Terraform | `deploy/monitoring/terraform/` | [x] Complete |
 | Prometheus values (per-cluster) | `deploy/monitoring/prometheus-values.yaml` | [x] Complete |
-| Central monitoring docs | `docs/CENTRAL_MONITORING.md` | [x] Complete |
+| Central monitoring docs | Merged into OBSERVABILITY.md | [x] Complete |
 | Benchmarking guide | `docs/BENCHMARKING.md` | [x] Complete |
-| Observability overview doc | `docs/OBSERVABILITY.md` | [ ] |
+| Observability overview doc | `docs/OBSERVABILITY.md` | [x] Complete |
+| ServiceMonitor/PodMonitor setup | Documented in OBSERVABILITY.md | [x] Complete |
+| Prometheus scraping RAG backend | Deployed to LKE | [x] Complete |
 
-**Gap:** `docs/OBSERVABILITY.md` missing - should describe:
-- Which metrics are exposed by backend
-- Where metrics come from (RAG app, vLLM, DCGM)
-- How to access/scrape them
-- Dashboard overview
+**Status:** Complete. Central Grafana deployed at http://172.239.55.129:3000
 
 ---
 
@@ -231,8 +231,8 @@ prompts:
 ## Files to Create
 
 ### Priority 1 (Blocking)
-1. `scripts/benchmark/run_ns.sh` - North-South runner wrapper
-2. `docs/OBSERVABILITY.md` - Metrics overview
+1. ~~`scripts/benchmark/run_ns.sh`~~ - [x] Complete
+2. ~~`docs/OBSERVABILITY.md`~~ - [x] Complete
 3. `docs/COST_MODEL.md` - Cost computation guide
 
 ### Priority 2 (Important)
@@ -245,6 +245,30 @@ prompts:
 8. `schemas/run-metadata.schema.json` - Run metadata schema
 9. `schemas/benchmark-output.schema.json` - Output JSON schema
 10. `schemas/netprobe-ew.schema.json` - Netprobe output schema
+
+---
+
+## Remaining Gaps Summary
+
+### High Priority
+| Gap | Impact | Effort |
+|-----|--------|--------|
+| Cost documentation | Users can't understand cost model | Low |
+| `max_output_tokens` control | Benchmark results vary with response length | Medium |
+| Prompt token counting | Incomplete token accounting | Medium |
+
+### Medium Priority
+| Gap | Impact | Effort |
+|-----|--------|--------|
+| East-West network probe | No in-cluster network latency data | Medium |
+| Workload manifest schema | Benchmarks not reproducible | Low |
+| Run metadata schema | Inconsistent field names | Low |
+
+### Low Priority
+| Gap | Impact | Effort |
+|-----|--------|--------|
+| JSON schemas | No validation | Low |
+| PROJECT_STATE.md update | Outdated docs | Low |
 
 ---
 
