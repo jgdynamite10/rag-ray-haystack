@@ -93,13 +93,67 @@ helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
 #   --set prometheus.prometheusSpec.externalLabels.region="us-east-1"
 ```
 
-### Configure ServiceMonitor for RAG Backend
+### Configure Prometheus to Scrape RAG Backend
+
+**Important:** The Helm-deployed RAG app uses specific labels. You must match the correct labels.
+
+#### Step 1: Check Service and Pod Labels
+
+```bash
+# Check service labels (used by ServiceMonitor)
+kubectl -n rag-app get svc rag-app-rag-app-backend --show-labels
+
+# Check pod labels (used by PodMonitor)
+kubectl -n rag-app get pods -l app=rag-app-rag-app-backend --show-labels
+```
+
+#### Step 2: Add Named Port to Service (Required for ServiceMonitor)
+
+ServiceMonitors require a **named port**. Patch the service:
+
+```bash
+KUBECONFIG=~/.kube/rag-ray-haystack-kubeconfig.yaml \
+kubectl -n rag-app patch svc rag-app-rag-app-backend \
+  --type='json' -p='[{"op": "replace", "path": "/spec/ports/0/name", "value": "http"}]'
+```
+
+#### Step 3: Create ServiceMonitor (Recommended)
 
 ```bash
 KUBECONFIG=~/.kube/rag-ray-haystack-kubeconfig.yaml \
 kubectl apply -f - <<'EOF'
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
+metadata:
+  name: rag-backend
+  namespace: monitoring
+  labels:
+    release: prometheus  # Required: must match Prometheus serviceMonitorSelector
+spec:
+  namespaceSelector:
+    matchNames:
+      - rag-app
+  selector:
+    matchLabels:
+      # IMPORTANT: Use the actual SERVICE labels, not pod labels
+      app.kubernetes.io/name: rag-app
+      app.kubernetes.io/component: backend
+  endpoints:
+    - port: http           # Must match the named port on the service
+      path: /metrics
+      interval: 15s
+EOF
+```
+
+#### Alternative: Create PodMonitor (If Service Labels Don't Work)
+
+PodMonitors select pods directly and can use `targetPort` (no named port required):
+
+```bash
+KUBECONFIG=~/.kube/rag-ray-haystack-kubeconfig.yaml \
+kubectl apply -f - <<'EOF'
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
 metadata:
   name: rag-backend
   namespace: monitoring
@@ -111,9 +165,10 @@ spec:
       - rag-app
   selector:
     matchLabels:
-      app: rag-app-backend
-  endpoints:
-    - port: http
+      # Use the actual POD labels (check with kubectl get pods --show-labels)
+      app: rag-app-rag-app-backend
+  podMetricsEndpoints:
+    - targetPort: 8000     # Can use port number directly
       path: /metrics
       interval: 15s
 EOF
@@ -419,17 +474,89 @@ docker compose up -d
 
 ### Prometheus Not Scraping RAG Backend
 
-1. Check ServiceMonitor exists:
-   ```bash
-   kubectl -n monitoring get servicemonitor rag-backend
-   ```
+This is a common issue. Follow these steps systematically:
 
-2. Check service labels match:
-   ```bash
-   kubectl -n rag-app get svc -l app=rag-app-backend --show-labels
-   ```
+#### 1. Verify the ServiceMonitor/PodMonitor Exists
 
-3. Check Prometheus targets (Status → Targets in Prometheus UI)
+```bash
+kubectl -n monitoring get servicemonitor rag-backend
+kubectl -n monitoring get podmonitor rag-backend
+```
+
+#### 2. Check Label Mismatch (Most Common Issue)
+
+**The #1 cause of scraping failures is label mismatch.**
+
+```bash
+# Get the ACTUAL service labels
+kubectl -n rag-app get svc rag-app-rag-app-backend -o jsonpath='{.metadata.labels}' | jq
+
+# Get the ACTUAL pod labels  
+kubectl -n rag-app get pods -l app=rag-app-rag-app-backend -o jsonpath='{.items[0].metadata.labels}' | jq
+```
+
+Compare these with what your ServiceMonitor/PodMonitor is selecting:
+
+```bash
+kubectl -n monitoring get servicemonitor rag-backend -o yaml | grep -A5 "selector:"
+```
+
+**Common mistakes:**
+- Service labels: `app.kubernetes.io/name: rag-app` (not `app: rag-app-backend`)
+- Pod labels: `app: rag-app-rag-app-backend` (not `app: rag-app-backend`)
+
+#### 3. Check Named Port (ServiceMonitor Only)
+
+ServiceMonitors require a **named port**. Check if the service has one:
+
+```bash
+kubectl -n rag-app get svc rag-app-rag-app-backend -o yaml | grep -A5 "ports:"
+```
+
+If the port doesn't have a `name:` field, add one:
+
+```bash
+kubectl -n rag-app patch svc rag-app-rag-app-backend \
+  --type='json' -p='[{"op": "replace", "path": "/spec/ports/0/name", "value": "http"}]'
+```
+
+#### 4. Check Prometheus ServiceMonitor Selector
+
+Prometheus only watches ServiceMonitors with specific labels:
+
+```bash
+kubectl -n monitoring get prometheus prometheus-kube-prometheus-prometheus \
+  -o yaml | grep -A3 "serviceMonitorSelector"
+```
+
+Your ServiceMonitor must have the matching label (usually `release: prometheus`).
+
+#### 5. Verify Target Discovery
+
+```bash
+# Query Prometheus directly
+curl -s "http://<prometheus-ip>:9090/api/v1/targets" | \
+  jq '.data.activeTargets[] | select(.labels.namespace=="rag-app")'
+```
+
+#### 6. Check Prometheus Config
+
+```bash
+curl -s "http://<prometheus-ip>:9090/api/v1/status/config" | \
+  jq -r '.data.yaml' | grep -A20 "rag"
+```
+
+#### 7. Wait and Retry
+
+After creating/updating a ServiceMonitor, Prometheus takes 30-60 seconds to reload. Run a quick test:
+
+```bash
+# Wait and check
+sleep 45
+curl -s "http://<prometheus-ip>:9090/api/v1/query?query=rag_requests_total" | jq '.data.result | length'
+```
+
+If it returns `0`, the scraping isn't working yet.
 
 ### No Data in Grafana
 
