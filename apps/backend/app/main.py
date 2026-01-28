@@ -683,6 +683,7 @@ class RagApp:
         requests_total: int,
         timeout: int,
         show_errors: int,
+        warmup_requests: int,
     ) -> dict[str, Any]:
         command = (
             "python -m pip install --no-cache-dir -r /bench/requirements.txt && "
@@ -691,7 +692,8 @@ class RagApp:
             "--concurrency \"$BENCH_CONCURRENCY\" "
             "--requests \"$BENCH_REQUESTS\" "
             "--timeout \"$BENCH_TIMEOUT\" "
-            "--show-errors \"$BENCH_SHOW_ERRORS\""
+            "--show-errors \"$BENCH_SHOW_ERRORS\" "
+            "--warmup-requests \"$BENCH_WARMUP_REQUESTS\""
         )
         return {
             "apiVersion": "batch/v1",
@@ -724,6 +726,7 @@ class RagApp:
                                     {"name": "BENCH_REQUESTS", "value": str(requests_total)},
                                     {"name": "BENCH_TIMEOUT", "value": str(timeout)},
                                     {"name": "BENCH_SHOW_ERRORS", "value": str(show_errors)},
+                                    {"name": "BENCH_WARMUP_REQUESTS", "value": str(warmup_requests)},
                                 ],
                                 "command": ["/bin/sh", "-c", command],
                                 "volumeMounts": [{"name": "bench", "mountPath": "/bench"}],
@@ -745,6 +748,7 @@ class RagApp:
         requests_total = self._coerce_int(payload.get("requests"), 100)
         timeout = self._coerce_int(payload.get("timeout"), 120)
         show_errors = self._coerce_int(payload.get("show_errors"), 3, minimum=0)
+        warmup_requests = self._coerce_int(payload.get("warmup_requests"), 0, minimum=0)
         run_id = uuid4().hex[:8]
         job_name = f"rag-stream-bench-{run_id}"
         configmap_name = f"rag-stream-bench-{run_id}"
@@ -757,6 +761,7 @@ class RagApp:
             requests_total,
             timeout,
             show_errors,
+            warmup_requests,
         )
 
         self._kube_request(
@@ -796,6 +801,7 @@ class RagApp:
             "namespace": self.kube_namespace,
             "concurrency": concurrency,
             "requests": requests_total,
+            "warmup_requests": warmup_requests,
             "timeout": timeout,
             "show_errors": show_errors,
         }
