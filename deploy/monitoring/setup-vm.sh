@@ -57,7 +57,7 @@ cd deploy/monitoring
 # Create .env file if not exists
 if [ ! -f .env ]; then
     echo "[5/5] Creating configuration file..."
-    cp .env.example .env
+    cp env.example .env
     echo ""
     echo "=== IMPORTANT ==="
     echo "Edit the .env file with your Prometheus endpoints:"

@@ -1,0 +1,44 @@
+Collecting httpx==0.27.2 (from -r /bench/requirements.txt (line 1))
+  Downloading httpx-0.27.2-py3-none-any.whl.metadata (7.1 kB)
+Collecting anyio (from httpx==0.27.2->-r /bench/requirements.txt (line 1))
+  Downloading anyio-4.12.1-py3-none-any.whl.metadata (4.3 kB)
+Collecting certifi (from httpx==0.27.2->-r /bench/requirements.txt (line 1))
+  Downloading certifi-2026.1.4-py3-none-any.whl.metadata (2.5 kB)
+Collecting httpcore==1.* (from httpx==0.27.2->-r /bench/requirements.txt (line 1))
+  Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Collecting idna (from httpx==0.27.2->-r /bench/requirements.txt (line 1))
+  Downloading idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+Collecting sniffio (from httpx==0.27.2->-r /bench/requirements.txt (line 1))
+  Downloading sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting h11>=0.16 (from httpcore==1.*->httpx==0.27.2->-r /bench/requirements.txt (line 1))
+  Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting typing_extensions>=4.5 (from anyio->httpx==0.27.2->-r /bench/requirements.txt (line 1))
+  Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Downloading httpx-0.27.2-py3-none-any.whl (76 kB)
+   ââââââââââââââââââââââââââââââââââââââââ 76.4/76.4 kB 55.6 MB/s eta 0:00:00
+Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+   ââââââââââââââââââââââââââââââââââââââââ 78.8/78.8 kB 250.3 MB/s eta 0:00:00
+Downloading anyio-4.12.1-py3-none-any.whl (113 kB)
+   âââââââââââââââââââââââââââââââââââââââ 113.6/113.6 kB 265.4 MB/s eta 0:00:00
+Downloading idna-3.11-py3-none-any.whl (71 kB)
+   ââââââââââââââââââââââââââââââââââââââââ 71.0/71.0 kB 256.7 MB/s eta 0:00:00
+Downloading certifi-2026.1.4-py3-none-any.whl (152 kB)
+   âââââââââââââââââââââââââââââââââââââââ 152.9/152.9 kB 272.4 MB/s eta 0:00:00
+Downloading sniffio-1.3.1-py3-none-any.whl (10 kB)
+Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+   ââââââââââââââââââââââââââââââââââââââââ 44.6/44.6 kB 215.2 MB/s eta 0:00:00
+Installing collected packages: typing_extensions, sniffio, idna, h11, certifi, httpcore, anyio, httpx
+Successfully installed anyio-4.12.1 certifi-2026.1.4 h11-0.16.0 httpcore-1.0.9 httpx-0.27.2 idna-3.11 sniffio-1.3.1 typing_extensions-4.15.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+{
+  "requests": 5,
+  "concurrency": 2,
+  "success": 5,
+  "errors": 0,
+  "ttft_p50_ms": 145.84,
+  "ttft_p95_ms": 183.41,
+  "latency_p50_ms": 6995.12,
+  "latency_p95_ms": 8762.71,
+  "avg_tokens_per_sec": 45.33
+}

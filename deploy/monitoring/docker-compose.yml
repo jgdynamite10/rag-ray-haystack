@@ -4,7 +4,7 @@ version: '3.8'
 # Grafana connects to Prometheus instances in each Kubernetes cluster
 #
 # Usage:
-#   cp .env.example .env
+#   cp env.example .env
 #   # Edit .env with your Prometheus endpoints
 #   docker-compose up -d
 #

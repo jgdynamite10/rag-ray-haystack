@@ -88,7 +88,7 @@ git clone https://github.com/jgdynamite10/rag-ray-haystack.git
 cd rag-ray-haystack/deploy/monitoring
 
 # Configure
-cp .env.example .env
+cp env.example .env
 nano .env  # Edit with your Prometheus URLs
 ```
 

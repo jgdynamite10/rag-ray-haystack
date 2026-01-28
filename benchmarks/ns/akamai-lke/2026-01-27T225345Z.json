@@ -1,0 +1,18 @@
+{
+  "requests": 50,
+  "concurrency": 10,
+  "success": 50,
+  "errors": 0,
+  "ttft_p50_ms": 161.03,
+  "ttft_p95_ms": 896.35,
+  "latency_p50_ms": 11962.38,
+  "latency_p95_ms": 15394.01,
+  "avg_tokens_per_sec": 36.03,
+  "_meta": {
+    "provider": "akamai-lke",
+    "endpoint": "http://172.236.105.4/api",
+    "timestamp": "2026-01-27T225345Z",
+    "job_name": "rag-stream-bench-e2640e62",
+    "probe_type": "north_south"
+  }
+}
