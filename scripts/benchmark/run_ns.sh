@@ -48,13 +48,14 @@ Arguments:
   provider          Provider name: akamai-lke, aws-eks, gcp-gke (required)
 
 Options:
-  --url URL         Streaming endpoint URL (required)
-  --requests N      Number of measured requests (default: 100)
-  --concurrency N   Concurrent requests (default: 10)
-  --warmup N        Warmup requests (default: 10)
-  --timeout N       Request timeout in seconds (default: 180)
-  --with-cost       Run cost computation after benchmark
-  --dry-run         Show what would be run without executing
+  --url URL              Streaming endpoint URL (required)
+  --requests N           Number of measured requests (default: 100)
+  --concurrency N        Concurrent requests (default: 10)
+  --warmup N             Warmup requests (default: 10)
+  --timeout N            Request timeout in seconds (default: 180)
+  --max-output-tokens N  Maximum output tokens (default: none - use model default)
+  --with-cost            Run cost computation after benchmark
+  --dry-run              Show what would be run without executing
 
 Environment:
   Set these for richer run_metadata in output:
@@ -79,6 +80,7 @@ REQUESTS=100
 CONCURRENCY=10
 WARMUP=10
 TIMEOUT=180
+MAX_OUTPUT_TOKENS=""
 WITH_COST=false
 DRY_RUN=false
 
@@ -95,6 +97,7 @@ while [[ $# -gt 0 ]]; do
         --concurrency) CONCURRENCY="$2"; shift 2 ;;
         --warmup) WARMUP="$2"; shift 2 ;;
         --timeout) TIMEOUT="$2"; shift 2 ;;
+        --max-output-tokens) MAX_OUTPUT_TOKENS="$2"; shift 2 ;;
         --with-cost) WITH_COST=true; shift ;;
         --dry-run) DRY_RUN=true; shift ;;
         -h|--help) usage ;;
@@ -149,6 +152,7 @@ log "Provider: $RAG_PROVIDER"
 log "Region: ${RAG_REGION:-not set}"
 log "URL: $URL"
 log "Requests: $REQUESTS (warmup: $WARMUP, concurrency: $CONCURRENCY)"
+[[ -n "$MAX_OUTPUT_TOKENS" ]] && log "Max output tokens: $MAX_OUTPUT_TOKENS"
 log "Output: $OUTPUT_FILE"
 
 # Setup Python virtual environment
@@ -165,6 +169,11 @@ CMD=(
     --timeout "$TIMEOUT"
     --json-out "$OUTPUT_FILE"
 )
+
+# Add optional max-output-tokens
+if [[ -n "$MAX_OUTPUT_TOKENS" ]]; then
+    CMD+=(--max-output-tokens "$MAX_OUTPUT_TOKENS")
+fi
 
 if $DRY_RUN; then
     log "Dry run - would execute:"

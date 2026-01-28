@@ -86,19 +86,20 @@ Use this to systematically close gaps across Phase 1 and Phase 2 features.
 
 | Task | File(s) | Status |
 |------|---------|--------|
-| `max_output_tokens` param in benchmark | `stream_bench.py` | [ ] |
-| Pass `max_tokens` to backend `/query/stream` | Backend API | [ ] |
-| Backend forwards to vLLM | `main.py` | [ ] |
+| `max_output_tokens` param in benchmark | `stream_bench.py` | [x] Complete |
+| Pass `max_tokens` to backend `/query/stream` | Backend API | [x] Complete |
+| Backend forwards to vLLM | `main.py`, `vllm_client.py` | [x] Complete |
 
-**Gap:** No `max_output_tokens` control. Benchmark results vary based on model response length.
+**Status:** Complete. Usage:
+```bash
+# Standalone benchmark with max output tokens
+python stream_bench.py --url http://... --max-output-tokens 256
 
-**Required changes:**
-```python
-# stream_bench.py - add argument
-parser.add_argument("--max-output-tokens", type=int, default=None)
+# Wrapper script
+./scripts/benchmark/run_ns.sh akamai-lke --url http://... --max-output-tokens 256
 
-# Include in request payload
-request_payload = {"query": prompt, "max_tokens": args.max_output_tokens}
+# In-cluster benchmark via API
+curl -X POST http://.../benchmark/run -d '{"max_output_tokens": 256}'
 ```
 
 ### 2.3 Token Counting
@@ -205,7 +206,7 @@ prompts:
 | workload_manifest_hash | [x] | |
 | run_metadata | [x] | |
 | prompt_tokens | [ ] | Missing |
-| max_output_tokens | [ ] | Missing |
+| max_output_tokens | [x] | Complete |
 | cost_reference | [ ] | Missing |
 | netprobe_reference | [ ] | Missing |
 
@@ -254,7 +255,7 @@ prompts:
 | Gap | Impact | Effort |
 |-----|--------|--------|
 | ~~Cost documentation~~ | ~~Users can't understand cost model~~ | ~~[x] Complete~~ |
-| `max_output_tokens` control | Benchmark results vary with response length | Medium |
+| ~~`max_output_tokens` control~~ | ~~Benchmark results vary with response length~~ | ~~[x] Complete~~ |
 | Prompt token counting | Incomplete token accounting | Medium |
 
 ### Medium Priority

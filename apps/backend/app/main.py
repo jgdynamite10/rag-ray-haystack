@@ -105,8 +105,11 @@ async def run_request(
     url: str,
     prompt: str,
     request_id: int,
+    max_output_tokens: int | None = None,
 ) -> dict[str, Any]:
-    request_payload = {"query": prompt}
+    request_payload: dict[str, Any] = {"query": prompt}
+    if max_output_tokens is not None:
+        request_payload["max_tokens"] = max_output_tokens
     start = time.perf_counter()
     ttft: Optional[float] = None
     first_token_time: Optional[float] = None
@@ -182,6 +185,7 @@ async def worker(
     counter: asyncio.Lock,
     remaining: list[int],
     results: list[dict[str, Any]],
+    max_output_tokens: int | None = None,
 ) -> None:
     while True:
         async with counter:
@@ -189,7 +193,7 @@ async def worker(
                 return
             remaining[0] -= 1
             request_id = remaining[0]
-        result = await run_request(client, url, prompt, request_id)
+        result = await run_request(client, url, prompt, request_id, max_output_tokens)
         results.append(result)
 
 
@@ -199,13 +203,16 @@ async def run_phase(
     prompt: str,
     concurrency: int,
     total_requests: int,
+    max_output_tokens: int | None = None,
 ) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     remaining = [total_requests]
     lock = asyncio.Lock()
     
     tasks = [
-        asyncio.create_task(worker(i, client, url, prompt, lock, remaining, results))
+        asyncio.create_task(
+            worker(i, client, url, prompt, lock, remaining, results, max_output_tokens)
+        )
         for i in range(concurrency)
     ]
     await asyncio.gather(*tasks)
@@ -258,14 +265,16 @@ async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         if args.warmup_requests > 0:
             print(f"Warmup: {args.warmup_requests} requests...", file=__import__('sys').stderr)
             warmup_results = await run_phase(
-                client, args.url, prompt, args.concurrency, args.warmup_requests
+                client, args.url, prompt, args.concurrency, args.warmup_requests,
+                args.max_output_tokens
             )
             warmup_stats = compute_phase_stats(warmup_results)
             warmup_stats["phase"] = "warmup"
         
         print(f"Measured: {args.requests} requests...", file=__import__('sys').stderr)
         measured_results = await run_phase(
-            client, args.url, prompt, args.concurrency, args.requests
+            client, args.url, prompt, args.concurrency, args.requests,
+            args.max_output_tokens
         )
         measured_stats = compute_phase_stats(measured_results)
         measured_stats["phase"] = "measured"
@@ -294,6 +303,7 @@ async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         "duration_seconds": round(benchmark_duration, 3),
         "warmup_requests": args.warmup_requests,
         "measured_requests": args.requests,
+        "max_output_tokens": args.max_output_tokens,
         "run_metadata": run_metadata,
     }
 
@@ -328,6 +338,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--prompt-file", help="Optional prompt file")
     parser.add_argument("--json-out", help="Write summary JSON to file")
     parser.add_argument("--timeout", type=int, default=120, help="Request timeout seconds")
+    parser.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=None,
+        help="Maximum output tokens",
+    )
     parser.add_argument(
         "--show-errors",
         type=int,
@@ -688,6 +704,7 @@ class RagApp:
         timeout: int,
         show_errors: int,
         warmup_requests: int,
+        max_output_tokens: int | None = None,
     ) -> dict[str, Any]:
         command = (
             "python -m pip install --no-cache-dir -r /bench/requirements.txt && "
@@ -698,6 +715,7 @@ class RagApp:
             "--timeout \"$BENCH_TIMEOUT\" "
             "--show-errors \"$BENCH_SHOW_ERRORS\" "
             "--warmup-requests \"$BENCH_WARMUP_REQUESTS\""
+            "${BENCH_MAX_OUTPUT_TOKENS:+ --max-output-tokens \"$BENCH_MAX_OUTPUT_TOKENS\"}"
         )
         return {
             "apiVersion": "batch/v1",
@@ -731,6 +749,7 @@ class RagApp:
                                     {"name": "BENCH_TIMEOUT", "value": str(timeout)},
                                     {"name": "BENCH_SHOW_ERRORS", "value": str(show_errors)},
                                     {"name": "BENCH_WARMUP_REQUESTS", "value": str(warmup_requests)},
+                                    {"name": "BENCH_MAX_OUTPUT_TOKENS", "value": str(max_output_tokens) if max_output_tokens else ""},
                                 ],
                                 "command": ["/bin/sh", "-c", command],
                                 "volumeMounts": [{"name": "bench", "mountPath": "/bench"}],
@@ -753,6 +772,9 @@ class RagApp:
         timeout = self._coerce_int(payload.get("timeout"), 120)
         show_errors = self._coerce_int(payload.get("show_errors"), 3, minimum=0)
         warmup_requests = self._coerce_int(payload.get("warmup_requests"), 0, minimum=0)
+        max_output_tokens: int | None = payload.get("max_output_tokens")
+        if max_output_tokens is not None:
+            max_output_tokens = self._coerce_int(max_output_tokens, 512, minimum=1)
         run_id = uuid4().hex[:8]
         job_name = f"rag-stream-bench-{run_id}"
         configmap_name = f"rag-stream-bench-{run_id}"
@@ -766,6 +788,7 @@ class RagApp:
             timeout,
             show_errors,
             warmup_requests,
+            max_output_tokens,
         )
 
         self._kube_request(
@@ -806,6 +829,7 @@ class RagApp:
             "concurrency": concurrency,
             "requests": requests_total,
             "warmup_requests": warmup_requests,
+            "max_output_tokens": max_output_tokens,
             "timeout": timeout,
             "show_errors": show_errors,
         }
@@ -1153,6 +1177,7 @@ class RagApp:
         session_id, history = self._get_session_history(payload.get("session_id"))
         if payload.get("history"):
             history = payload["history"]
+        max_tokens_override: int | None = payload.get("max_tokens")
         replica_id = os.getenv("HOSTNAME", "unknown")
         model_id = (
             os.getenv("VLLM_MODEL_ID")
@@ -1208,7 +1233,7 @@ class RagApp:
             server_first_token_at: float | None = None
 
             try:
-                async for delta in self.vllm.stream_chat(prompt):
+                async for delta in self.vllm.stream_chat(prompt, max_tokens_override):
                     if server_first_token_at is None:
                         server_first_token_at = time.perf_counter()
                         ttft_value = server_first_token_at - server_start

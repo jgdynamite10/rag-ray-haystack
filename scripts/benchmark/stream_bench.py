@@ -63,8 +63,11 @@ async def run_request(
     url: str,
     prompt: str,
     request_id: int,
+    max_output_tokens: int | None = None,
 ) -> dict[str, Any]:
-    request_payload = {"query": prompt}
+    request_payload: dict[str, Any] = {"query": prompt}
+    if max_output_tokens is not None:
+        request_payload["max_tokens"] = max_output_tokens
     start = time.perf_counter()
     ttft: Optional[float] = None
     first_token_time: Optional[float] = None
@@ -142,6 +145,7 @@ async def worker(
     counter: asyncio.Lock,
     remaining: list[int],
     results: list[dict[str, Any]],
+    max_output_tokens: int | None = None,
 ) -> None:
     while True:
         async with counter:
@@ -149,7 +153,7 @@ async def worker(
                 return
             remaining[0] -= 1
             request_id = remaining[0]
-        result = await run_request(client, url, prompt, request_id)
+        result = await run_request(client, url, prompt, request_id, max_output_tokens)
         results.append(result)
 
 
@@ -159,6 +163,7 @@ async def run_phase(
     prompt: str,
     concurrency: int,
     total_requests: int,
+    max_output_tokens: int | None = None,
 ) -> list[dict[str, Any]]:
     """Run a single benchmark phase (warmup or measured)."""
     results: list[dict[str, Any]] = []
@@ -166,7 +171,9 @@ async def run_phase(
     lock = asyncio.Lock()
 
     tasks = [
-        asyncio.create_task(worker(i, client, url, prompt, lock, remaining, results))
+        asyncio.create_task(
+            worker(i, client, url, prompt, lock, remaining, results, max_output_tokens)
+        )
         for i in range(concurrency)
     ]
     await asyncio.gather(*tasks)
@@ -224,6 +231,8 @@ async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
                 args.warmup_requests = workload_manifest["warmup_requests"]
             if "timeout" in workload_manifest:
                 args.timeout = workload_manifest["timeout"]
+            if "max_output_tokens" in workload_manifest:
+                args.max_output_tokens = workload_manifest["max_output_tokens"]
         except ImportError:
             print("Warning: PyYAML not installed, skipping workload manifest", file=__import__('sys').stderr)
         except Exception as e:
@@ -248,7 +257,8 @@ async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         if args.warmup_requests > 0:
             print(f"Running warmup phase: {args.warmup_requests} requests...", file=__import__('sys').stderr)
             warmup_results = await run_phase(
-                client, args.url, prompt, args.concurrency, args.warmup_requests
+                client, args.url, prompt, args.concurrency, args.warmup_requests,
+                args.max_output_tokens
             )
             warmup_stats = compute_phase_stats(warmup_results)
             warmup_stats["phase"] = "warmup"
@@ -256,7 +266,8 @@ async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         # Measured phase
         print(f"Running measured phase: {args.requests} requests...", file=__import__('sys').stderr)
         measured_results = await run_phase(
-            client, args.url, prompt, args.concurrency, args.requests
+            client, args.url, prompt, args.concurrency, args.requests,
+            args.max_output_tokens
         )
 
     measured_stats = compute_phase_stats(measured_results)
@@ -291,6 +302,7 @@ async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         "duration_seconds": round(benchmark_duration, 3),
         "warmup_requests": args.warmup_requests,
         "measured_requests": args.requests,
+        "max_output_tokens": args.max_output_tokens,
         # Workload manifest reference
         "workload_manifest_path": args.workload,
         "workload_manifest_hash": manifest_hash,
@@ -332,6 +344,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workload", help="Workload manifest YAML file")
     parser.add_argument("--json-out", help="Write summary JSON to file")
     parser.add_argument("--timeout", type=int, default=120, help="Request timeout seconds")
+    parser.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=None,
+        help="Maximum output tokens (controls response length for consistent benchmarks)",
+    )
     parser.add_argument(
         "--show-errors",
         type=int,

@@ -21,11 +21,13 @@ class VllmStreamingGenerator:
         self.top_p = top_p
         self.timeout = httpx.Timeout(timeout_seconds)
 
-    async def stream_chat(self, prompt: str) -> AsyncIterator[str]:
+    async def stream_chat(
+        self, prompt: str, max_tokens: int | None = None
+    ) -> AsyncIterator[str]:
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": self.max_tokens,
+            "max_tokens": max_tokens if max_tokens is not None else self.max_tokens,
             "temperature": self.temperature,
             "top_p": self.top_p,
             "stream": True,
@@ -54,11 +56,13 @@ class VllmStreamingGenerator:
                     if delta:
                         yield delta
 
-    async def complete_chat(self, prompt: str) -> str:
+    async def complete_chat(
+        self, prompt: str, max_tokens: int | None = None
+    ) -> str:
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": self.max_tokens,
+            "max_tokens": max_tokens if max_tokens is not None else self.max_tokens,
             "temperature": self.temperature,
             "top_p": self.top_p,
             "stream": False,
