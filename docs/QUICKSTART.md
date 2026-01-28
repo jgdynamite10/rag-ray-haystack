@@ -517,20 +517,26 @@ Open `http://<hostname>/` in your browser.
 ### 11. Destroy (when done)
 
 ```bash
-# Delete app
+# Delete app and dependencies
 helm -n rag-app uninstall rag-app
+helm -n kuberay-system uninstall kuberay-operator
+helm -n gpu-operator uninstall gpu-operator
+helm -n node-feature-discovery uninstall node-feature-discovery
 
 # Delete EBS CSI addon
 aws eks delete-addon --cluster-name rag-ray-haystack --addon-name aws-ebs-csi-driver --region us-east-1
 
-# Delete IAM role (optional cleanup)
+# Delete IAM role for EBS CSI
 aws iam detach-role-policy --role-name AmazonEKS_EBS_CSI_DriverRole \
   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
 aws iam delete-role --role-name AmazonEKS_EBS_CSI_DriverRole
 
-# Delete cluster
-terraform -chdir=infra/terraform/aws-eks destroy
+# Delete cluster (takes 15-20 minutes)
+terraform -chdir=infra/terraform/aws-eks destroy -auto-approve
 ```
+
+**Note:** EKS cluster deletion takes 15-20 minutes. You can monitor progress in the AWS Console 
+under EKS → Clusters.
 
 ### Troubleshooting
 
