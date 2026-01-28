@@ -1,0 +1,305 @@
+# Implementation Checklist
+
+This checklist tracks gaps between the documented requirements and current implementation.
+Use this to systematically close gaps across Phase 1 and Phase 2 features.
+
+## Status Legend
+- [ ] Not started
+- [~] In progress
+- [x] Complete
+
+---
+
+## Phase 1: Core Infrastructure
+
+### 1.1 Cost Model
+| Task | File(s) | Status |
+|------|---------|--------|
+| Cost computation script | `scripts/cost/compute_cost.py` | [x] |
+| Cost config example | `cost/cost-config.example.yaml` | [x] |
+| Cost documentation | `docs/COST_MODEL.md` | [ ] |
+| Integration with benchmark output | embedded in JSON | [~] Partial |
+
+**Gap:** Cost docs missing. Cost script exists but doesn't auto-run with benchmarks.
+
+### 1.2 Network Probes
+
+#### East-West (In-Cluster) Probe
+| Task | File(s) | Status |
+|------|---------|--------|
+| Netprobe Job manifest | `deploy/netprobe/ew-netprobe-job.yaml` | [ ] |
+| Netprobe DaemonSet (optional) | `deploy/netprobe/ew-netprobe-ds.yaml` | [ ] |
+| Netprobe script (iperf3/qperf based) | `scripts/netprobe/run_ew.sh` | [ ] |
+| Sample output JSON schema | `schemas/netprobe-ew.schema.json` | [ ] |
+
+**Gap:** No East-West network probe implemented. Needs:
+- Pod-to-pod latency measurement
+- Pod-to-service latency
+- Bandwidth test between nodes
+
+#### North-South (Client-to-Service) Probe
+| Task | File(s) | Status |
+|------|---------|--------|
+| Runner wrapper script | `scripts/benchmark/run_ns.sh` | [ ] |
+| Runner documentation | `docs/NORTH_SOUTH_RUNNER.md` | [ ] |
+
+**Gap:** `run_ns.sh` wrapper missing. Should:
+- Set environment variables for run_metadata
+- Call `stream_bench.py` with standard args
+- Optionally call `compute_cost.py` on output
+- Save results to `benchmarks/ns/<provider>/<timestamp>.json`
+
+### 1.3 Observability
+
+| Task | File(s) | Status |
+|------|---------|--------|
+| Grafana dashboards (JSON) | `grafana/dashboards/*.json` | [x] |
+| Central Grafana docker-compose | `deploy/monitoring/docker-compose.yml` | [x] |
+| Prometheus values (per-cluster) | `deploy/monitoring/prometheus-values.yaml` | [x] |
+| Central monitoring docs | `docs/CENTRAL_MONITORING.md` | [x] |
+| Observability overview doc | `docs/OBSERVABILITY.md` | [ ] |
+
+**Gap:** `docs/OBSERVABILITY.md` missing - should describe:
+- Which metrics are exposed by backend
+- Where metrics come from (RAG app, vLLM, DCGM)
+- How to access/scrape them
+- Dashboard overview
+
+---
+
+## Phase 2: Measurement Rigor Addendum
+
+### 2.1 Interactive LLM Metrics (ITDMs)
+
+| Metric | Backend Prometheus | Benchmark Script | Dashboard | Status |
+|--------|-------------------|------------------|-----------|--------|
+| TTFT (Time To First Token) | `rag_ttft_seconds` | [x] `ttft` | [x] | [x] |
+| TPOT (Time Per Output Token) | `rag_tpot_seconds` | [x] `tpot_p50_ms` | [x] | [x] |
+| Total Latency | `rag_latency_seconds` | [x] `latency_p50_ms` | [x] | [x] |
+| Tokens/sec | computed | [x] `avg_tokens_per_sec` | [x] | [x] |
+
+**Status:** Core ITDMs implemented.
+
+### 2.2 Output Length Control
+
+| Task | File(s) | Status |
+|------|---------|--------|
+| `max_output_tokens` param in benchmark | `stream_bench.py` | [ ] |
+| Pass `max_tokens` to backend `/query/stream` | Backend API | [ ] |
+| Backend forwards to vLLM | `main.py` | [ ] |
+
+**Gap:** No `max_output_tokens` control. Benchmark results vary based on model response length.
+
+**Required changes:**
+```python
+# stream_bench.py - add argument
+parser.add_argument("--max-output-tokens", type=int, default=None)
+
+# Include in request payload
+request_payload = {"query": prompt, "max_tokens": args.max_output_tokens}
+```
+
+### 2.3 Token Counting
+
+| Task | File(s) | Status |
+|------|---------|--------|
+| Prompt token count in output | `stream_bench.py` | [ ] |
+| Output token count in output | `stream_bench.py` | [x] `token_count` |
+| Backend exposes token counts in SSE | `main.py` | [~] Partial |
+
+**Gap:** Prompt tokens not counted. Need to either:
+- Tokenize locally (requires tokenizer, adds dependency)
+- Have backend return `prompt_tokens` in SSE stream
+
+### 2.4 Warmup vs Measured Phases
+
+| Task | File(s) | Status |
+|------|---------|--------|
+| `--warmup-requests` argument | `stream_bench.py` | [x] |
+| Separate phase stats in output | JSON output | [x] |
+| Embedded script updated | `main.py` BENCH_SCRIPT | [x] (pending 0.3.2) |
+
+**Status:** Complete (pending image rebuild).
+
+### 2.5 Workload Manifest Schema
+
+| Task | File(s) | Status |
+|------|---------|--------|
+| Workload manifest support | `stream_bench.py` | [x] Basic |
+| Schema definition | `schemas/workload.schema.json` | [ ] |
+| Example manifests | `workloads/` directory | [ ] |
+
+**Gap:** Schema not formalized. Need:
+```yaml
+# workloads/example.yaml
+name: "standard-rag-benchmark"
+version: "1.0"
+benchmark:
+  concurrency: 10
+  requests: 100
+  warmup_requests: 10
+  timeout: 120
+  max_output_tokens: 512
+retrieval:
+  k: 5                    # Number of docs to retrieve
+  docset: "default"       # Document set identifier
+model:
+  model_id: "Qwen/Qwen3-1.7B"
+  dtype: "float16"
+prompts:
+  - "Explain what this system is and why vLLM matters."
+  - "What are the key features of RAG systems?"
+```
+
+### 2.6 Run Metadata Schema
+
+| Task | File(s) | Status |
+|------|---------|--------|
+| Collect from environment | `stream_bench.py` | [x] |
+| Schema definition | `schemas/run-metadata.schema.json` | [ ] |
+| Consistent field names | JSON output | [~] |
+
+**Current run_metadata fields:**
+- provider, region, cluster_label
+- node_instance_type, gpu_model, gpu_count
+- ray_version, vllm_version, model_id
+- dtype, quantization, max_model_len
+- backend/frontend/vllm image tags
+- timestamp
+
+**Missing fields per addendum:**
+- `k` (retrieval count)
+- `dataset` / `docset` identifier
+- `cost_config_path` reference
+- `netprobe_ew_path` reference
+
+### 2.7 Attribution Signals (Prometheus Metrics)
+
+| Metric | Label | Backend Code | Status |
+|--------|-------|--------------|--------|
+| `rag_latency_seconds` | `stage=embedding` | [x] | [x] |
+| `rag_latency_seconds` | `stage=retrieval` | [x] | [x] |
+| `rag_latency_seconds` | `stage=inference` | [x] | [x] |
+| `rag_k_retrieved` | - | [x] | [x] |
+
+**Status:** Attribution metrics exist in backend.
+
+**Gap:** Dashboard queries may need verification to match actual label names.
+
+### 2.8 Benchmark JSON Output Format
+
+| Field | Status | Notes |
+|-------|--------|-------|
+| requests, success, errors | [x] | |
+| ttft_p50_ms, ttft_p95_ms | [x] | |
+| latency_p50_ms, latency_p95_ms | [x] | |
+| tpot_p50_ms, tpot_p95_ms | [x] | |
+| avg_tokens_per_sec | [x] | |
+| total_tokens | [x] | |
+| avg_output_tokens | [x] | |
+| duration_seconds | [x] | |
+| phases.warmup, phases.measured | [x] | |
+| workload_manifest_hash | [x] | |
+| run_metadata | [x] | |
+| prompt_tokens | [ ] | Missing |
+| max_output_tokens | [ ] | Missing |
+| cost_reference | [ ] | Missing |
+| netprobe_reference | [ ] | Missing |
+
+---
+
+## Dashboard/Metrics Alignment
+
+### Required Verification
+
+| Dashboard | Query | Backend Metric | Verified |
+|-----------|-------|----------------|----------|
+| RAG Overview | `rate(rag_requests_total[5m])` | `rag_requests_total` | [ ] |
+| RAG Overview | `histogram_quantile(0.95, rag_ttft_seconds_bucket)` | `rag_ttft_seconds` | [ ] |
+| RAG Overview | `histogram_quantile(0.95, rag_tpot_seconds_bucket)` | `rag_tpot_seconds` | [ ] |
+| vLLM Metrics | `vllm:num_requests_running` | vLLM native | [ ] |
+| vLLM Metrics | `vllm:gpu_cache_usage_perc` | vLLM native | [ ] |
+| GPU Utilization | `DCGM_FI_DEV_GPU_UTIL` | DCGM exporter | [ ] |
+
+**Action:** After deploying to cluster with Prometheus, verify each query returns data.
+
+---
+
+## Files to Create
+
+### Priority 1 (Blocking)
+1. `scripts/benchmark/run_ns.sh` - North-South runner wrapper
+2. `docs/OBSERVABILITY.md` - Metrics overview
+3. `docs/COST_MODEL.md` - Cost computation guide
+
+### Priority 2 (Important)
+4. `deploy/netprobe/ew-netprobe-job.yaml` - East-West probe manifest
+5. `scripts/netprobe/run_ew.sh` - East-West runner
+6. `schemas/workload.schema.json` - Workload manifest schema
+7. `workloads/standard.yaml` - Default workload manifest
+
+### Priority 3 (Nice to Have)
+8. `schemas/run-metadata.schema.json` - Run metadata schema
+9. `schemas/benchmark-output.schema.json` - Output JSON schema
+10. `schemas/netprobe-ew.schema.json` - Netprobe output schema
+
+---
+
+## Code Changes Required
+
+### `scripts/benchmark/stream_bench.py`
+```python
+# Add these arguments:
+parser.add_argument("--max-output-tokens", type=int, default=None)
+parser.add_argument("--k", type=int, default=5, help="Retrieval k value")
+parser.add_argument("--docset", default="default", help="Document set identifier")
+
+# Update request payload:
+request_payload = {
+    "query": prompt,
+    "k": args.k,
+    "max_tokens": args.max_output_tokens,
+}
+
+# Add to run_metadata:
+"k": args.k,
+"docset": args.docset,
+"max_output_tokens": args.max_output_tokens,
+```
+
+### `apps/backend/app/main.py`
+```python
+# Update /query/stream to accept max_tokens and k:
+@app.post("/query/stream")
+async def query_stream(request: QueryRequest):
+    max_tokens = request.max_tokens  # Forward to vLLM
+    k = request.k or 5  # Retrieval count
+```
+
+### Embedded `BENCH_SCRIPT` in `main.py`
+- Must stay in sync with `scripts/benchmark/stream_bench.py`
+- Update whenever standalone script changes
+
+---
+
+## Testing Checklist
+
+After implementing changes:
+
+- [ ] Local standalone benchmark runs: `python stream_bench.py --warmup-requests 5`
+- [ ] In-cluster benchmark via API: `POST /benchmark/run`
+- [ ] Cost script processes output: `python compute_cost.py`
+- [ ] Prometheus scrapes metrics: check `/metrics` endpoint
+- [ ] Grafana dashboards load without errors
+- [ ] Dashboard queries return data
+- [ ] JSON output matches expected schema
+
+---
+
+## PROJECT_STATE.public.md Updates Needed
+
+Update the following sections:
+1. Current status - reflect actual Phase 1/2 completion
+2. Benchmark results - use Phase 2 format with TPOT
+3. Open items - remove completed, add remaining gaps
+4. Image tag - update to 0.3.2 after deployment
