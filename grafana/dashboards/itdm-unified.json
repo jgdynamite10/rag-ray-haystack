@@ -296,12 +296,22 @@
       },
       "targets": [
         {
-          "expr": "$gpu_cost * $gpu_nodes + $cpu_cost * $cpu_nodes + $mgmt_cost",
-          "legendFormat": "Hourly",
+          "expr": "$lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "expr": "$eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "expr": "$gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
-      "title": "Cluster $/hr",
+      "title": "Cluster $/hr (All)",
       "type": "stat"
     },
     {
@@ -335,12 +345,22 @@
       },
       "targets": [
         {
-          "expr": "($gpu_cost * $gpu_nodes + $cpu_cost * $cpu_nodes + $mgmt_cost) * 24 * 30",
-          "legendFormat": "Monthly",
+          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) * 24 * 30",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) * 24 * 30",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) * 24 * 30",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
-      "title": "Cluster $/month",
+      "title": "Cluster $/mo (All)",
       "type": "stat"
     },
     {
@@ -374,12 +394,25 @@
       },
       "targets": [
         {
-          "expr": "($gpu_cost * $gpu_nodes + $cpu_cost * $cpu_nodes + $mgmt_cost) / 3600 / (rate(rag_tokens_total[5m]) + 0.001) * 1000000",
-          "legendFormat": "$/1M tokens",
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) / 3600 / (rate(rag_tokens_total[5m]) + 0.001) * 1000000",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
+          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) / 3600 / (rate(rag_tokens_total[5m]) + 0.001) * 1000000",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) / 3600 / (rate(rag_tokens_total[5m]) + 0.001) * 1000000",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
-      "title": "$/1M Tokens",
+      "title": "$/1M Tokens (All)",
       "type": "stat"
     },
     {
@@ -413,12 +446,25 @@
       },
       "targets": [
         {
-          "expr": "($gpu_cost * $gpu_nodes + $cpu_cost * $cpu_nodes + $mgmt_cost) / 3600 / (rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m]) + 0.001)",
-          "legendFormat": "$/request",
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) / 3600 / (rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m]) + 0.001)",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
+          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) / 3600 / (rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m]) + 0.001)",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) / 3600 / (rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m]) + 0.001)",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
-      "title": "$/Request",
+      "title": "$/Request (All)",
       "type": "stat"
     },
     {
@@ -452,12 +498,25 @@
       },
       "targets": [
         {
-          "expr": "rate(rag_tokens_total[5m]) * 3600 / (($gpu_cost * $gpu_nodes + $cpu_cost * $cpu_nodes + $mgmt_cost) + 0.001)",
-          "legendFormat": "tokens/$",
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+          "expr": "rate(rag_tokens_total[5m]) * 3600 / (($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) + 0.001)",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
+          "expr": "rate(rag_tokens_total[5m]) * 3600 / (($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) + 0.001)",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "rate(rag_tokens_total[5m]) * 3600 / (($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) + 0.001)",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
-      "title": "Tokens per $",
+      "title": "Tokens per $ (All)",
       "type": "stat"
     },
     {
@@ -465,10 +524,10 @@
       "id": 26,
       "options": {
         "code": { "language": "plaintext", "showLineNumbers": false },
-        "content": "**Pricing Inputs:**\n- GPU: $${gpu_cost}/hr × ${gpu_nodes}\n- CPU: $${cpu_cost}/hr × ${cpu_nodes}\n- Mgmt: $${mgmt_cost}/hr",
+        "content": "**Pricing (per node):**\n| | LKE | EKS | GKE |\n|---|---|---|---|\n| GPU $/hr | $${lke_gpu_cost} | $${eks_gpu_cost} | $${gke_gpu_cost} |\n| CPU $/hr | $${lke_cpu_cost} | $${eks_cpu_cost} | $${gke_cpu_cost} |\n| Mgmt $/hr | $${lke_mgmt_cost} | $${eks_mgmt_cost} | $${gke_mgmt_cost} |\n\n**Nodes:** ${gpu_nodes} GPU, ${cpu_nodes} CPU",
         "mode": "markdown"
       },
-      "title": "Current Config",
+      "title": "Pricing Summary",
       "type": "text"
     },
     {
@@ -842,42 +901,139 @@
         "type": "datasource"
       },
       {
-        "current": { "selected": false, "text": "1.50", "value": "1.50" },
-        "description": "GPU node cost per hour. Presets: LKE=$1.50, EKS=$0.80, GKE=$0.94",
+        "current": { "selected": true, "text": "1.50", "value": "1.50" },
+        "description": "LKE GPU node cost per hour (RTX 4090)",
         "hide": 0,
-        "label": "GPU $/hr",
-        "name": "gpu_cost",
+        "label": "LKE GPU $/hr",
+        "name": "lke_gpu_cost",
         "options": [
           { "selected": true, "text": "1.50", "value": "1.50" },
-          { "selected": false, "text": "0.80", "value": "0.80" },
-          { "selected": false, "text": "0.94", "value": "0.94" },
           { "selected": false, "text": "2.00", "value": "2.00" },
-          { "selected": false, "text": "3.00", "value": "3.00" },
-          { "selected": false, "text": "4.00", "value": "4.00" }
+          { "selected": false, "text": "3.00", "value": "3.00" }
         ],
-        "query": "1.50, 0.80, 0.94, 2.00, 3.00, 4.00",
+        "query": "1.50, 2.00, 3.00",
         "skipUrlSync": false,
         "type": "custom"
       },
       {
-        "current": { "selected": false, "text": "0.036", "value": "0.036" },
-        "description": "CPU node cost per hour",
+        "current": { "selected": true, "text": "0.036", "value": "0.036" },
+        "description": "LKE CPU node cost per hour",
         "hide": 0,
-        "label": "CPU $/hr",
-        "name": "cpu_cost",
+        "label": "LKE CPU $/hr",
+        "name": "lke_cpu_cost",
         "options": [
           { "selected": true, "text": "0.036", "value": "0.036" },
-          { "selected": false, "text": "0.067", "value": "0.067" },
-          { "selected": false, "text": "0.096", "value": "0.096" },
-          { "selected": false, "text": "0.10", "value": "0.10" },
-          { "selected": false, "text": "0.15", "value": "0.15" }
+          { "selected": false, "text": "0.072", "value": "0.072" },
+          { "selected": false, "text": "0.10", "value": "0.10" }
         ],
-        "query": "0.036, 0.067, 0.096, 0.10, 0.15",
+        "query": "0.036, 0.072, 0.10",
         "skipUrlSync": false,
         "type": "custom"
       },
       {
-        "current": { "selected": false, "text": "1", "value": "1" },
+        "current": { "selected": true, "text": "0", "value": "0" },
+        "description": "LKE has no management fee",
+        "hide": 0,
+        "label": "LKE Mgmt $/hr",
+        "name": "lke_mgmt_cost",
+        "options": [
+          { "selected": true, "text": "0", "value": "0" }
+        ],
+        "query": "0",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.80", "value": "0.80" },
+        "description": "EKS GPU node cost per hour (g5.xlarge)",
+        "hide": 0,
+        "label": "EKS GPU $/hr",
+        "name": "eks_gpu_cost",
+        "options": [
+          { "selected": true, "text": "0.80", "value": "0.80" },
+          { "selected": false, "text": "1.01", "value": "1.01" },
+          { "selected": false, "text": "1.62", "value": "1.62" },
+          { "selected": false, "text": "2.00", "value": "2.00" }
+        ],
+        "query": "0.80, 1.01, 1.62, 2.00",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.096", "value": "0.096" },
+        "description": "EKS CPU node cost per hour (m5.large)",
+        "hide": 0,
+        "label": "EKS CPU $/hr",
+        "name": "eks_cpu_cost",
+        "options": [
+          { "selected": true, "text": "0.096", "value": "0.096" },
+          { "selected": false, "text": "0.192", "value": "0.192" },
+          { "selected": false, "text": "0.10", "value": "0.10" }
+        ],
+        "query": "0.096, 0.192, 0.10",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.10", "value": "0.10" },
+        "description": "EKS cluster management fee ($0.10/hr = $73/month)",
+        "hide": 0,
+        "label": "EKS Mgmt $/hr",
+        "name": "eks_mgmt_cost",
+        "options": [
+          { "selected": true, "text": "0.10", "value": "0.10" },
+          { "selected": false, "text": "0", "value": "0" }
+        ],
+        "query": "0.10, 0",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.94", "value": "0.94" },
+        "description": "GKE GPU node cost per hour (n1-standard-4 + T4)",
+        "hide": 0,
+        "label": "GKE GPU $/hr",
+        "name": "gke_gpu_cost",
+        "options": [
+          { "selected": true, "text": "0.94", "value": "0.94" },
+          { "selected": false, "text": "1.20", "value": "1.20" },
+          { "selected": false, "text": "2.48", "value": "2.48" }
+        ],
+        "query": "0.94, 1.20, 2.48",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.067", "value": "0.067" },
+        "description": "GKE CPU node cost per hour (e2-standard-2)",
+        "hide": 0,
+        "label": "GKE CPU $/hr",
+        "name": "gke_cpu_cost",
+        "options": [
+          { "selected": true, "text": "0.067", "value": "0.067" },
+          { "selected": false, "text": "0.134", "value": "0.134" },
+          { "selected": false, "text": "0.10", "value": "0.10" }
+        ],
+        "query": "0.067, 0.134, 0.10",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.10", "value": "0.10" },
+        "description": "GKE cluster management fee ($0.10/hr = $73/month)",
+        "hide": 0,
+        "label": "GKE Mgmt $/hr",
+        "name": "gke_mgmt_cost",
+        "options": [
+          { "selected": true, "text": "0.10", "value": "0.10" },
+          { "selected": false, "text": "0", "value": "0" }
+        ],
+        "query": "0.10, 0",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "1", "value": "1" },
         "hide": 0,
         "label": "GPU Nodes",
         "name": "gpu_nodes",
@@ -892,7 +1048,7 @@
         "type": "custom"
       },
       {
-        "current": { "selected": false, "text": "2", "value": "2" },
+        "current": { "selected": true, "text": "2", "value": "2" },
         "hide": 0,
         "label": "CPU Nodes",
         "name": "cpu_nodes",
@@ -903,21 +1059,6 @@
           { "selected": false, "text": "4", "value": "4" }
         ],
         "query": "1, 2, 3, 4",
-        "skipUrlSync": false,
-        "type": "custom"
-      },
-      {
-        "current": { "selected": false, "text": "0", "value": "0" },
-        "description": "Cluster management fee. LKE=0, EKS/GKE=0.10",
-        "hide": 0,
-        "label": "Mgmt $/hr",
-        "name": "mgmt_cost",
-        "options": [
-          { "selected": true, "text": "0", "value": "0" },
-          { "selected": false, "text": "0.10", "value": "0.10" },
-          { "selected": false, "text": "0.20", "value": "0.20" }
-        ],
-        "query": "0, 0.10, 0.20",
         "skipUrlSync": false,
         "type": "custom"
       }
