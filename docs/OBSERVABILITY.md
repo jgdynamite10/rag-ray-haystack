@@ -328,14 +328,94 @@ Located in `grafana/dashboards/`:
 
 ### Import Dashboards Manually
 
-1. Access Grafana
-2. Go to Dashboards → Import
-3. Upload JSON file from `grafana/dashboards/`
-4. Select Prometheus datasource
+1. Access Grafana at `http://<grafana-ip>:3000`
+2. Login with `admin` / (your password)
+3. Go to **Dashboards** → **New** → **Import**
+4. Click **Upload dashboard JSON file**
+5. Upload each file from `grafana/dashboards/`:
+   - `rag-overview.json` - RAG System Overview with TTFT, TPOT, latency
+   - `provider-comparison.json` - Cross-provider comparison table
+   - `vllm-metrics.json` - vLLM inference metrics
+   - `gpu-utilization.json` - DCGM GPU metrics
+6. Select **Prometheus-LKE** as the datasource
+7. Click **Import**
+
+### Verify Setup
+
+After import, you should see these dashboards:
+
+| Dashboard | Purpose |
+|-----------|---------|
+| GPU Utilization (DCGM) | GPU metrics from NVIDIA DCGM exporter |
+| Provider Comparison | Side-by-side metrics across providers |
+| RAG System Overview | TTFT, TPOT, latency, throughput |
+| vLLM Inference Metrics | vLLM request queue, KV cache |
 
 ---
 
 ## Part 5: Troubleshooting
+
+### Cloud-Init Stuck on Interactive Prompt (Terraform)
+
+If `cloud-init status` shows `running` but Grafana isn't starting, the apt upgrade may be stuck on an interactive prompt.
+
+**Fix:**
+
+```bash
+# SSH into the VM
+ssh root@<vm-ip>
+
+# Kill stuck processes
+sudo pkill -9 cloud-init
+sudo pkill -9 apt
+sudo pkill -9 dpkg
+
+# Remove lock files
+sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock
+
+# Fix broken packages
+sudo dpkg --configure -a
+
+# Install Docker manually
+curl -fsSL https://get.docker.com | sh
+
+# Create Grafana setup
+mkdir -p /opt/rag-monitoring
+cd /opt/rag-monitoring
+
+cat > docker-compose.yml << 'EOF'
+services:
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./provisioning:/etc/grafana/provisioning
+
+volumes:
+  grafana-data:
+EOF
+
+mkdir -p provisioning/datasources
+cat > provisioning/datasources/datasources.yml << 'EOF'
+apiVersion: 1
+datasources:
+  - name: Prometheus-LKE
+    type: prometheus
+    access: proxy
+    url: http://<PROMETHEUS_IP>:9090
+    isDefault: true
+    editable: true
+EOF
+
+# Start Grafana
+docker compose up -d
+```
 
 ### Prometheus Not Scraping RAG Backend
 

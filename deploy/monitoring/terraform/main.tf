@@ -85,13 +85,17 @@ locals {
     #!/bin/bash
     set -euo pipefail
     
+    # Prevent interactive prompts during apt operations
+    export DEBIAN_FRONTEND=noninteractive
+    export NEEDRESTART_MODE=a
+    
     # Log everything
     exec > >(tee /var/log/grafana-setup.log) 2>&1
     echo "Starting Grafana VM setup at $(date)"
     
-    # Update system
+    # Update system (non-interactive)
     apt-get update -qq
-    apt-get upgrade -y -qq
+    apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade -y -qq
     
     # Install Docker
     curl -fsSL https://get.docker.com | sh
