@@ -58,8 +58,13 @@ BENCH_SCRIPT = """#!/usr/bin/env python3
 \"\"\"
 Lightweight streaming benchmark for /query/stream.
 
-Measures TTFT, tokens/sec (approx), and total latency.
+Measures TTFT, TPOT, tokens/sec (approx), and total latency.
 Portable across Akamai LKE, AWS EKS, and GCP GKE.
+
+Phase 2 additions:
+- TPOT (time per output token)
+- Warmup vs measured phases
+- Run metadata collection
 \"\"\"
 
 from __future__ import annotations
@@ -67,8 +72,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import statistics
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -83,19 +90,32 @@ def percentile(values: list[float], pct: float) -> float:
     return ordered[index]
 
 
+def collect_run_metadata() -> dict[str, Any]:
+    return {
+        "provider": os.getenv("RAG_PROVIDER") or os.getenv("PROVIDER") or None,
+        "region": os.getenv("RAG_REGION") or os.getenv("REGION") or None,
+        "cluster_label": os.getenv("CLUSTER_LABEL") or os.getenv("CLUSTER_NAME") or None,
+        "model_id": os.getenv("VLLM_MODEL") or os.getenv("MODEL_ID") or None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 async def run_request(
     client: httpx.AsyncClient,
     url: str,
     prompt: str,
     request_id: int,
 ) -> dict[str, Any]:
-    payload = {"query": prompt}
+    request_payload = {"query": prompt}
     start = time.perf_counter()
     ttft: Optional[float] = None
+    first_token_time: Optional[float] = None
+    last_token_time: Optional[float] = None
     token_count = 0
+    done_token_count: Optional[int] = None
 
     try:
-        async with client.stream("POST", url, json=payload) as response:
+        async with client.stream("POST", url, json=request_payload) as response:
             response.raise_for_status()
             event_name = None
             event_data = None
@@ -113,25 +133,40 @@ async def run_request(
                     payload = json.loads(event_data)
                     if event_name == "ttft" and ttft is None:
                         ttft = time.perf_counter() - start
+                        first_token_time = time.perf_counter()
                     if event_name == "token":
+                        current_time = time.perf_counter()
                         if ttft is None:
-                            ttft = time.perf_counter() - start
+                            ttft = current_time - start
+                            first_token_time = current_time
+                        last_token_time = current_time
                         token_count += max(1, len(payload.get("text", "").split()))
                     if event_name == "done":
+                        done_token_count = payload.get("token_count")
                         break
                     event_name = None
                     event_data = None
 
         total = time.perf_counter() - start
-        tokens_per_second = token_count / total if total > 0 else 0.0
+        final_token_count = done_token_count if done_token_count is not None else token_count
+        
+        tpot: Optional[float] = None
+        if first_token_time and last_token_time and final_token_count > 1:
+            generation_duration = last_token_time - first_token_time
+            tpot = generation_duration / (final_token_count - 1)
+        
+        tokens_per_second = final_token_count / total if total > 0 else 0.0
+        
         return {
             "id": request_id,
             "success": True,
             "ttft": ttft or total,
             "total": total,
+            "tpot": tpot,
+            "token_count": final_token_count,
             "tokens_per_second": tokens_per_second,
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {
             "id": request_id,
             "success": False,
@@ -158,6 +193,55 @@ async def worker(
         results.append(result)
 
 
+async def run_phase(
+    client: httpx.AsyncClient,
+    url: str,
+    prompt: str,
+    concurrency: int,
+    total_requests: int,
+) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    remaining = [total_requests]
+    lock = asyncio.Lock()
+    
+    tasks = [
+        asyncio.create_task(worker(i, client, url, prompt, lock, remaining, results))
+        for i in range(concurrency)
+    ]
+    await asyncio.gather(*tasks)
+    return results
+
+
+def compute_phase_stats(results: list[dict[str, Any]]) -> dict[str, Any]:
+    success = [r for r in results if r.get("success")]
+    failures = [r for r in results if not r.get("success")]
+    
+    ttft_values = [r["ttft"] for r in success]
+    total_values = [r["total"] for r in success]
+    tokens_per_second = [r["tokens_per_second"] for r in success]
+    tpot_values = [r["tpot"] for r in success if r.get("tpot") is not None]
+    token_counts = [r["token_count"] for r in success if r.get("token_count")]
+    
+    return {
+        "requests": len(results),
+        "success": len(success),
+        "errors": len(failures),
+        "ttft_p50_ms": round(percentile(ttft_values, 0.50) * 1000, 2),
+        "ttft_p95_ms": round(percentile(ttft_values, 0.95) * 1000, 2),
+        "latency_p50_ms": round(percentile(total_values, 0.50) * 1000, 2),
+        "latency_p95_ms": round(percentile(total_values, 0.95) * 1000, 2),
+        "tpot_p50_ms": round(percentile(tpot_values, 0.50) * 1000, 2) if tpot_values else None,
+        "tpot_p95_ms": round(percentile(tpot_values, 0.95) * 1000, 2) if tpot_values else None,
+        "avg_tokens_per_sec": round(
+            statistics.mean(tokens_per_second) if tokens_per_second else 0.0, 2
+        ),
+        "total_tokens": sum(token_counts) if token_counts else 0,
+        "avg_output_tokens": round(
+            statistics.mean(token_counts) if token_counts else 0.0, 1
+        ),
+    }
+
+
 async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     prompt = "Explain what this system is and why vLLM matters."
     if args.prompt_file:
@@ -165,57 +249,82 @@ async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
 
     timeout = httpx.Timeout(args.timeout)
     limits = httpx.Limits(max_keepalive_connections=args.concurrency)
-    results: list[dict[str, Any]] = []
-    remaining = [args.requests]
-    lock = asyncio.Lock()
-
+    
+    warmup_stats: Optional[dict[str, Any]] = None
+    measured_stats: dict[str, Any] = {}
+    benchmark_start = time.perf_counter()
+    
     async with httpx.AsyncClient(timeout=timeout, limits=limits) as client:
-        tasks = [
-            asyncio.create_task(worker(i, client, args.url, prompt, lock, remaining, results))
-            for i in range(args.concurrency)
-        ]
-        await asyncio.gather(*tasks)
-
-    success = [r for r in results if r.get("success")]
-    failures = [r for r in results if not r.get("success")]
-    ttft_values = [r["ttft"] for r in success]
-    total_values = [r["total"] for r in success]
-    tokens_per_second = [r["tokens_per_second"] for r in success]
-
+        if args.warmup_requests > 0:
+            print(f"Warmup: {args.warmup_requests} requests...", file=__import__('sys').stderr)
+            warmup_results = await run_phase(
+                client, args.url, prompt, args.concurrency, args.warmup_requests
+            )
+            warmup_stats = compute_phase_stats(warmup_results)
+            warmup_stats["phase"] = "warmup"
+        
+        print(f"Measured: {args.requests} requests...", file=__import__('sys').stderr)
+        measured_results = await run_phase(
+            client, args.url, prompt, args.concurrency, args.requests
+        )
+        measured_stats = compute_phase_stats(measured_results)
+        measured_stats["phase"] = "measured"
+    
+    benchmark_duration = time.perf_counter() - benchmark_start
+    run_metadata = collect_run_metadata()
+    
     summary = {
-        "requests": args.requests,
+        "requests": measured_stats["requests"],
         "concurrency": args.concurrency,
-        "success": len(success),
-        "errors": len(failures),
-        "ttft_p50_ms": round(percentile(ttft_values, 0.50) * 1000, 2),
-        "ttft_p95_ms": round(percentile(ttft_values, 0.95) * 1000, 2),
-        "latency_p50_ms": round(percentile(total_values, 0.50) * 1000, 2),
-        "latency_p95_ms": round(percentile(total_values, 0.95) * 1000, 2),
-        "avg_tokens_per_sec": round(
-            statistics.mean(tokens_per_second) if tokens_per_second else 0.0, 2
-        ),
+        "success": measured_stats["success"],
+        "errors": measured_stats["errors"],
+        "ttft_p50_ms": measured_stats["ttft_p50_ms"],
+        "ttft_p95_ms": measured_stats["ttft_p95_ms"],
+        "latency_p50_ms": measured_stats["latency_p50_ms"],
+        "latency_p95_ms": measured_stats["latency_p95_ms"],
+        "tpot_p50_ms": measured_stats.get("tpot_p50_ms"),
+        "tpot_p95_ms": measured_stats.get("tpot_p95_ms"),
+        "avg_tokens_per_sec": measured_stats["avg_tokens_per_sec"],
+        "total_tokens": measured_stats["total_tokens"],
+        "avg_output_tokens": measured_stats["avg_output_tokens"],
+        "phases": {
+            "warmup": warmup_stats,
+            "measured": measured_stats,
+        },
+        "duration_seconds": round(benchmark_duration, 3),
+        "warmup_requests": args.warmup_requests,
+        "measured_requests": args.requests,
+        "run_metadata": run_metadata,
     }
 
     if args.json_out:
         Path(args.json_out).write_text(json.dumps(summary, indent=2))
 
-    if args.show_errors and failures:
-        print("Sample errors:")
-        for item in failures[: args.show_errors]:
-            print(f"- {item.get('error')}")
+    if args.show_errors:
+        failures = [r for r in measured_results if not r.get("success")]
+        if failures:
+            print("Sample errors:", file=__import__('sys').stderr)
+            for item in failures[: args.show_errors]:
+                print(f"- {item.get('error')}", file=__import__('sys').stderr)
 
     return summary
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Stream benchmark for /query/stream")
+    parser = argparse.ArgumentParser(description="Stream benchmark with TPOT and warmup phases")
     parser.add_argument(
         "--url",
         default="http://localhost:8000/query/stream",
         help="Streaming endpoint URL",
     )
     parser.add_argument("--concurrency", type=int, default=10, help="Concurrent requests")
-    parser.add_argument("--requests", type=int, default=100, help="Total requests")
+    parser.add_argument("--requests", type=int, default=100, help="Total measured requests")
+    parser.add_argument(
+        "--warmup-requests",
+        type=int,
+        default=0,
+        help="Warmup requests (not counted)",
+    )
     parser.add_argument("--prompt-file", help="Optional prompt file")
     parser.add_argument("--json-out", help="Write summary JSON to file")
     parser.add_argument("--timeout", type=int, default=120, help="Request timeout seconds")
