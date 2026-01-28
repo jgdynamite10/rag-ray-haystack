@@ -182,6 +182,63 @@ python stream_bench.py \
 
 ---
 
+## Output Length Control
+
+For consistent, reproducible benchmarks, control the maximum output tokens:
+
+```bash
+# Standalone script
+python stream_bench.py --url http://... --max-output-tokens 256
+
+# Wrapper script
+./scripts/benchmark/run_ns.sh akamai-lke --url http://... --max-output-tokens 256
+
+# In-cluster API
+curl -X POST http://.../benchmark/run \
+  -d '{"requests": 100, "max_output_tokens": 256}'
+```
+
+**Why this matters:**
+- Without limits, models generate variable-length responses
+- Variable output = inconsistent TPOT, latency, and tokens/sec measurements
+- Set the same `max_output_tokens` across all benchmark runs for fair comparison
+
+**Recommended values:**
+| Use Case | max_output_tokens |
+|----------|-------------------|
+| Quick test | 128 |
+| Standard benchmark | 256 |
+| Long-form generation | 512 |
+| Stress test | 1024 |
+
+---
+
+## Grafana Dashboards
+
+### ITDM Unified Dashboard
+
+The **ITDM - Unified Dashboard** (`grafana/dashboards/itdm-unified.json`) provides a single view for:
+
+1. **Key Performance Metrics** - TTFT, TPOT, Latency, Tokens/sec, Requests/sec, Error Rate
+2. **Cost Analysis** - Provider-specific pricing with editable inputs (LKE, EKS, GKE)
+3. **Provider Comparison** - Side-by-side charts comparing all 3 providers
+4. **Latency Breakdown** - Attribution by stage (embedding, retrieval, generation)
+
+**Import the dashboard:**
+1. Open Grafana (http://172.239.55.129:3000 for central instance)
+2. **Dashboards** → **New** → **Import**
+3. Upload `grafana/dashboards/itdm-unified.json`
+4. Select your Prometheus datasource(s)
+
+**Cost Variables (editable dropdowns at top):**
+| Provider | GPU $/hr | CPU $/hr | Mgmt $/hr |
+|----------|----------|----------|-----------|
+| Akamai LKE | $1.50 (RTX 4090) | $0.036 | $0 |
+| AWS EKS | $0.80 (g5.xlarge) | $0.096 | $0.10 |
+| GCP GKE | $0.94 (T4) | $0.067 | $0.10 |
+
+---
+
 ## Metrics Reference
 
 ### Interactive LLM Metrics (ITDMs)
@@ -240,6 +297,7 @@ python stream_bench.py \
   "duration_seconds": 125.3,
   "warmup_requests": 10,
   "measured_requests": 100,
+  "max_output_tokens": 256,
   
   "workload_manifest_path": null,
   "workload_manifest_hash": null,
@@ -265,12 +323,20 @@ python scripts/benchmark/stream_bench.py \
   --requests 100 \
   --concurrency 10 \
   --warmup-requests 10 \
+  --max-output-tokens 256 \
   --json-out benchmarks/ns/$(date +%Y-%m-%dT%H%M%S).json
+
+# Using the wrapper script (recommended)
+./scripts/benchmark/run_ns.sh akamai-lke \
+  --url "https://your-app.com/api/query/stream" \
+  --requests 100 \
+  --max-output-tokens 256 \
+  --with-cost
 
 # Trigger in-cluster benchmark via API
 curl -X POST https://your-app.com/api/benchmark/run \
   -H "Content-Type: application/json" \
-  -d '{"requests": 100, "concurrency": 10, "warmup_requests": 10}'
+  -d '{"requests": 100, "concurrency": 10, "warmup_requests": 10, "max_output_tokens": 256}'
 
 # Check benchmark status
 curl "https://your-app.com/api/benchmark/status?job=rag-stream-bench-abc123"
