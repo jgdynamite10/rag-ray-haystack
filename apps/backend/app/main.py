@@ -460,6 +460,10 @@ class RagApp:
             "rag_tokens_per_second",
             "Tokens per second (estimated)",
         )
+        self.tpot_histogram = Histogram(
+            "rag_tpot_seconds",
+            "Time per output token in seconds",
+        )
         self.token_counter = Counter(
             "rag_tokens_total",
             "Total tokens generated (estimated)",
@@ -1243,6 +1247,10 @@ class RagApp:
                 self.token_counter.inc(token_count)
                 if tokens_per_second is not None:
                     self.tokens_per_second_histogram.observe(tokens_per_second)
+                # TPOT = time per output token (excluding first token)
+                if stream_duration_sec and token_count > 1:
+                    tpot = stream_duration_sec / (token_count - 1)
+                    self.tpot_histogram.observe(tpot)
                 self.timings.record("retrieval", retrieval_time)
                 self.timings.record("generation", generation_time)
                 self.latency_histogram.labels("retrieval").observe(retrieval_time)
