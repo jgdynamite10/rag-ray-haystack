@@ -1,0 +1,32 @@
+# Terraform Variables for Central Grafana VM
+# Copy to terraform.tfvars and fill in your values
+#
+# IMPORTANT: Never commit terraform.tfvars to git (it contains secrets)
+
+# Linode API token (get from https://cloud.linode.com/profile/tokens)
+linode_token = "your-linode-api-token"
+
+# VM root password (for SSH access)
+root_password = "your-secure-root-password"
+
+# SSH public keys (optional, for key-based auth)
+ssh_keys = [
+  # "ssh-rsa AAAAB3... user@laptop"
+]
+
+# Region (should match your LKE cluster for low latency)
+region = "us-ord"  # Chicago
+
+# Instance type
+# g6-nanode-1   = 1GB RAM,  $5/month
+# g6-standard-1 = 2GB RAM, $12/month
+instance_type = "g6-nanode-1"
+
+# Grafana admin password
+grafana_admin_password = "your-grafana-password"
+
+# Prometheus URLs for each cluster
+# Get these by running: kubectl -n monitoring get svc prometheus-kube-prometheus-prometheus
+prometheus_lke_url = "http://172.238.165.45:9090"
+prometheus_eks_url = ""  # Fill in when EKS is deployed
+prometheus_gke_url = ""  # Fill in when GKE is deployed
