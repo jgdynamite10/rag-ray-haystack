@@ -58,7 +58,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(rag_ttft_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
           "legendFormat": "TTFT p95",
           "refId": "A"
         }
@@ -96,7 +96,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(rag_tpot_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
           "legendFormat": "TPOT p95",
           "refId": "A"
         }
@@ -134,7 +134,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
           "legendFormat": "Total Latency p95",
           "refId": "A"
         }
@@ -172,7 +172,7 @@
       },
       "targets": [
         {
-          "expr": "rate(rag_tokens_total[5m])",
+          "expr": "sum(rate(rag_tokens_total[5m]))",
           "legendFormat": "tokens/sec",
           "refId": "A"
         }
@@ -210,7 +210,7 @@
       },
       "targets": [
         {
-          "expr": "rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m])",
+          "expr": "sum(rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m]))",
           "legendFormat": "req/sec",
           "refId": "A"
         }
@@ -249,7 +249,7 @@
       },
       "targets": [
         {
-          "expr": "rate(rag_errors_total[5m]) / (rate(rag_requests_total[5m]) + 0.001)",
+          "expr": "sum(rate(rag_errors_total[5m])) / (sum(rate(rag_requests_total[5m])) + 0.001)",
           "legendFormat": "Error Rate",
           "refId": "A"
         }
@@ -395,19 +395,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) / 3600 / (rate(rag_tokens_total[5m]) + 0.001) * 1000000",
+          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) / 3600 / (sum(rate(rag_tokens_total[5m])) + 0.001) * 1000000",
           "legendFormat": "LKE",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) / 3600 / (rate(rag_tokens_total[5m]) + 0.001) * 1000000",
+          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) / 3600 / (sum(rate(rag_tokens_total[5m])) + 0.001) * 1000000",
           "legendFormat": "EKS",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) / 3600 / (rate(rag_tokens_total[5m]) + 0.001) * 1000000",
+          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) / 3600 / (sum(rate(rag_tokens_total[5m])) + 0.001) * 1000000",
           "legendFormat": "GKE",
           "refId": "C"
         }
@@ -447,19 +447,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) / 3600 / (rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m]) + 0.001)",
+          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) / 3600 / (sum(rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m])) + 0.001)",
           "legendFormat": "LKE",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) / 3600 / (rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m]) + 0.001)",
+          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) / 3600 / (sum(rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m])) + 0.001)",
           "legendFormat": "EKS",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) / 3600 / (rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m]) + 0.001)",
+          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) / 3600 / (sum(rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m])) + 0.001)",
           "legendFormat": "GKE",
           "refId": "C"
         }
@@ -499,19 +499,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "rate(rag_tokens_total[5m]) * 3600 / (($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) + 0.001)",
+          "expr": "sum(rate(rag_tokens_total[5m])) * 3600 / (($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) + 0.001)",
           "legendFormat": "LKE",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "rate(rag_tokens_total[5m]) * 3600 / (($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) + 0.001)",
+          "expr": "sum(rate(rag_tokens_total[5m])) * 3600 / (($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) + 0.001)",
           "legendFormat": "EKS",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "rate(rag_tokens_total[5m]) * 3600 / (($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) + 0.001)",
+          "expr": "sum(rate(rag_tokens_total[5m])) * 3600 / (($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) + 0.001)",
           "legendFormat": "GKE",
           "refId": "C"
         }
@@ -579,19 +579,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "histogram_quantile(0.95, rate(rag_ttft_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
           "legendFormat": "Akamai LKE",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "histogram_quantile(0.95, rate(rag_ttft_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
           "legendFormat": "AWS EKS",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "histogram_quantile(0.95, rate(rag_ttft_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
           "legendFormat": "GCP GKE",
           "refId": "C"
         }
@@ -640,19 +640,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "histogram_quantile(0.95, rate(rag_tpot_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
           "legendFormat": "Akamai LKE",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "histogram_quantile(0.95, rate(rag_tpot_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
           "legendFormat": "AWS EKS",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "histogram_quantile(0.95, rate(rag_tpot_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
           "legendFormat": "GCP GKE",
           "refId": "C"
         }
@@ -701,19 +701,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "rate(rag_tokens_total[5m])",
+          "expr": "sum(rate(rag_tokens_total[5m]))",
           "legendFormat": "Akamai LKE",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "rate(rag_tokens_total[5m])",
+          "expr": "sum(rate(rag_tokens_total[5m]))",
           "legendFormat": "AWS EKS",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "rate(rag_tokens_total[5m])",
+          "expr": "sum(rate(rag_tokens_total[5m]))",
           "legendFormat": "GCP GKE",
           "refId": "C"
         }
@@ -762,19 +762,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
           "legendFormat": "Akamai LKE",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
           "legendFormat": "AWS EKS",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
           "legendFormat": "GCP GKE",
           "refId": "C"
         }
@@ -834,17 +834,17 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"embedding\"}[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"embedding\"}[5m])) by (le)) * 1000",
           "legendFormat": "Embedding",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"retrieval\"}[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"retrieval\"}[5m])) by (le)) * 1000",
           "legendFormat": "Retrieval",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(rag_latency_seconds_bucket{stage=\"generation\"}[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"generation\"}[5m])) by (le)) * 1000",
           "legendFormat": "Generation",
           "refId": "C"
         }
