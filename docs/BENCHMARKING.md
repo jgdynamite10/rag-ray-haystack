@@ -6,21 +6,159 @@ This document explains the different ways to measure RAG system performance and 
 
 ## Quick Start: Populate ITDM Dashboard
 
-**One command to populate all metrics on the ITDM dashboard:**
+### Complete Workflow (3 Steps)
 
 ```bash
-# 1. Activate Python venv (one-time setup)
+# Step 1: Setup Python environment (one-time)
 cd ~/Documents/new-projects/rag-ray-haystack
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r scripts/benchmark/requirements.txt
 
-# 2. Run the benchmark (populates ALL dashboard metrics)
+# Step 2: Ingest a document (required for retrieval metrics)
+# Option A: Via UI - Open http://172.236.105.4 and upload a PDF/text file
+# Option B: Via API
+curl -X POST "http://172.236.105.4/api/ingest" \
+  -F "file=@/path/to/your/document.pdf"
+
+# Step 3: Run the benchmark (populates ALL dashboard metrics)
 ./scripts/benchmark/run_ns.sh akamai-lke \
   --url http://172.236.105.4/api/query/stream \
   --requests 100 \
   --max-output-tokens 256
 ```
+
+### Why Document Ingestion Matters
+
+The benchmark queries the RAG system, which:
+1. **Embeds** your query → embedding latency
+2. **Retrieves** relevant documents from Qdrant → `rag_k_retrieved` metric
+3. **Generates** response via vLLM → TTFT, TPOT, tokens/sec
+
+**Without documents ingested**, the retrieval step returns 0 documents and `rag_k_retrieved` will be empty.
+
+---
+
+## Test Profiles
+
+### Light Test (Quick Sanity Check)
+**Use case:** Verify system is working, ~30 seconds
+
+```bash
+./scripts/benchmark/run_ns.sh akamai-lke \
+  --url http://172.236.105.4/api/query/stream \
+  --requests 20 \
+  --concurrency 5 \
+  --warmup 5 \
+  --max-output-tokens 128
+```
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| requests | 20 | Quick validation |
+| concurrency | 5 | Light parallel load |
+| warmup | 5 | Minimal warmup |
+| max-output-tokens | 128 | Short responses |
+
+### Standard Test (Default Benchmark)
+**Use case:** Regular benchmarking, ~2-3 minutes
+
+```bash
+./scripts/benchmark/run_ns.sh akamai-lke \
+  --url http://172.236.105.4/api/query/stream \
+  --requests 100 \
+  --concurrency 10 \
+  --warmup 10 \
+  --max-output-tokens 256
+```
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| requests | 100 | Statistically meaningful |
+| concurrency | 10 | Typical multi-user load |
+| warmup | 10 | Proper cache warming |
+| max-output-tokens | 256 | Standard response length |
+
+### Load Test (High Concurrency)
+**Use case:** Test system under heavy load, ~5-10 minutes
+
+```bash
+./scripts/benchmark/run_ns.sh akamai-lke \
+  --url http://172.236.105.4/api/query/stream \
+  --requests 500 \
+  --concurrency 50 \
+  --warmup 20 \
+  --max-output-tokens 256
+```
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| requests | 500 | Large sample size |
+| concurrency | 50 | Heavy parallel load |
+| warmup | 20 | Thorough warmup |
+| max-output-tokens | 256 | Consistent responses |
+
+### Stress Test (Maximum Load)
+**Use case:** Find breaking point, ~15-30 minutes
+
+```bash
+./scripts/benchmark/run_ns.sh akamai-lke \
+  --url http://172.236.105.4/api/query/stream \
+  --requests 1000 \
+  --concurrency 100 \
+  --warmup 50 \
+  --max-output-tokens 256 \
+  --timeout 300
+```
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| requests | 1000 | Stress volume |
+| concurrency | 100 | Maximum parallel requests |
+| warmup | 50 | Extended warmup |
+| timeout | 300 | Allow for queueing delays |
+
+**Warning:** Stress tests may cause GPU memory pressure and request failures. Monitor GPU utilization in Grafana.
+
+---
+
+## How Warmup Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Phase 1: WARMUP (--warmup 10)                             │
+│  - Runs 10 requests                                         │
+│  - Results DISCARDED (not counted in metrics)              │
+│  - Purpose: Prime caches, warm up GPU, stabilize vLLM      │
+├─────────────────────────────────────────────────────────────┤
+│  Phase 2: MEASURED (--requests 100)                        │
+│  - Runs 100 requests at --concurrency 10                   │
+│  - Results RECORDED for TTFT, TPOT, latency, etc.          │
+│  - This is what appears in dashboard and JSON output       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why warmup matters:**
+- First requests after deployment are slower (cold GPU, empty KV cache)
+- Warmup ensures measured results reflect steady-state performance
+- Industry standard practice for LLM benchmarking
+
+---
+
+## Concurrency Guide
+
+| Concurrency | Simulates | Expected Behavior |
+|-------------|-----------|-------------------|
+| 1 | Single user | Baseline latency, no queueing |
+| 5 | Small team | Light load, minimal queueing |
+| 10 | Standard app | Typical production load |
+| 25 | Busy app | Moderate queueing on GPU |
+| 50 | High traffic | Significant queueing, higher latency |
+| 100 | Stress test | May hit GPU memory limits |
+
+**Tip:** Compare p50 vs p95 latency. Large gaps indicate queueing under load.
+
+---
 
 ### What Gets Populated
 
