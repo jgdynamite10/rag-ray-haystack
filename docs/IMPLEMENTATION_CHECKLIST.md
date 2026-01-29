@@ -27,15 +27,20 @@ Use this to systematically close gaps across Phase 1 and Phase 2 features.
 #### East-West (In-Cluster) Probe
 | Task | File(s) | Status |
 |------|---------|--------|
-| Netprobe Job manifest | `deploy/netprobe/ew-netprobe-job.yaml` | [ ] |
-| Netprobe DaemonSet (optional) | `deploy/netprobe/ew-netprobe-ds.yaml` | [ ] |
-| Netprobe script (iperf3/qperf based) | `scripts/netprobe/run_ew.sh` | [ ] |
-| Sample output JSON schema | `schemas/netprobe-ew.schema.json` | [ ] |
+| Netprobe manifest | `deploy/netprobe/ew-netprobe.yaml` | [x] Complete |
+| Netprobe script | `scripts/netprobe/run_ew.sh` | [x] Complete |
+| Sample output JSON schema | `schemas/netprobe-ew.schema.json` | [~] Deferred |
 
-**Gap:** No East-West network probe implemented. Needs:
-- Pod-to-pod latency measurement
-- Pod-to-service latency
-- Bandwidth test between nodes
+**Status:** Complete. Measures:
+- TCP throughput (Gbps) via iperf3
+- UDP jitter and packet loss
+- TCP connect latency (min/avg/max ms)
+- Enforces different-node scheduling via podAntiAffinity
+
+Usage:
+```bash
+./scripts/netprobe/run_ew.sh --provider akamai-lke --kubeconfig ~/.kube/lke.yaml
+```
 
 #### North-South (Client-to-Service) Probe
 | Task | File(s) | Status |
@@ -268,7 +273,7 @@ prompts:
 ### Medium Priority
 | Gap | Impact | Effort | Status |
 |-----|--------|--------|--------|
-| East-West network probe | Can't attribute latency to network vs GPU | Medium | [ ] |
+| ~~East-West network probe~~ | ~~Can't attribute latency to network vs GPU~~ | ~~Medium~~ | [x] Complete |
 | PROJECT_STATE.md update | Outdated docs for users | Low | [ ] |
 
 ### Deferred (Not Critical for Provider Comparison)

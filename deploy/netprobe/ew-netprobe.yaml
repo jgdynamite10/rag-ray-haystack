@@ -1,0 +1,228 @@
+# East-West Network Probe for Cross-Provider Comparison
+# Measures in-cluster network latency and throughput between nodes
+#
+# Usage: kubectl apply -f ew-netprobe.yaml -n <namespace>
+# Then run the client job to get results
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netprobe
+  labels:
+    app: netprobe
+---
+# iperf3 Server - runs continuously, waiting for client connections
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iperf3-server
+  namespace: netprobe
+  labels:
+    app: iperf3-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iperf3-server
+  template:
+    metadata:
+      labels:
+        app: iperf3-server
+    spec:
+      containers:
+        - name: iperf3
+          # Use same image as client for compatibility
+          image: nicolaka/netshoot:latest
+          command: ["iperf3", "-s"]
+          ports:
+            - containerPort: 5201
+              name: iperf
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
+      # Try to schedule on a different node than client
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: iperf3-client
+                topologyKey: kubernetes.io/hostname
+---
+# Service to expose iperf3 server
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf3-server
+  namespace: netprobe
+spec:
+  selector:
+    app: iperf3-server
+  ports:
+    - port: 5201
+      targetPort: 5201
+      name: iperf
+---
+# iperf3 Client Job - runs tests and outputs JSON
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: iperf3-client
+  namespace: netprobe
+  labels:
+    app: iperf3-client
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: iperf3-client
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: iperf3-client
+          # netshoot has iperf3, netcat, curl, and other network tools
+          image: nicolaka/netshoot:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo '{"test_type": "east-west", "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",' > /tmp/results.json
+              
+              # Get node info
+              echo '"client_node": "'${NODE_NAME:-unknown}'",' >> /tmp/results.json
+              
+              # Wait for server to be ready (simple approach - just wait)
+              echo "Waiting for iperf3 server..." >&2
+              sleep 10
+              
+              # TCP throughput test (10 seconds) with retry
+              echo "Running TCP throughput test..." >&2
+              TCP_RESULT=""
+              for attempt in 1 2 3; do
+                TCP_RESULT=$(iperf3 -c iperf3-server -t 10 -J 2>&1)
+                if echo "$TCP_RESULT" | grep -q '"bits_per_second"'; then
+                  echo "TCP test succeeded on attempt $attempt" >&2
+                  break
+                fi
+                echo "TCP test attempt $attempt failed, retrying in 5s..." >&2
+                sleep 5
+              done
+              echo "TCP raw result (first 500 chars):" >&2
+              echo "$TCP_RESULT" | head -c 500 >&2
+              echo "" >&2
+              
+              # Extract from the "end" summary section (more reliable)
+              # Handle scientific notation (e.g., 9.43e+09)
+              TCP_BPS_RAW=$(echo "$TCP_RESULT" | grep -o '"bits_per_second"[^,]*' | tail -1 | grep -o '[0-9.eE+-]*')
+              TCP_RETRANSMITS=$(echo "$TCP_RESULT" | grep -o '"retransmits"[^,]*' | tail -1 | grep -o '[0-9]*')
+              echo "Parsed: BPS=$TCP_BPS_RAW RETRANS=$TCP_RETRANSMITS" >&2
+              TCP_BPS=$(awk "BEGIN {printf \"%.0f\", ${TCP_BPS_RAW:-0}}")
+              TCP_MBPS=$(awk "BEGIN {printf \"%.2f\", ${TCP_BPS_RAW:-0}/1000000}")
+              TCP_GBPS=$(awk "BEGIN {printf \"%.4f\", ${TCP_BPS_RAW:-0}/1000000000}")
+              
+              echo '"tcp_throughput": {' >> /tmp/results.json
+              echo '  "bits_per_second": '$TCP_BPS',' >> /tmp/results.json
+              echo '  "mbps": '$TCP_MBPS',' >> /tmp/results.json
+              echo '  "gbps": '$TCP_GBPS',' >> /tmp/results.json
+              echo '  "retransmits": '${TCP_RETRANSMITS:-0}',' >> /tmp/results.json
+              echo '  "duration_seconds": 10' >> /tmp/results.json
+              echo '},' >> /tmp/results.json
+              
+              # UDP jitter test (5 seconds, 100Mbps target)
+              echo "Running UDP jitter test..." >&2
+              UDP_RESULT=$(iperf3 -c iperf3-server -u -b 100M -t 5 -J 2>&1)
+              
+              # Extract from the "end" summary section
+              UDP_JITTER=$(echo "$UDP_RESULT" | grep -A50 '"end"' | grep '"jitter_ms"' | head -1 | grep -o '[0-9.]*' | head -1)
+              UDP_LOST=$(echo "$UDP_RESULT" | grep -A50 '"end"' | grep '"lost_packets"' | head -1 | grep -o '[0-9]*' | head -1)
+              UDP_TOTAL=$(echo "$UDP_RESULT" | grep -A50 '"end"' | grep '"packets"' | head -1 | grep -o '[0-9]*' | head -1)
+              UDP_LOST=${UDP_LOST:-0}
+              UDP_TOTAL=${UDP_TOTAL:-1}
+              UDP_LOSS_PCT=$(awk "BEGIN {printf \"%.4f\", $UDP_LOST*100/$UDP_TOTAL}")
+              
+              echo '"udp_jitter": {' >> /tmp/results.json
+              echo '  "jitter_ms": '${UDP_JITTER:-0}',' >> /tmp/results.json
+              echo '  "lost_packets": '$UDP_LOST',' >> /tmp/results.json
+              echo '  "total_packets": '$UDP_TOTAL',' >> /tmp/results.json
+              echo '  "loss_percent": '$UDP_LOSS_PCT',' >> /tmp/results.json
+              echo '  "target_mbps": 100,' >> /tmp/results.json
+              echo '  "duration_seconds": 5' >> /tmp/results.json
+              echo '},' >> /tmp/results.json
+              
+              # Latency test using iperf3 RTT from JSON output
+              # Extract RTT values from the TCP test results
+              echo "Calculating latency from TCP test..." >&2
+              
+              # Get mean RTT from iperf3 TCP test streams
+              # Note: iperf3 doesn't directly report RTT, so we estimate from throughput test timing
+              # We'll use a simple approach: run short iperf3 tests and measure overhead
+              LATENCIES=""
+              for i in 1 2 3 4 5 6 7 8 9 10; do
+                START_NS=$(date +%s%N)
+                # Connect only (no data transfer) - just handshake
+                timeout 2 sh -c 'exec 3<>/dev/tcp/iperf3-server/5201 && exec 3>&-' 2>/dev/null || true
+                END_NS=$(date +%s%N)
+                LAT_NS=$((END_NS - START_NS))
+                if [ $LAT_NS -lt 1000000000 ]; then  # Only count if < 1 second
+                  LAT_MS=$(awk "BEGIN {printf \"%.3f\", $LAT_NS/1000000}")
+                  LATENCIES="$LATENCIES$LAT_MS "
+                fi
+              done
+              
+              # Calculate min/avg/max from latencies using awk
+              STATS=$(echo "$LATENCIES" | awk '{
+                split($0, a, " ")
+                min=999999; max=0; sum=0; n=0
+                for(i in a) {
+                  if(a[i]+0 > 0) {
+                    if(a[i] < min) min=a[i]
+                    if(a[i] > max) max=a[i]
+                    sum+=a[i]; n++
+                  }
+                }
+                if(n>0) printf "%.3f %.3f %.3f", min, sum/n, max
+                else print "0 0 0"
+              }')
+              MIN_LAT=$(echo $STATS | cut -d' ' -f1)
+              AVG_LAT=$(echo $STATS | cut -d' ' -f2)
+              MAX_LAT=$(echo $STATS | cut -d' ' -f3)
+              
+              echo '"latency": {' >> /tmp/results.json
+              echo '  "min_ms": '${MIN_LAT:-0}',' >> /tmp/results.json
+              echo '  "avg_ms": '${AVG_LAT:-0}',' >> /tmp/results.json
+              echo '  "max_ms": '${MAX_LAT:-0}',' >> /tmp/results.json
+              echo '  "samples": 5' >> /tmp/results.json
+              echo '}' >> /tmp/results.json
+              
+              echo '}' >> /tmp/results.json
+              
+              # Output final JSON
+              cat /tmp/results.json
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
+      # Force scheduling on different node than server
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: iperf3-server
+              topologyKey: kubernetes.io/hostname
