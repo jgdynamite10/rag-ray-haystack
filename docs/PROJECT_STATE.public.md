@@ -60,7 +60,8 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 **LKE Results (2026-01-29):**
 | Metric | Value |
 |--------|-------|
-| TCP Throughput | ~803 Mbps (0.8 Gbps) |
+| TCP Throughput | ~1.0 Gbps |
+| TCP Retransmits | ~1500-2000 |
 | Cross-node confirmed | Yes |
 | Server Node | lke561078-818958-* |
 | Client Node | lke561078-818957-* |
@@ -75,7 +76,27 @@ python scripts/cost/compute_cost.py \
 
 ---
 
-## Benchmark Results (LKE, Latest)
+## Benchmark Results (LKE, 2026-01-29)
+
+### Load Test (High Concurrency)
+
+| Metric | Value |
+|--------|-------|
+| Requests | 500 (measured) |
+| Warmup | 20 |
+| Concurrency | 50 |
+| Success Rate | 97.4% (487/500) |
+| TTFT p50 | 1,112 ms |
+| TTFT p95 | 4,012 ms |
+| TPOT p50 | 47.5 ms |
+| TPOT p95 | 56.4 ms |
+| Latency p50 | 12,932 ms |
+| Latency p95 | 16,530 ms |
+| Avg tokens/sec | 19.5 |
+| Avg output tokens | 255.8 |
+| Duration | 180 seconds |
+
+### Standard Test (For Reference)
 
 | Metric | Value |
 |--------|-------|
@@ -83,14 +104,13 @@ python scripts/cost/compute_cost.py \
 | Warmup | 10 |
 | Concurrency | 10 |
 | Success Rate | 100% |
-| TTFT p50 | 221.37 ms |
-| TTFT p95 | 700.40 ms |
-| TPOT p50 | 26.13 ms |
-| TPOT p95 | 27.02 ms |
+| TTFT p50 | 221 ms |
+| TTFT p95 | 700 ms |
+| TPOT p50 | 26 ms |
+| TPOT p95 | 27 ms |
 | Latency p50 | 10,734 ms |
 | Latency p95 | 13,948 ms |
-| Avg tokens/sec | 37.29 |
-| Avg output tokens | 382.9 |
+| Avg tokens/sec | 37.3 |
 
 ### Metric Definitions
 
