@@ -292,6 +292,154 @@ docker-compose logs -f
 
 ---
 
+## Part 2b: GPU Metrics (DCGM Exporter)
+
+DCGM (Data Center GPU Manager) exporter provides GPU metrics for Prometheus.
+
+### Provider-Specific Setup
+
+#### Akamai LKE (GPU Operator Pre-Installed)
+
+LKE GPU nodes come with the **NVIDIA GPU Operator** pre-installed, which includes DCGM exporter.
+
+**Verify DCGM is running:**
+```bash
+kubectl get pods -n gpu-operator | grep dcgm
+# Expected: nvidia-dcgm-exporter-xxxxx   1/1   Running
+```
+
+**Check GPU metrics are exposed:**
+```bash
+kubectl port-forward -n gpu-operator svc/nvidia-dcgm-exporter 9400:9400 &
+curl -s localhost:9400/metrics | grep DCGM_FI_DEV_GPU_TEMP
+kill %1
+```
+
+**Add ServiceMonitor for Prometheus scraping:**
+```bash
+kubectl apply -f deploy/monitoring/dcgm-servicemonitor.yaml
+```
+
+Or manually:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: gpu-operator
+  labels:
+    app: nvidia-dcgm-exporter
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-dcgm-exporter
+  endpoints:
+    - port: gpu-metrics
+      interval: 15s
+  namespaceSelector:
+    matchNames:
+      - gpu-operator
+EOF
+```
+
+#### AWS EKS
+
+EKS does **not** include GPU Operator by default. You have two options:
+
+**Option A: Install NVIDIA GPU Operator (Recommended)**
+```bash
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+helm repo update
+
+helm install gpu-operator nvidia/gpu-operator \
+  --namespace gpu-operator --create-namespace \
+  --set operator.defaultRuntime=containerd
+```
+
+**Option B: Install DCGM Exporter Only**
+```bash
+helm install dcgm-exporter nvidia/dcgm-exporter \
+  --namespace gpu-operator --create-namespace \
+  --set serviceMonitor.enabled=true
+```
+
+After installation, apply the ServiceMonitor:
+```bash
+kubectl apply -f deploy/monitoring/dcgm-servicemonitor.yaml
+```
+
+#### GCP GKE
+
+GKE with GPU node pools includes the NVIDIA device plugin but **not** DCGM exporter.
+
+**Install DCGM Exporter:**
+```bash
+# Add NVIDIA Helm repo
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+helm repo update
+
+# Install DCGM exporter
+helm install dcgm-exporter nvidia/dcgm-exporter \
+  --namespace gpu-operator --create-namespace \
+  --set serviceMonitor.enabled=true \
+  --set arguments[0]="--kubernetes"
+```
+
+Then apply the ServiceMonitor:
+```bash
+kubectl apply -f deploy/monitoring/dcgm-servicemonitor.yaml
+```
+
+### DCGM Metrics Reference
+
+| Metric | Description | Unit |
+|--------|-------------|------|
+| `DCGM_FI_DEV_GPU_UTIL` | GPU utilization | % |
+| `DCGM_FI_DEV_FB_USED` | GPU framebuffer memory used | bytes |
+| `DCGM_FI_DEV_FB_FREE` | GPU framebuffer memory free | bytes |
+| `DCGM_FI_DEV_GPU_TEMP` | GPU temperature | °C |
+| `DCGM_FI_DEV_POWER_USAGE` | GPU power draw | Watts |
+| `DCGM_FI_DEV_SM_CLOCK` | Streaming multiprocessor clock | MHz |
+| `DCGM_FI_DEV_MEM_CLOCK` | Memory clock | MHz |
+
+### Example Prometheus Queries for GPU
+
+```promql
+# GPU Utilization
+avg(DCGM_FI_DEV_GPU_UTIL)
+
+# GPU Memory Usage (%)
+avg(DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100)
+
+# GPU Temperature
+avg(DCGM_FI_DEV_GPU_TEMP)
+
+# GPU Power
+avg(DCGM_FI_DEV_POWER_USAGE)
+
+# Compare GPU utilization across providers
+avg(DCGM_FI_DEV_GPU_UTIL) by (provider)
+```
+
+### Troubleshooting DCGM
+
+**No DCGM pods running:**
+- Check if GPU Operator is installed: `kubectl get pods -n gpu-operator`
+- Check node labels: `kubectl describe node <gpu-node> | grep nvidia`
+
+**DCGM exporter CrashLoopBackOff:**
+- Usually means driver access issue
+- Check if another DCGM instance is running
+- Verify NVIDIA drivers: `kubectl exec -it <gpu-pod> -- nvidia-smi`
+
+**ServiceMonitor not being scraped:**
+- Verify labels match: `kubectl get svc -n gpu-operator nvidia-dcgm-exporter --show-labels`
+- Check port name: `kubectl get svc -n gpu-operator nvidia-dcgm-exporter -o yaml | grep -A3 ports`
+
+---
+
 ## Part 3: Metrics Reference
 
 ### RAG Backend Metrics
@@ -319,6 +467,12 @@ The backend exposes these Prometheus metrics at `/metrics`:
 | Metric | Type | Description |
 |--------|------|-------------|
 | `rag_tokens_total` | Counter | Total tokens generated |
+
+#### Retrieval Metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `rag_k_retrieved` | Histogram | Number of documents retrieved per query (buckets: 0-20) |
 
 ### Example Prometheus Queries
 
