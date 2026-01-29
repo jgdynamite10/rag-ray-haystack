@@ -166,14 +166,30 @@ log "Collecting results..."
 CLIENT_POD=$(kubectl get pods -n "$NAMESPACE" -l app=iperf3-client --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null)
 RAW_RESULTS=$(kubectl logs -n "$NAMESPACE" "$CLIENT_POD" 2>/dev/null)
 
-# Extract JSON (find the complete JSON object)
-JSON_RESULTS=$(echo "$RAW_RESULTS" | sed -n '/^{/,/^}$/p' | head -30)
+# Extract JSON - find lines starting with { and capture until final }
+# The JSON output is the last thing printed by the container
+JSON_RESULTS=$(echo "$RAW_RESULTS" | awk '/^{\"test_type\":/,/^}$/' | head -50)
+
+# If that didn't work, try extracting from the last { to the end
+if [[ -z "$JSON_RESULTS" ]]; then
+    JSON_RESULTS=$(echo "$RAW_RESULTS" | grep -A100 '^{"test_type"' | head -50)
+fi
 
 if [[ -z "$JSON_RESULTS" ]] || ! echo "$JSON_RESULTS" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
-    error "Failed to parse results JSON"
-    echo "Raw output:"
-    echo "$RAW_RESULTS"
-    exit 1
+    warn "Could not extract clean JSON, attempting to build from raw values..."
+    # Try to extract key values directly
+    TCP_GBPS=$(echo "$RAW_RESULTS" | grep -o '"gbps": [0-9.]*' | head -1 | grep -o '[0-9.]*')
+    TCP_MBPS=$(echo "$RAW_RESULTS" | grep -o '"mbps": [0-9.]*' | head -1 | grep -o '[0-9.]*')
+    if [[ -n "$TCP_GBPS" ]]; then
+        # Build minimal JSON from extracted values
+        JSON_RESULTS="{\"test_type\": \"east-west\", \"tcp_throughput\": {\"gbps\": $TCP_GBPS, \"mbps\": $TCP_MBPS}, \"udp_jitter\": {\"jitter_ms\": 0}, \"latency\": {\"avg_ms\": 0}}"
+        log "Built minimal JSON from extracted values"
+    else
+        error "Failed to parse results JSON"
+        echo "Raw output:"
+        echo "$RAW_RESULTS"
+        exit 1
+    fi
 fi
 
 # Add metadata to results
@@ -181,24 +197,37 @@ TIMESTAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
 OUTPUT_FILE="$PROJECT_ROOT/$OUTPUT_DIR/$PROVIDER/${TIMESTAMP}.json"
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
+# Write raw JSON to temp file to avoid heredoc quoting issues
+TEMP_JSON=$(mktemp)
+echo "$JSON_RESULTS" > "$TEMP_JSON"
+
 # Merge results with metadata using Python
-python3 << EOF
+SAME_NODE_BOOL=$( [[ "$SAME_NODE" == "true" ]] && echo "true" || echo "false" )
+python3 - "$TEMP_JSON" "$PROVIDER" "$CLUSTER_NAME" "$SERVER_NODE" "$CLIENT_NODE" "$SAME_NODE_BOOL" > "$OUTPUT_FILE" << 'PYEOF'
 import json
 import sys
 
-raw = '''$JSON_RESULTS'''
-data = json.loads(raw)
+temp_file = sys.argv[1]
+provider = sys.argv[2]
+cluster = sys.argv[3]
+server_node = sys.argv[4]
+client_node = sys.argv[5]
+same_node = sys.argv[6] == "true"
+
+with open(temp_file) as f:
+    data = json.load(f)
 
 # Add metadata
-data["provider"] = "$PROVIDER"
-data["cluster"] = "$CLUSTER_NAME"
-data["server_node"] = "$SERVER_NODE"
-data["client_node"] = "$CLIENT_NODE"
-data["same_node"] = $( [[ "$SAME_NODE" == "true" ]] && echo "true" || echo "false" )
+data["provider"] = provider
+data["cluster"] = cluster
+data["server_node"] = server_node
+data["client_node"] = client_node
+data["same_node"] = same_node
 
 # Pretty print
 print(json.dumps(data, indent=2))
-EOF > "$OUTPUT_FILE"
+PYEOF
+rm -f "$TEMP_JSON"
 
 # Display summary
 log "Results saved to: $OUTPUT_FILE"

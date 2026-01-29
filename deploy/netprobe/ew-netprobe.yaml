@@ -119,14 +119,13 @@ spec:
               echo "$TCP_RESULT" | head -c 500 >&2
               echo "" >&2
               
-              # Extract from the "end" summary section (more reliable)
-              # Handle scientific notation (e.g., 9.43e+09)
-              TCP_BPS_RAW=$(echo "$TCP_RESULT" | grep -o '"bits_per_second"[^,]*' | tail -1 | grep -o '[0-9.eE+-]*')
-              TCP_RETRANSMITS=$(echo "$TCP_RESULT" | grep -o '"retransmits"[^,]*' | tail -1 | grep -o '[0-9]*')
-              echo "Parsed: BPS=$TCP_BPS_RAW RETRANS=$TCP_RETRANSMITS" >&2
-              TCP_BPS=$(awk "BEGIN {printf \"%.0f\", ${TCP_BPS_RAW:-0}}")
-              TCP_MBPS=$(awk "BEGIN {printf \"%.2f\", ${TCP_BPS_RAW:-0}/1000000}")
-              TCP_GBPS=$(awk "BEGIN {printf \"%.4f\", ${TCP_BPS_RAW:-0}/1000000000}")
+              # Extract from the "end" summary section using jq (available in netshoot)
+              TCP_BPS_RAW=$(echo "$TCP_RESULT" | jq -r '.end.sum_sent.bits_per_second // 0' 2>/dev/null || echo "0")
+              TCP_RETRANSMITS=$(echo "$TCP_RESULT" | jq -r '.end.sum_sent.retransmits // 0' 2>/dev/null || echo "0")
+              echo "Parsed TCP: BPS=$TCP_BPS_RAW RETRANS=$TCP_RETRANSMITS" >&2
+              TCP_BPS=$(printf "%.0f" "$TCP_BPS_RAW")
+              TCP_MBPS=$(awk "BEGIN {printf \"%.2f\", $TCP_BPS_RAW/1000000}")
+              TCP_GBPS=$(awk "BEGIN {printf \"%.4f\", $TCP_BPS_RAW/1000000000}")
               
               echo '"tcp_throughput": {' >> /tmp/results.json
               echo '  "bits_per_second": '$TCP_BPS',' >> /tmp/results.json
@@ -139,14 +138,24 @@ spec:
               # UDP jitter test (5 seconds, 100Mbps target)
               echo "Running UDP jitter test..." >&2
               UDP_RESULT=$(iperf3 -c iperf3-server -u -b 100M -t 5 -J 2>&1)
+              echo "UDP raw (first 300 chars):" >&2
+              echo "$UDP_RESULT" | head -c 300 >&2
+              echo "" >&2
               
-              # Extract from the "end" summary section
-              UDP_JITTER=$(echo "$UDP_RESULT" | grep -A50 '"end"' | grep '"jitter_ms"' | head -1 | grep -o '[0-9.]*' | head -1)
-              UDP_LOST=$(echo "$UDP_RESULT" | grep -A50 '"end"' | grep '"lost_packets"' | head -1 | grep -o '[0-9]*' | head -1)
-              UDP_TOTAL=$(echo "$UDP_RESULT" | grep -A50 '"end"' | grep '"packets"' | head -1 | grep -o '[0-9]*' | head -1)
+              # Extract UDP metrics - try different paths since iperf3 output varies
+              # Server-side stats have jitter, check .end.sum or .end.streams[0].udp
+              UDP_JITTER=$(echo "$UDP_RESULT" | jq -r '(.end.sum.jitter_ms // .end.streams[0].udp.jitter_ms // 0)' 2>/dev/null || echo "0")
+              UDP_LOST=$(echo "$UDP_RESULT" | jq -r '(.end.sum.lost_packets // .end.streams[0].udp.lost_packets // 0)' 2>/dev/null || echo "0")
+              UDP_TOTAL=$(echo "$UDP_RESULT" | jq -r '(.end.sum.packets // .end.streams[0].udp.packets // 1)' 2>/dev/null || echo "1")
+              # Handle null/empty values
+              UDP_JITTER=${UDP_JITTER:-0}
               UDP_LOST=${UDP_LOST:-0}
               UDP_TOTAL=${UDP_TOTAL:-1}
+              [ "$UDP_JITTER" = "null" ] && UDP_JITTER=0
+              [ "$UDP_LOST" = "null" ] && UDP_LOST=0
+              [ "$UDP_TOTAL" = "null" ] && UDP_TOTAL=1
               UDP_LOSS_PCT=$(awk "BEGIN {printf \"%.4f\", $UDP_LOST*100/$UDP_TOTAL}")
+              echo "Parsed UDP: jitter=$UDP_JITTER lost=$UDP_LOST total=$UDP_TOTAL loss=$UDP_LOSS_PCT%" >&2
               
               echo '"udp_jitter": {' >> /tmp/results.json
               echo '  "jitter_ms": '${UDP_JITTER:-0}',' >> /tmp/results.json
@@ -157,49 +166,53 @@ spec:
               echo '  "duration_seconds": 5' >> /tmp/results.json
               echo '},' >> /tmp/results.json
               
-              # Latency test using iperf3 RTT from JSON output
-              # Extract RTT values from the TCP test results
-              echo "Calculating latency from TCP test..." >&2
+              # Latency test using TCP connection timing (ICMP ping often blocked)
+              echo "Running latency test with TCP connect..." >&2
               
-              # Get mean RTT from iperf3 TCP test streams
-              # Note: iperf3 doesn't directly report RTT, so we estimate from throughput test timing
-              # We'll use a simple approach: run short iperf3 tests and measure overhead
               LATENCIES=""
               for i in 1 2 3 4 5 6 7 8 9 10; do
-                START_NS=$(date +%s%N)
-                # Connect only (no data transfer) - just handshake
-                timeout 2 sh -c 'exec 3<>/dev/tcp/iperf3-server/5201 && exec 3>&-' 2>/dev/null || true
-                END_NS=$(date +%s%N)
-                LAT_NS=$((END_NS - START_NS))
-                if [ $LAT_NS -lt 1000000000 ]; then  # Only count if < 1 second
-                  LAT_MS=$(awk "BEGIN {printf \"%.3f\", $LAT_NS/1000000}")
-                  LATENCIES="$LATENCIES$LAT_MS "
+                # Use netcat to measure TCP connect time
+                START_MS=$(date +%s%3N)
+                nc -z -w 1 iperf3-server 5201 2>/dev/null
+                END_MS=$(date +%s%3N)
+                LAT_MS=$((END_MS - START_MS))
+                if [ $LAT_MS -lt 1000 ] && [ $LAT_MS -gt 0 ]; then
+                  LATENCIES="$LATENCIES $LAT_MS"
                 fi
               done
+              echo "Raw latencies (ms):$LATENCIES" >&2
               
-              # Calculate min/avg/max from latencies using awk
-              STATS=$(echo "$LATENCIES" | awk '{
-                split($0, a, " ")
-                min=999999; max=0; sum=0; n=0
-                for(i in a) {
-                  if(a[i]+0 > 0) {
-                    if(a[i] < min) min=a[i]
-                    if(a[i] > max) max=a[i]
-                    sum+=a[i]; n++
+              # Calculate min/avg/max
+              if [ -n "$LATENCIES" ]; then
+                STATS=$(echo "$LATENCIES" | awk '{
+                  n=split($0, a, " ")
+                  if(n==0) { print "0 0 0"; exit }
+                  min=999999; max=0; sum=0; count=0
+                  for(i=1; i<=n; i++) {
+                    if(a[i]+0 > 0) {
+                      if(a[i] < min) min=a[i]
+                      if(a[i] > max) max=a[i]
+                      sum+=a[i]; count++
+                    }
                   }
-                }
-                if(n>0) printf "%.3f %.3f %.3f", min, sum/n, max
-                else print "0 0 0"
-              }')
-              MIN_LAT=$(echo $STATS | cut -d' ' -f1)
-              AVG_LAT=$(echo $STATS | cut -d' ' -f2)
-              MAX_LAT=$(echo $STATS | cut -d' ' -f3)
+                  if(count>0) printf "%.3f %.3f %.3f", min, sum/count, max
+                  else print "0 0 0"
+                }')
+                MIN_LAT=$(echo $STATS | awk '{print $1}')
+                AVG_LAT=$(echo $STATS | awk '{print $2}')
+                MAX_LAT=$(echo $STATS | awk '{print $3}')
+              else
+                MIN_LAT=0
+                AVG_LAT=0
+                MAX_LAT=0
+              fi
+              echo "Parsed latency: min=$MIN_LAT avg=$AVG_LAT max=$MAX_LAT ms" >&2
               
               echo '"latency": {' >> /tmp/results.json
               echo '  "min_ms": '${MIN_LAT:-0}',' >> /tmp/results.json
               echo '  "avg_ms": '${AVG_LAT:-0}',' >> /tmp/results.json
               echo '  "max_ms": '${MAX_LAT:-0}',' >> /tmp/results.json
-              echo '  "samples": 5' >> /tmp/results.json
+              echo '  "samples": 10' >> /tmp/results.json
               echo '}' >> /tmp/results.json
               
               echo '}' >> /tmp/results.json
