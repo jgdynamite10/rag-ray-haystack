@@ -2,6 +2,74 @@
 
 This document explains the different ways to measure RAG system performance and when to use each method.
 
+---
+
+## Quick Start: Populate ITDM Dashboard
+
+**One command to populate all metrics on the ITDM dashboard:**
+
+```bash
+# 1. Activate Python venv (one-time setup)
+cd ~/Documents/new-projects/rag-ray-haystack
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r scripts/benchmark/requirements.txt
+
+# 2. Run the benchmark (populates ALL dashboard metrics)
+./scripts/benchmark/run_ns.sh akamai-lke \
+  --url http://172.236.105.4/api/query/stream \
+  --requests 100 \
+  --max-output-tokens 256
+```
+
+### What Gets Populated
+
+| ITDM Panel | Metric | Populated By |
+|------------|--------|--------------|
+| TTFT p50/p95 | `rag_ttft_seconds` | North-South benchmark |
+| TPOT p50/p95 | `rag_tpot_seconds` | North-South benchmark |
+| Latency p50/p95 | `rag_latency_seconds` | North-South benchmark |
+| Tokens/sec | `rag_tokens_per_second` | North-South benchmark |
+| Requests/sec | `rag_requests_total` | North-South benchmark |
+| Error Rate | `rag_errors_total` | North-South benchmark |
+| Avg k Retrieved | `rag_k_retrieved` | North-South benchmark |
+| GPU Utilization | `DCGM_FI_DEV_GPU_UTIL` | DCGM exporter (automatic) |
+| GPU Memory | `DCGM_FI_DEV_FB_USED` | DCGM exporter (automatic) |
+| GPU Temperature | `DCGM_FI_DEV_GPU_TEMP` | DCGM exporter (automatic) |
+| GPU Power | `DCGM_FI_DEV_POWER_USAGE` | DCGM exporter (automatic) |
+| Cost Metrics | Calculated from above | Dashboard variables (manual input) |
+
+### Requirements
+
+1. **RAG app deployed** with documents ingested
+2. **Prometheus scraping** the backend `/metrics` endpoint
+3. **DCGM ServiceMonitor** applied (for GPU metrics)
+4. **Grafana** with ITDM dashboard imported
+
+### Provider-Specific Commands
+
+```bash
+# Akamai LKE
+./scripts/benchmark/run_ns.sh akamai-lke --url http://172.236.105.4/api/query/stream
+
+# AWS EKS (when deployed)
+./scripts/benchmark/run_ns.sh aws-eks --url http://<eks-lb-ip>/api/query/stream
+
+# GCP GKE (when deployed)
+./scripts/benchmark/run_ns.sh gcp-gke --url http://<gke-lb-ip>/api/query/stream
+```
+
+### Verify Metrics in Prometheus
+
+```bash
+# Port-forward to Prometheus
+kubectl -n monitoring port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090
+
+# Check metrics exist
+curl -s "http://localhost:9090/api/v1/query?query=rag_ttft_seconds_count" | jq '.data.result | length'
+# Should return > 0
+```
+
 ## Overview of Measurement Methods
 
 | Method | Location | Concurrency | Use Case |
