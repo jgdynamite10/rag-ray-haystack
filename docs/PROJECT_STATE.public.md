@@ -57,6 +57,14 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 **Measures:** TCP throughput (Gbps), UDP jitter, TCP latency
 **Output:** `benchmarks/ew/<provider>/<timestamp>.json`
 
+**LKE Results (2026-01-29):**
+| Metric | Value |
+|--------|-------|
+| TCP Throughput | ~803 Mbps (0.8 Gbps) |
+| Cross-node confirmed | Yes |
+| Server Node | lke561078-818958-* |
+| Client Node | lke561078-818957-* |
+
 ### Cost Computation
 
 ```bash
