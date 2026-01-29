@@ -12,6 +12,9 @@ terraform.tfvars
 /docs/OPERATIONS.local.md
 /docs/CONTEXT.local.md
 
+# --- Archived dashboards (local only) ---
+/grafana/dashboards/Old-dashboards/
+
 # --- Secrets / env ---
 .env
 .env.*
