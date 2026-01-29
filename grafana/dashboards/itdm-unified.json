@@ -13,7 +13,7 @@
       "id": 1,
       "options": {
         "code": { "language": "plaintext", "showLineNumbers": false },
-        "content": "# RAG System - Interactive LLM Metrics (ITDM)\n**Performance** | **Cost Analysis** | **Provider Comparison** — Edit pricing variables in dropdowns above. Select datasources to compare providers.",
+        "content": "# RAG System - Interactive LLM Metrics (ITDM)\n**Performance** | **Cost Analysis** | **Provider Comparison** — All metrics show LKE / EKS / GKE side-by-side. Edit pricing variables in dropdowns above.",
         "mode": "markdown"
       },
       "title": "",
@@ -25,11 +25,11 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 2 },
       "id": 10,
       "panels": [],
-      "title": "📊 Key Performance Metrics",
+      "title": "📊 Key Performance Metrics (All Providers)",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -44,30 +44,47 @@
           },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 3 },
       "id": 11,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
-          "legendFormat": "TTFT p95",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
+          "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
       "title": "TTFT p95",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -82,30 +99,47 @@
           },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 4, "y": 3 },
       "id": 12,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
-          "legendFormat": "TPOT p95",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
+          "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
       "title": "TPOT p95",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -120,30 +154,47 @@
           },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 8, "y": 3 },
       "id": 13,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
-          "legendFormat": "Total Latency p95",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
+          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
       "title": "Total Latency p95",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -158,30 +209,47 @@
           },
           "unit": "none"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 12, "y": 3 },
       "id": 14,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "sum(rate(rag_tokens_total[5m]))",
-          "legendFormat": "tokens/sec",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
+          "expr": "sum(rate(rag_tokens_total[5m]))",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "sum(rate(rag_tokens_total[5m]))",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
       "title": "Tokens/sec",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -196,30 +264,47 @@
           },
           "unit": "reqps"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 16, "y": 3 },
       "id": 15,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "sum(rate(rag_requests_total[5m]))",
-          "legendFormat": "req/sec",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
+          "expr": "sum(rate(rag_requests_total[5m]))",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "sum(rate(rag_requests_total[5m]))",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
       "title": "Requests/sec",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -235,23 +320,40 @@
           },
           "unit": "percentunit"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 20, "y": 3 },
       "id": 16,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
           "expr": "sum(rate(rag_errors_total[5m])) / (sum(rate(rag_requests_total[5m])) + 0.001)",
-          "legendFormat": "Error Rate",
+          "legendFormat": "LKE",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
+          "expr": "sum(rate(rag_errors_total[5m])) / (sum(rate(rag_requests_total[5m])) + 0.001)",
+          "legendFormat": "EKS",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
+          "expr": "sum(rate(rag_errors_total[5m])) / (sum(rate(rag_requests_total[5m])) + 0.001)",
+          "legendFormat": "GKE",
+          "refId": "C"
         }
       ],
       "title": "Error Rate",
@@ -282,7 +384,11 @@
           },
           "unit": "currencyUSD"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 8 },
       "id": 21,
@@ -290,28 +396,16 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
-        {
-          "expr": "$lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost",
-          "legendFormat": "LKE",
-          "refId": "A"
-        },
-        {
-          "expr": "$eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost",
-          "legendFormat": "EKS",
-          "refId": "B"
-        },
-        {
-          "expr": "$gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost",
-          "legendFormat": "GKE",
-          "refId": "C"
-        }
+        { "expr": "$lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost", "legendFormat": "LKE", "refId": "A" },
+        { "expr": "$eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost", "legendFormat": "EKS", "refId": "B" },
+        { "expr": "$gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost", "legendFormat": "GKE", "refId": "C" }
       ],
-      "title": "Cluster $/hr (All)",
+      "title": "Cluster $/hr",
       "type": "stat"
     },
     {
@@ -331,7 +425,11 @@
           },
           "unit": "currencyUSD"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 4, "y": 8 },
       "id": 22,
@@ -339,32 +437,20 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
-        {
-          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) * 24 * 30",
-          "legendFormat": "LKE",
-          "refId": "A"
-        },
-        {
-          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) * 24 * 30",
-          "legendFormat": "EKS",
-          "refId": "B"
-        },
-        {
-          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) * 24 * 30",
-          "legendFormat": "GKE",
-          "refId": "C"
-        }
+        { "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) * 24 * 30", "legendFormat": "LKE", "refId": "A" },
+        { "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) * 24 * 30", "legendFormat": "EKS", "refId": "B" },
+        { "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) * 24 * 30", "legendFormat": "GKE", "refId": "C" }
       ],
-      "title": "Cluster $/mo (All)",
+      "title": "Cluster $/mo",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -380,17 +466,21 @@
           },
           "unit": "currencyUSD"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 8, "y": 8 },
       "id": 23,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
@@ -412,11 +502,11 @@
           "refId": "C"
         }
       ],
-      "title": "$/1M Tokens (All)",
+      "title": "$/1M Tokens",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -432,17 +522,21 @@
           },
           "unit": "currencyUSD"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 12, "y": 8 },
       "id": 24,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
@@ -464,7 +558,7 @@
           "refId": "C"
         }
       ],
-      "title": "$/Request (All)",
+      "title": "$/Request",
       "type": "stat"
     },
     {
@@ -483,7 +577,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 12 },
       "id": 30,
       "panels": [],
-      "title": "🔄 Provider Comparison",
+      "title": "📈 Performance Over Time (All Providers)",
       "type": "row"
     },
     {
@@ -516,7 +610,11 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Akamai LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "AWS EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GCP GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 7, "w": 12, "x": 0, "y": 13 },
       "id": 31,
@@ -525,24 +623,9 @@
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
-          "legendFormat": "Akamai LKE",
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
-          "legendFormat": "AWS EKS",
-          "refId": "B"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000",
-          "legendFormat": "GCP GKE",
-          "refId": "C"
-        }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "Akamai LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "AWS EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_ttft_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "GCP GKE", "refId": "C" }
       ],
       "title": "TTFT p95 - All Providers",
       "type": "timeseries"
@@ -577,7 +660,11 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Akamai LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "AWS EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GCP GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 7, "w": 12, "x": 12, "y": 13 },
       "id": 32,
@@ -586,24 +673,9 @@
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
-          "legendFormat": "Akamai LKE",
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
-          "legendFormat": "AWS EKS",
-          "refId": "B"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000",
-          "legendFormat": "GCP GKE",
-          "refId": "C"
-        }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "Akamai LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "AWS EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_tpot_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "GCP GKE", "refId": "C" }
       ],
       "title": "TPOT p95 - All Providers",
       "type": "timeseries"
@@ -638,7 +710,11 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "none"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Akamai LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "AWS EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GCP GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 7, "w": 12, "x": 0, "y": 20 },
       "id": 33,
@@ -647,24 +723,9 @@
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "sum(rate(rag_tokens_total[5m]))",
-          "legendFormat": "Akamai LKE",
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "sum(rate(rag_tokens_total[5m]))",
-          "legendFormat": "AWS EKS",
-          "refId": "B"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "sum(rate(rag_tokens_total[5m]))",
-          "legendFormat": "GCP GKE",
-          "refId": "C"
-        }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "sum(rate(rag_tokens_total[5m]))", "legendFormat": "Akamai LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "sum(rate(rag_tokens_total[5m]))", "legendFormat": "AWS EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "sum(rate(rag_tokens_total[5m]))", "legendFormat": "GCP GKE", "refId": "C" }
       ],
       "title": "Throughput (tokens/sec) - All Providers",
       "type": "timeseries"
@@ -699,7 +760,11 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Akamai LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "AWS EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GCP GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 7, "w": 12, "x": 12, "y": 20 },
       "id": 34,
@@ -708,24 +773,9 @@
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
-          "legendFormat": "Akamai LKE",
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
-          "legendFormat": "AWS EKS",
-          "refId": "B"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000",
-          "legendFormat": "GCP GKE",
-          "refId": "C"
-        }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000", "legendFormat": "Akamai LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000", "legendFormat": "AWS EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"total\"}[5m])) by (le)) * 1000", "legendFormat": "GCP GKE", "refId": "C" }
       ],
       "title": "Total Latency p95 - All Providers",
       "type": "timeseries"
@@ -735,11 +785,11 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
       "id": 50,
       "panels": [],
-      "title": "🔍 Retrieval & GPU Metrics",
+      "title": "🔍 Retrieval & GPU Metrics (All Providers)",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -754,30 +804,32 @@
           },
           "unit": "none"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 28 },
       "id": 51,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["mean"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
-        {
-          "expr": "histogram_quantile(0.50, sum(rate(rag_k_retrieved_bucket[5m])) by (le))",
-          "legendFormat": "Avg k",
-          "refId": "A"
-        }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "histogram_quantile(0.50, sum(rate(rag_k_retrieved_bucket[5m])) by (le))", "legendFormat": "LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "histogram_quantile(0.50, sum(rate(rag_k_retrieved_bucket[5m])) by (le))", "legendFormat": "EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "histogram_quantile(0.50, sum(rate(rag_k_retrieved_bucket[5m])) by (le))", "legendFormat": "GKE", "refId": "C" }
       ],
       "title": "Avg k Retrieved",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -794,27 +846,33 @@
           },
           "unit": "percent"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 6, "y": 28 },
       "id": 52,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
-        { "expr": "avg(DCGM_FI_DEV_GPU_UTIL)", "legendFormat": "GPU %", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "avg(DCGM_FI_DEV_GPU_UTIL)", "legendFormat": "LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "avg(DCGM_FI_DEV_GPU_UTIL)", "legendFormat": "EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "avg(DCGM_FI_DEV_GPU_UTIL)", "legendFormat": "GKE", "refId": "C" }
       ],
-      "title": "GPU Utilization",
+      "title": "GPU Util %",
       "description": "Requires DCGM exporter deployed",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -831,27 +889,33 @@
           },
           "unit": "percent"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 10, "y": 28 },
       "id": 53,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
-        { "expr": "avg(DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100)", "legendFormat": "Mem %", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "avg(DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100)", "legendFormat": "LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "avg(DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100)", "legendFormat": "EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "avg(DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100)", "legendFormat": "GKE", "refId": "C" }
       ],
-      "title": "GPU Memory",
+      "title": "GPU Mem %",
       "description": "Requires DCGM exporter deployed",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -866,27 +930,33 @@
           },
           "unit": "watt"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 4, "x": 14, "y": 28 },
       "id": 54,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
-        { "expr": "avg(DCGM_FI_DEV_POWER_USAGE)", "legendFormat": "Power", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "avg(DCGM_FI_DEV_POWER_USAGE)", "legendFormat": "LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "avg(DCGM_FI_DEV_POWER_USAGE)", "legendFormat": "EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "avg(DCGM_FI_DEV_POWER_USAGE)", "legendFormat": "GKE", "refId": "C" }
       ],
       "title": "GPU Power",
       "description": "Requires DCGM exporter deployed",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -901,27 +971,33 @@
           },
           "unit": "celsius"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 28 },
       "id": 55,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
-        { "expr": "avg(DCGM_FI_DEV_GPU_TEMP)", "legendFormat": "Temp", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "avg(DCGM_FI_DEV_GPU_TEMP)", "legendFormat": "LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "avg(DCGM_FI_DEV_GPU_TEMP)", "legendFormat": "EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "avg(DCGM_FI_DEV_GPU_TEMP)", "legendFormat": "GKE", "refId": "C" }
       ],
-      "title": "GPU Temperature",
+      "title": "GPU Temp",
       "description": "Requires DCGM exporter deployed",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -952,7 +1028,11 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "percent"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Akamai LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "AWS EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GCP GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 6, "w": 12, "x": 0, "y": 32 },
       "id": 56,
@@ -961,14 +1041,16 @@
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
-        { "expr": "DCGM_FI_DEV_GPU_UTIL", "legendFormat": "GPU {{gpu}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "avg(DCGM_FI_DEV_GPU_UTIL)", "legendFormat": "Akamai LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "avg(DCGM_FI_DEV_GPU_UTIL)", "legendFormat": "AWS EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "avg(DCGM_FI_DEV_GPU_UTIL)", "legendFormat": "GCP GKE", "refId": "C" }
       ],
-      "title": "GPU Utilization Over Time",
+      "title": "GPU Utilization - All Providers",
       "description": "Requires DCGM exporter",
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -994,10 +1076,16 @@
             "thresholdsStyle": { "mode": "off" }
           },
           "mappings": [],
+          "max": 100,
+          "min": 0,
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "bytes"
+          "unit": "percent"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Akamai LKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "AWS EKS" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GCP GKE" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 6, "w": 12, "x": 12, "y": 32 },
       "id": 57,
@@ -1006,113 +1094,24 @@
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
-        { "expr": "DCGM_FI_DEV_FB_USED", "legendFormat": "GPU {{gpu}} Used", "refId": "A" },
-        { "expr": "DCGM_FI_DEV_FB_FREE", "legendFormat": "GPU {{gpu}} Free", "refId": "B" }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "avg(DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100)", "legendFormat": "Akamai LKE", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "avg(DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100)", "legendFormat": "AWS EKS", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "avg(DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100)", "legendFormat": "GCP GKE", "refId": "C" }
       ],
-      "title": "GPU Memory Usage",
-      "description": "Requires DCGM exporter",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "watt"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 38 },
-      "id": 58,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "targets": [
-        { "expr": "DCGM_FI_DEV_POWER_USAGE", "legendFormat": "GPU {{gpu}}", "refId": "A" }
-      ],
-      "title": "GPU Power Draw",
-      "description": "Requires DCGM exporter",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "celsius"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 38 },
-      "id": 59,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "targets": [
-        { "expr": "DCGM_FI_DEV_GPU_TEMP", "legendFormat": "GPU {{gpu}}", "refId": "A" }
-      ],
-      "title": "GPU Temperature",
+      "title": "GPU Memory - All Providers",
       "description": "Requires DCGM exporter",
       "type": "timeseries"
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
       "id": 40,
       "panels": [],
-      "title": "📈 Latency Breakdown (Primary Provider)",
+      "title": "📊 Latency Breakdown (All Providers)",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -1123,18 +1122,18 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 80,
+            "drawStyle": "line",
+            "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
             "spanNulls": false,
-            "stacking": { "group": "A", "mode": "normal" },
+            "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "off" }
           },
           "mappings": [],
@@ -1142,35 +1141,35 @@
           "unit": "ms"
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Embedding" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "Retrieval" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "Generation" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
+          { "matcher": { "id": "byName", "options": "LKE Embedding" }, "properties": [{ "id": "color", "value": { "fixedColor": "#37872D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "LKE Retrieval" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "LKE Generation" }, "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS Embedding" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS Retrieval" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FFCB7D", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "EKS Generation" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FFE3B8", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE Embedding" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE Retrieval" }, "properties": [{ "id": "color", "value": { "fixedColor": "#6699FF", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "GKE Generation" }, "properties": [{ "id": "color", "value": { "fixedColor": "#99BBFF", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 45 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 39 },
       "id": 41,
       "options": {
         "legend": { "calcs": ["mean"], "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"embedding\"}[5m])) by (le)) * 1000",
-          "legendFormat": "Embedding",
-          "refId": "A"
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"retrieval\"}[5m])) by (le)) * 1000",
-          "legendFormat": "Retrieval",
-          "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"generation\"}[5m])) by (le)) * 1000",
-          "legendFormat": "Generation",
-          "refId": "C"
-        }
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"embedding\"}[5m])) by (le)) * 1000", "legendFormat": "LKE Embedding", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"retrieval\"}[5m])) by (le)) * 1000", "legendFormat": "LKE Retrieval", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_lke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"generation\"}[5m])) by (le)) * 1000", "legendFormat": "LKE Generation", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"embedding\"}[5m])) by (le)) * 1000", "legendFormat": "EKS Embedding", "refId": "D" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"retrieval\"}[5m])) by (le)) * 1000", "legendFormat": "EKS Retrieval", "refId": "E" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_eks}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"generation\"}[5m])) by (le)) * 1000", "legendFormat": "EKS Generation", "refId": "F" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"embedding\"}[5m])) by (le)) * 1000", "legendFormat": "GKE Embedding", "refId": "G" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"retrieval\"}[5m])) by (le)) * 1000", "legendFormat": "GKE Retrieval", "refId": "H" },
+        { "datasource": { "type": "prometheus", "uid": "${ds_gke}" }, "expr": "histogram_quantile(0.95, sum(rate(rag_latency_seconds_bucket{stage=\"generation\"}[5m])) by (le)) * 1000", "legendFormat": "GKE Generation", "refId": "I" }
       ],
-      "title": "Latency Breakdown by Stage (p95)",
+      "title": "Latency Breakdown by Stage (p95) - All Providers",
       "type": "timeseries"
     }
   ],
@@ -1223,7 +1222,7 @@
       },
       {
         "current": { "selected": true, "text": "1.50", "value": "1.50" },
-        "description": "LKE GPU node cost per hour (RTX 4090)",
+        "description": "LKE GPU node cost per hour",
         "hide": 0,
         "label": "LKE GPU $/hr",
         "name": "lke_gpu_cost",
@@ -1244,10 +1243,9 @@
         "name": "lke_cpu_cost",
         "options": [
           { "selected": true, "text": "0.036", "value": "0.036" },
-          { "selected": false, "text": "0.072", "value": "0.072" },
-          { "selected": false, "text": "0.10", "value": "0.10" }
+          { "selected": false, "text": "0.072", "value": "0.072" }
         ],
-        "query": "0.036, 0.072, 0.10",
+        "query": "0.036, 0.072",
         "skipUrlSync": false,
         "type": "custom"
       },
@@ -1257,47 +1255,43 @@
         "hide": 0,
         "label": "LKE Mgmt $/hr",
         "name": "lke_mgmt_cost",
-        "options": [
-          { "selected": true, "text": "0", "value": "0" }
-        ],
+        "options": [{ "selected": true, "text": "0", "value": "0" }],
         "query": "0",
         "skipUrlSync": false,
         "type": "custom"
       },
       {
         "current": { "selected": true, "text": "0.80", "value": "0.80" },
-        "description": "EKS GPU node cost per hour (g5.xlarge)",
+        "description": "EKS GPU node cost per hour",
         "hide": 0,
         "label": "EKS GPU $/hr",
         "name": "eks_gpu_cost",
         "options": [
           { "selected": true, "text": "0.80", "value": "0.80" },
           { "selected": false, "text": "1.01", "value": "1.01" },
-          { "selected": false, "text": "1.62", "value": "1.62" },
-          { "selected": false, "text": "2.00", "value": "2.00" }
+          { "selected": false, "text": "1.62", "value": "1.62" }
         ],
-        "query": "0.80, 1.01, 1.62, 2.00",
+        "query": "0.80, 1.01, 1.62",
         "skipUrlSync": false,
         "type": "custom"
       },
       {
         "current": { "selected": true, "text": "0.096", "value": "0.096" },
-        "description": "EKS CPU node cost per hour (m5.large)",
+        "description": "EKS CPU node cost per hour",
         "hide": 0,
         "label": "EKS CPU $/hr",
         "name": "eks_cpu_cost",
         "options": [
           { "selected": true, "text": "0.096", "value": "0.096" },
-          { "selected": false, "text": "0.192", "value": "0.192" },
-          { "selected": false, "text": "0.10", "value": "0.10" }
+          { "selected": false, "text": "0.192", "value": "0.192" }
         ],
-        "query": "0.096, 0.192, 0.10",
+        "query": "0.096, 0.192",
         "skipUrlSync": false,
         "type": "custom"
       },
       {
         "current": { "selected": true, "text": "0.10", "value": "0.10" },
-        "description": "EKS cluster management fee ($0.10/hr = $73/month)",
+        "description": "EKS cluster management fee",
         "hide": 0,
         "label": "EKS Mgmt $/hr",
         "name": "eks_mgmt_cost",
@@ -1311,7 +1305,7 @@
       },
       {
         "current": { "selected": true, "text": "0.94", "value": "0.94" },
-        "description": "GKE GPU node cost per hour (n1-standard-4 + T4)",
+        "description": "GKE GPU node cost per hour",
         "hide": 0,
         "label": "GKE GPU $/hr",
         "name": "gke_gpu_cost",
@@ -1326,22 +1320,21 @@
       },
       {
         "current": { "selected": true, "text": "0.067", "value": "0.067" },
-        "description": "GKE CPU node cost per hour (e2-standard-2)",
+        "description": "GKE CPU node cost per hour",
         "hide": 0,
         "label": "GKE CPU $/hr",
         "name": "gke_cpu_cost",
         "options": [
           { "selected": true, "text": "0.067", "value": "0.067" },
-          { "selected": false, "text": "0.134", "value": "0.134" },
-          { "selected": false, "text": "0.10", "value": "0.10" }
+          { "selected": false, "text": "0.134", "value": "0.134" }
         ],
-        "query": "0.067, 0.134, 0.10",
+        "query": "0.067, 0.134",
         "skipUrlSync": false,
         "type": "custom"
       },
       {
         "current": { "selected": true, "text": "0.10", "value": "0.10" },
-        "description": "GKE cluster management fee ($0.10/hr = $73/month)",
+        "description": "GKE cluster management fee",
         "hide": 0,
         "label": "GKE Mgmt $/hr",
         "name": "gke_mgmt_cost",
@@ -1361,10 +1354,9 @@
         "options": [
           { "selected": true, "text": "1", "value": "1" },
           { "selected": false, "text": "2", "value": "2" },
-          { "selected": false, "text": "4", "value": "4" },
-          { "selected": false, "text": "8", "value": "8" }
+          { "selected": false, "text": "4", "value": "4" }
         ],
-        "query": "1, 2, 4, 8",
+        "query": "1, 2, 4",
         "skipUrlSync": false,
         "type": "custom"
       },
@@ -1376,10 +1368,9 @@
         "options": [
           { "selected": false, "text": "1", "value": "1" },
           { "selected": true, "text": "2", "value": "2" },
-          { "selected": false, "text": "3", "value": "3" },
-          { "selected": false, "text": "4", "value": "4" }
+          { "selected": false, "text": "3", "value": "3" }
         ],
-        "query": "1, 2, 3, 4",
+        "query": "1, 2, 3",
         "skipUrlSync": false,
         "type": "custom"
       }
@@ -1390,6 +1381,6 @@
   "timezone": "",
   "title": "ITDM - Unified Dashboard",
   "uid": "itdm-unified",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
