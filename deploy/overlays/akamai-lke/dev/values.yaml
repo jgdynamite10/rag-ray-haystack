@@ -6,7 +6,7 @@ global:
 backend:
   image:
     repository: ghcr.io/jgdynamite10/rag-ray-backend
-    tag: "0.3.5"
+    tag: "0.3.7"
 
 frontend:
   image:
