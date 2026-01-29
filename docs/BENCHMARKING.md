@@ -6,7 +6,7 @@ This document explains the different ways to measure RAG system performance and 
 
 ## Quick Start: Populate ITDM Dashboard
 
-### Complete Workflow (3 Steps)
+### Complete Workflow (4 Steps)
 
 ```bash
 # Step 1: Setup Python environment (one-time)
@@ -16,17 +16,34 @@ source .venv/bin/activate
 pip install -r scripts/benchmark/requirements.txt
 
 # Step 2: Ingest a document (required for retrieval metrics)
-# Option A: Via UI - Open http://172.236.105.4 and upload a PDF/text file
+# Option A: Via UI - Open http://<PUBLIC_IP> and upload a PDF/text file
 # Option B: Via API
-curl -X POST "http://172.236.105.4/api/ingest" \
+curl -X POST "http://<PUBLIC_IP>/api/ingest" \
   -F "file=@/path/to/your/document.pdf"
 
-# Step 3: Run the benchmark (populates ALL dashboard metrics)
+# Step 3: Run East-West probe (in-cluster network metrics)
+# First, get Pushgateway URL (if deployed)
+PUSHGATEWAY_URL="http://$(kubectl get svc -n monitoring prometheus-pushgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):9091"
+
+./scripts/netprobe/run_ew.sh \
+  --provider akamai-lke \
+  --kubeconfig ~/.kube/lke.yaml \
+  --pushgateway-url "$PUSHGATEWAY_URL"
+
+# Step 4: Run North-South benchmark (all LLM metrics)
 ./scripts/benchmark/run_ns.sh akamai-lke \
-  --url http://172.236.105.4/api/query/stream \
+  --url http://<PUBLIC_IP>/api/query/stream \
   --requests 100 \
   --max-output-tokens 256
 ```
+
+### What Each Step Populates
+
+| Step | Metrics Populated |
+|------|-------------------|
+| **Step 2: Document Ingestion** | `rag_k_retrieved` (retrieval count) |
+| **Step 3: East-West Probe** | `ew_tcp_throughput_gbps`, `ew_tcp_retransmits`, `ew_udp_jitter_ms`, `ew_latency_avg_ms` |
+| **Step 4: North-South Benchmark** | `rag_ttft_seconds`, `rag_tpot_seconds`, `rag_latency_seconds`, `rag_tokens_total`, `rag_requests_total` |
 
 ### Why Document Ingestion Matters
 

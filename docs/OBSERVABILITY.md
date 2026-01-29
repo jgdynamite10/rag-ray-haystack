@@ -440,6 +440,73 @@ avg(DCGM_FI_DEV_GPU_UTIL) by (provider)
 
 ---
 
+## Part 2c: Pushgateway for East-West Metrics
+
+The East-West network probe pushes metrics to Prometheus via Pushgateway. This is required for East-West metrics to appear on the ITDM dashboard.
+
+### Deploy Pushgateway
+
+Add Pushgateway to your Prometheus stack:
+
+```bash
+# Using Helm (add to existing kube-prometheus-stack)
+helm upgrade prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --set prometheus.prometheusSpec.enablePushgateway=true \
+  --set pushgateway.enabled=true
+```
+
+Or deploy standalone:
+
+```bash
+helm install pushgateway prometheus-community/prometheus-pushgateway \
+  --namespace monitoring \
+  --set serviceMonitor.enabled=true
+```
+
+### Expose Pushgateway
+
+For the East-West script to push metrics, expose Pushgateway:
+
+```bash
+# Option 1: Port-forward (for testing)
+kubectl port-forward -n monitoring svc/prometheus-pushgateway 9091:9091
+
+# Option 2: LoadBalancer (for production)
+kubectl patch svc prometheus-pushgateway -n monitoring -p '{"spec":{"type":"LoadBalancer"}}'
+```
+
+### Run East-West with Pushgateway
+
+```bash
+# Get Pushgateway URL
+PUSHGATEWAY_URL="http://$(kubectl get svc -n monitoring prometheus-pushgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):9091"
+
+# Run East-West probe and push metrics
+./scripts/netprobe/run_ew.sh \
+  --provider akamai-lke \
+  --pushgateway-url "$PUSHGATEWAY_URL"
+```
+
+### East-West Metrics
+
+The following metrics are pushed to Prometheus:
+
+| Metric | Description | Unit |
+|--------|-------------|------|
+| `ew_tcp_throughput_gbps` | TCP throughput between nodes | Gbps |
+| `ew_tcp_throughput_bps` | TCP throughput between nodes | bps |
+| `ew_tcp_retransmits` | TCP retransmit count | count |
+| `ew_udp_jitter_ms` | UDP jitter | ms |
+| `ew_udp_loss_percent` | UDP packet loss | % |
+| `ew_latency_min_ms` | Minimum latency | ms |
+| `ew_latency_avg_ms` | Average latency | ms |
+| `ew_latency_max_ms` | Maximum latency | ms |
+
+All metrics have a `provider` label for filtering.
+
+---
+
 ## Part 3: Metrics Reference
 
 ### RAG Backend Metrics

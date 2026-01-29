@@ -7,14 +7,16 @@
 #   ./run_ew.sh [OPTIONS]
 #
 # Options:
-#   --provider PROVIDER   Provider name (akamai-lke, aws-eks, gcp-gke)
-#   --kubeconfig PATH     Path to kubeconfig file
-#   --output DIR          Output directory (default: benchmarks/ew)
-#   --keep                Don't cleanup resources after test
-#   --help                Show this help
+#   --provider PROVIDER       Provider name (akamai-lke, aws-eks, gcp-gke)
+#   --kubeconfig PATH         Path to kubeconfig file
+#   --output DIR              Output directory (default: benchmarks/ew)
+#   --pushgateway-url URL     Push metrics to Prometheus Pushgateway
+#   --keep                    Don't cleanup resources after test
+#   --help                    Show this help
 #
 # Output:
 #   JSON file with TCP throughput, UDP jitter, and latency measurements
+#   Optional: Push metrics to Prometheus Pushgateway for dashboard display
 
 set -euo pipefail
 
@@ -33,6 +35,7 @@ PROVIDER="${PROVIDER:-unknown}"
 KUBECONFIG="${KUBECONFIG:-}"
 OUTPUT_DIR="benchmarks/ew"
 KEEP_RESOURCES=false
+PUSHGATEWAY_URL=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 MANIFEST="$PROJECT_ROOT/deploy/netprobe/ew-netprobe.yaml"
@@ -56,6 +59,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --output)
             OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        --pushgateway-url)
+            PUSHGATEWAY_URL="$2"
             shift 2
             ;;
         --keep)
@@ -263,4 +270,84 @@ print(f"  Avg:         {lat.get('avg_ms', 0):.3f} ms")
 print(f"  Max:         {lat.get('max_ms', 0):.3f} ms")
 EOF
 echo ""
+
+# Push metrics to Prometheus Pushgateway if URL provided
+if [[ -n "$PUSHGATEWAY_URL" ]]; then
+    log "Pushing metrics to Pushgateway: $PUSHGATEWAY_URL"
+    
+    # Extract metrics from the saved JSON and push to Pushgateway
+    python3 - "$OUTPUT_FILE" "$PUSHGATEWAY_URL" "$PROVIDER" << 'PUSHEOF'
+import json
+import sys
+import urllib.request
+import urllib.error
+
+output_file = sys.argv[1]
+pushgateway_url = sys.argv[2]
+provider = sys.argv[3]
+
+with open(output_file) as f:
+    data = json.load(f)
+
+tcp = data.get('tcp_throughput', {})
+udp = data.get('udp_jitter', {})
+lat = data.get('latency', {})
+
+# Build Prometheus text format metrics
+metrics = f"""# HELP ew_tcp_throughput_bps East-West TCP throughput in bits per second
+# TYPE ew_tcp_throughput_bps gauge
+ew_tcp_throughput_bps{{provider="{provider}"}} {tcp.get('mbps', 0) * 1000000}
+
+# HELP ew_tcp_throughput_gbps East-West TCP throughput in Gbps
+# TYPE ew_tcp_throughput_gbps gauge
+ew_tcp_throughput_gbps{{provider="{provider}"}} {tcp.get('gbps', 0)}
+
+# HELP ew_tcp_retransmits East-West TCP retransmit count
+# TYPE ew_tcp_retransmits gauge
+ew_tcp_retransmits{{provider="{provider}"}} {tcp.get('retransmits', 0)}
+
+# HELP ew_udp_jitter_ms East-West UDP jitter in milliseconds
+# TYPE ew_udp_jitter_ms gauge
+ew_udp_jitter_ms{{provider="{provider}"}} {udp.get('jitter_ms', 0)}
+
+# HELP ew_udp_loss_percent East-West UDP packet loss percentage
+# TYPE ew_udp_loss_percent gauge
+ew_udp_loss_percent{{provider="{provider}"}} {udp.get('loss_percent', 0)}
+
+# HELP ew_latency_min_ms East-West minimum latency in milliseconds
+# TYPE ew_latency_min_ms gauge
+ew_latency_min_ms{{provider="{provider}"}} {lat.get('min_ms', 0)}
+
+# HELP ew_latency_avg_ms East-West average latency in milliseconds
+# TYPE ew_latency_avg_ms gauge
+ew_latency_avg_ms{{provider="{provider}"}} {lat.get('avg_ms', 0)}
+
+# HELP ew_latency_max_ms East-West maximum latency in milliseconds
+# TYPE ew_latency_max_ms gauge
+ew_latency_max_ms{{provider="{provider}"}} {lat.get('max_ms', 0)}
+"""
+
+# Push to Pushgateway
+url = f"{pushgateway_url}/metrics/job/east_west_probe/provider/{provider}"
+req = urllib.request.Request(url, data=metrics.encode('utf-8'), method='POST')
+req.add_header('Content-Type', 'text/plain')
+
+try:
+    with urllib.request.urlopen(req) as response:
+        print(f"Metrics pushed successfully (status: {response.status})")
+except urllib.error.HTTPError as e:
+    print(f"Failed to push metrics: {e.code} {e.reason}")
+    sys.exit(1)
+except urllib.error.URLError as e:
+    print(f"Failed to connect to Pushgateway: {e.reason}")
+    sys.exit(1)
+PUSHEOF
+
+    if [[ $? -eq 0 ]]; then
+        log "Metrics pushed to Pushgateway"
+    else
+        warn "Failed to push metrics to Pushgateway"
+    fi
+fi
+
 log "Done!"
