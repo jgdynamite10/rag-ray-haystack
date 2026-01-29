@@ -56,7 +56,7 @@
           "language": "plaintext",
           "showLineNumbers": false
         },
-        "content": "## Provider Infrastructure Comparison\n\n| | \ud83d\udfe2 **Akamai LKE** | \ud83d\udfe0 **AWS EKS** | \ud83d\udd35 **GCP GKE** |\n|:---|:---:|:---:|:---:|\n| **Region** | us-ord (Chicago) | us-east-1 (N. Virginia) | us-central1 (Iowa) |\n| **Instance Type** | g2-gpu-rtx4000a1-s | g5.xlarge | n1-standard-4 + T4 |\n| **GPU Model** | RTX 4000 Ada | A10G | Tesla T4 |\n| **GPU Manufacturer** | NVIDIA | NVIDIA | NVIDIA |\n| **GPU Architecture** | Ada Lovelace | Ampere | Turing |\n| **GPU Memory** | 20 GB GDDR6 | 24 GB GDDR6 | 16 GB GDDR6 |\n| **CUDA Cores** | 6,144 | 9,216 | 2,560 |\n| **vCPUs** | 8 | 4 | 4 |\n| **System RAM** | 32 GB | 16 GB | 15 GB |\n| | | | |\n| **GPU $/hr** | $${lke_gpu_cost} | $${eks_gpu_cost} | $${gke_gpu_cost} |\n| **CPU $/hr** | $${lke_cpu_cost} | $${eks_cpu_cost} | $${gke_cpu_cost} |\n| **Mgmt $/hr** | $${lke_mgmt_cost} | $${eks_mgmt_cost} | $${gke_mgmt_cost} |\n| | | | |\n| **Model** | Qwen/Qwen3-1.7B | Qwen/Qwen3-1.7B | Qwen/Qwen3-1.7B |\n| **Embedding** | BAAI/bge-small-en-v1.5 | BAAI/bge-small-en-v1.5 | BAAI/bge-small-en-v1.5 |\n| **Vector DB** | Qdrant | Qdrant | Qdrant |\n| **Serving** | Ray Serve + vLLM | Ray Serve + vLLM | Ray Serve + vLLM |\n\n> \u26a0\ufe0f **Note:** Hardware specs are reference values. Update this table if you deploy different instance types. Pricing uses dashboard variables (editable in dropdowns above).",
+        "content": "## Provider Infrastructure Comparison\n*Click panel title \u2192 Edit to modify values, or use Dashboard Settings \u2192 Variables*\n\n| | \ud83d\udfe2 **Akamai LKE** | \ud83d\udfe0 **AWS EKS** | \ud83d\udd35 **GCP GKE** |\n|:---|:---:|:---:|:---:|\n| **Region** | ${lke_region} | ${eks_region} | ${gke_region} |\n| **Instance Type** | ${lke_instance} | ${eks_instance} | ${gke_instance} |\n| **GPU Model** | ${lke_gpu} | ${eks_gpu} | ${gke_gpu} |\n| **GPU Architecture** | ${lke_arch} | ${eks_arch} | ${gke_arch} |\n| **GPU Memory** | ${lke_vram} | ${eks_vram} | ${gke_vram} |\n| **CUDA Cores** | ${lke_cuda} | ${eks_cuda} | ${gke_cuda} |\n| | | | |\n| **GPU $/hr** | $${lke_gpu_cost} | $${eks_gpu_cost} | $${gke_gpu_cost} |\n| **CPU $/hr** | $${lke_cpu_cost} | $${eks_cpu_cost} | $${gke_cpu_cost} |\n| **Mgmt $/hr** | $${lke_mgmt_cost} | $${eks_mgmt_cost} | $${gke_mgmt_cost} |\n| | | | |\n| **LLM Model** | ${model_name} | ${model_name} | ${model_name} |\n| **Embedding** | ${embedding_model} | ${embedding_model} | ${embedding_model} |\n\n> **Edit values:** Dashboard Settings (\u2699\ufe0f) \u2192 Variables \u2192 Select variable \u2192 Change default value",
         "mode": "markdown"
       },
       "title": "Infrastructure & Pricing",
@@ -3709,6 +3709,469 @@
         ],
         "query": "1, 2, 3",
         "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "us-ord (Chicago)",
+          "value": "us-ord (Chicago)"
+        },
+        "hide": 2,
+        "label": "LKE Region",
+        "name": "lke_region",
+        "options": [
+          {
+            "selected": true,
+            "text": "us-ord (Chicago)",
+            "value": "us-ord (Chicago)"
+          },
+          {
+            "selected": false,
+            "text": "us-east (Newark)",
+            "value": "us-east (Newark)"
+          },
+          {
+            "selected": false,
+            "text": "us-west (Fremont)",
+            "value": "us-west (Fremont)"
+          }
+        ],
+        "query": "us-ord (Chicago), us-east (Newark), us-west (Fremont)",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "g2-gpu-rtx4000a1-s",
+          "value": "g2-gpu-rtx4000a1-s"
+        },
+        "hide": 2,
+        "label": "LKE Instance",
+        "name": "lke_instance",
+        "options": [
+          {
+            "selected": true,
+            "text": "g2-gpu-rtx4000a1-s",
+            "value": "g2-gpu-rtx4000a1-s"
+          },
+          {
+            "selected": false,
+            "text": "g1-gpu-rtx6000-1",
+            "value": "g1-gpu-rtx6000-1"
+          }
+        ],
+        "query": "g2-gpu-rtx4000a1-s, g1-gpu-rtx6000-1",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "RTX 4000 Ada",
+          "value": "RTX 4000 Ada"
+        },
+        "hide": 2,
+        "label": "LKE GPU",
+        "name": "lke_gpu",
+        "options": [
+          {
+            "selected": true,
+            "text": "RTX 4000 Ada",
+            "value": "RTX 4000 Ada"
+          },
+          {
+            "selected": false,
+            "text": "RTX 6000 Ada",
+            "value": "RTX 6000 Ada"
+          }
+        ],
+        "query": "RTX 4000 Ada, RTX 6000 Ada",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "Ada Lovelace",
+          "value": "Ada Lovelace"
+        },
+        "hide": 2,
+        "name": "lke_arch",
+        "options": [
+          {
+            "selected": true,
+            "text": "Ada Lovelace",
+            "value": "Ada Lovelace"
+          }
+        ],
+        "query": "Ada Lovelace",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "20 GB",
+          "value": "20 GB"
+        },
+        "hide": 2,
+        "name": "lke_vram",
+        "options": [
+          {
+            "selected": true,
+            "text": "20 GB",
+            "value": "20 GB"
+          },
+          {
+            "selected": false,
+            "text": "48 GB",
+            "value": "48 GB"
+          }
+        ],
+        "query": "20 GB, 48 GB",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "6,144",
+          "value": "6,144"
+        },
+        "hide": 2,
+        "name": "lke_cuda",
+        "options": [
+          {
+            "selected": true,
+            "text": "6,144",
+            "value": "6,144"
+          },
+          {
+            "selected": false,
+            "text": "18,176",
+            "value": "18,176"
+          }
+        ],
+        "query": "6144, 18176",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "us-east-1 (N. Virginia)",
+          "value": "us-east-1 (N. Virginia)"
+        },
+        "hide": 2,
+        "name": "eks_region",
+        "options": [
+          {
+            "selected": true,
+            "text": "us-east-1 (N. Virginia)",
+            "value": "us-east-1 (N. Virginia)"
+          },
+          {
+            "selected": false,
+            "text": "us-west-2 (Oregon)",
+            "value": "us-west-2 (Oregon)"
+          }
+        ],
+        "query": "us-east-1 (N. Virginia), us-west-2 (Oregon)",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "g5.xlarge",
+          "value": "g5.xlarge"
+        },
+        "hide": 2,
+        "name": "eks_instance",
+        "options": [
+          {
+            "selected": true,
+            "text": "g5.xlarge",
+            "value": "g5.xlarge"
+          },
+          {
+            "selected": false,
+            "text": "g5.2xlarge",
+            "value": "g5.2xlarge"
+          },
+          {
+            "selected": false,
+            "text": "p4d.24xlarge",
+            "value": "p4d.24xlarge"
+          }
+        ],
+        "query": "g5.xlarge, g5.2xlarge, p4d.24xlarge",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "A10G",
+          "value": "A10G"
+        },
+        "hide": 2,
+        "name": "eks_gpu",
+        "options": [
+          {
+            "selected": true,
+            "text": "A10G",
+            "value": "A10G"
+          },
+          {
+            "selected": false,
+            "text": "A100",
+            "value": "A100"
+          }
+        ],
+        "query": "A10G, A100",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "Ampere",
+          "value": "Ampere"
+        },
+        "hide": 2,
+        "name": "eks_arch",
+        "options": [
+          {
+            "selected": true,
+            "text": "Ampere",
+            "value": "Ampere"
+          }
+        ],
+        "query": "Ampere",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "24 GB",
+          "value": "24 GB"
+        },
+        "hide": 2,
+        "name": "eks_vram",
+        "options": [
+          {
+            "selected": true,
+            "text": "24 GB",
+            "value": "24 GB"
+          },
+          {
+            "selected": false,
+            "text": "40 GB",
+            "value": "40 GB"
+          },
+          {
+            "selected": false,
+            "text": "80 GB",
+            "value": "80 GB"
+          }
+        ],
+        "query": "24 GB, 40 GB, 80 GB",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "9,216",
+          "value": "9,216"
+        },
+        "hide": 2,
+        "name": "eks_cuda",
+        "options": [
+          {
+            "selected": true,
+            "text": "9,216",
+            "value": "9,216"
+          },
+          {
+            "selected": false,
+            "text": "6,912",
+            "value": "6,912"
+          }
+        ],
+        "query": "9216, 6912",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "us-central1 (Iowa)",
+          "value": "us-central1 (Iowa)"
+        },
+        "hide": 2,
+        "name": "gke_region",
+        "options": [
+          {
+            "selected": true,
+            "text": "us-central1 (Iowa)",
+            "value": "us-central1 (Iowa)"
+          },
+          {
+            "selected": false,
+            "text": "us-east4 (Virginia)",
+            "value": "us-east4 (Virginia)"
+          }
+        ],
+        "query": "us-central1 (Iowa), us-east4 (Virginia)",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "n1-standard-4 + T4",
+          "value": "n1-standard-4 + T4"
+        },
+        "hide": 2,
+        "name": "gke_instance",
+        "options": [
+          {
+            "selected": true,
+            "text": "n1-standard-4 + T4",
+            "value": "n1-standard-4 + T4"
+          },
+          {
+            "selected": false,
+            "text": "a2-highgpu-1g",
+            "value": "a2-highgpu-1g"
+          }
+        ],
+        "query": "n1-standard-4 + T4, a2-highgpu-1g",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "Tesla T4",
+          "value": "Tesla T4"
+        },
+        "hide": 2,
+        "name": "gke_gpu",
+        "options": [
+          {
+            "selected": true,
+            "text": "Tesla T4",
+            "value": "Tesla T4"
+          },
+          {
+            "selected": false,
+            "text": "A100",
+            "value": "A100"
+          }
+        ],
+        "query": "Tesla T4, A100",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "Turing",
+          "value": "Turing"
+        },
+        "hide": 2,
+        "name": "gke_arch",
+        "options": [
+          {
+            "selected": true,
+            "text": "Turing",
+            "value": "Turing"
+          },
+          {
+            "selected": false,
+            "text": "Ampere",
+            "value": "Ampere"
+          }
+        ],
+        "query": "Turing, Ampere",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "16 GB",
+          "value": "16 GB"
+        },
+        "hide": 2,
+        "name": "gke_vram",
+        "options": [
+          {
+            "selected": true,
+            "text": "16 GB",
+            "value": "16 GB"
+          },
+          {
+            "selected": false,
+            "text": "40 GB",
+            "value": "40 GB"
+          }
+        ],
+        "query": "16 GB, 40 GB",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "2,560",
+          "value": "2,560"
+        },
+        "hide": 2,
+        "name": "gke_cuda",
+        "options": [
+          {
+            "selected": true,
+            "text": "2,560",
+            "value": "2,560"
+          },
+          {
+            "selected": false,
+            "text": "6,912",
+            "value": "6,912"
+          }
+        ],
+        "query": "2560, 6912",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "Qwen/Qwen3-1.7B",
+          "value": "Qwen/Qwen3-1.7B"
+        },
+        "hide": 2,
+        "name": "model_name",
+        "options": [
+          {
+            "selected": true,
+            "text": "Qwen/Qwen3-1.7B",
+            "value": "Qwen/Qwen3-1.7B"
+          },
+          {
+            "selected": false,
+            "text": "meta-llama/Llama-2-7b",
+            "value": "meta-llama/Llama-2-7b"
+          }
+        ],
+        "query": "Qwen/Qwen3-1.7B, meta-llama/Llama-2-7b",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "BAAI/bge-small-en-v1.5",
+          "value": "BAAI/bge-small-en-v1.5"
+        },
+        "hide": 2,
+        "name": "embedding_model",
+        "options": [
+          {
+            "selected": true,
+            "text": "BAAI/bge-small-en-v1.5",
+            "value": "BAAI/bge-small-en-v1.5"
+          }
+        ],
+        "query": "BAAI/bge-small-en-v1.5",
         "type": "custom"
       }
     ]
