@@ -44,23 +44,156 @@
       "type": "row"
     },
     {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Provider"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU Model"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              }
+            ]
+          }
+        ]
+      },
       "gridPos": {
-        "h": 8,
+        "h": 5,
         "w": 14,
         "x": 0,
         "y": 3
       },
       "id": 61,
       "options": {
-        "code": {
-          "language": "plaintext",
-          "showLineNumbers": false
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
         },
-        "content": "## Hardware Specifications\n\n| | \ud83d\udfe2 Akamai LKE | \ud83d\udfe0 AWS EKS | \ud83d\udd35 GCP GKE |\n|---|---|---|---|\n| **Region** | us-ord (Chicago) | us-east-1 (N. Virginia) | us-central1 (Iowa) |\n| **Instance Type** | g2-gpu-rtx4000a1-s | g5.xlarge | n1-standard-4 + T4 |\n| **GPU Model** | RTX 4000 Ada | A10G | Tesla T4 |\n| **GPU Manufacturer** | NVIDIA | NVIDIA | NVIDIA |\n| **GPU Architecture** | Ada Lovelace | Ampere | Turing |\n| **GPU Memory** | 20 GB GDDR6 | 24 GB GDDR6 | 16 GB GDDR6 |\n| **GPU CUDA Cores** | 6,144 | 9,216 | 2,560 |\n| **vCPUs** | 8 | 4 | 4 |\n| **System RAM** | 32 GB | 16 GB | 15 GB |\n\n### Model Configuration\n| Setting | Value |\n|---------|-------|\n| **LLM** | Qwen/Qwen3-1.7B |\n| **Embedding** | BAAI/bge-small-en-v1.5 |\n| **Vector DB** | Qdrant |\n| **Serving** | Ray Serve + vLLM |",
-        "mode": "markdown"
+        "showHeader": true
       },
-      "title": "Hardware & Instance Specs",
-      "type": "text"
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_lke}"
+          },
+          "expr": "DCGM_FI_DEV_GPU_TEMP",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "LKE"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_eks}"
+          },
+          "expr": "DCGM_FI_DEV_GPU_TEMP",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "EKS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_gke}"
+          },
+          "expr": "DCGM_FI_DEV_GPU_TEMP",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "GKE"
+        }
+      ],
+      "title": "GPU Hardware (Live from DCGM)",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "__name__": true,
+              "container": true,
+              "device": true,
+              "endpoint": true,
+              "gpu": true,
+              "instance": true,
+              "job": true,
+              "namespace": true,
+              "pci_bus_id": true,
+              "pod": true,
+              "pod_uid": true,
+              "service": true,
+              "UUID": true
+            },
+            "indexByName": {
+              "provider": 0,
+              "modelName": 1,
+              "DCGM_FI_DRIVER_VERSION": 2,
+              "Hostname": 3
+            },
+            "renameByName": {
+              "provider": "Provider",
+              "modelName": "GPU Model",
+              "DCGM_FI_DRIVER_VERSION": "Driver Version",
+              "Hostname": "Node"
+            }
+          }
+        }
+      ],
+      "type": "table"
     },
     {
       "datasource": {
@@ -68,7 +201,7 @@
         "uid": "-- Mixed --"
       },
       "gridPos": {
-        "h": 8,
+        "h": 5,
         "w": 10,
         "x": 14,
         "y": 3
@@ -256,6 +389,26 @@
       "title": "Provider Regions",
       "description": "\ud83d\udfe2 LKE: Chicago (us-ord) | \ud83d\udfe0 EKS: N. Virginia (us-east-1) | \ud83d\udd35 GKE: Iowa (us-central1)\n\nNorth-South Test: Your machine \u2192 Internet \u2192 Cluster",
       "type": "geomap"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 64,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false
+        },
+        "content": "**Reference Specs** (not live - update manually if instance types change): LKE g2-gpu-rtx4000a1-s (20GB VRAM, 6144 CUDA, Ada Lovelace) | EKS g5.xlarge (24GB VRAM, 9216 CUDA, Ampere) | GKE n1-standard-4+T4 (16GB VRAM, 2560 CUDA, Turing) | **Model:** Qwen/Qwen3-1.7B | **Embedding:** BAAI/bge-small-en-v1.5 | **Vector DB:** Qdrant",
+        "mode": "markdown"
+      },
+      "title": "",
+      "transparent": true,
+      "type": "text"
     },
     {
       "collapsed": false,
