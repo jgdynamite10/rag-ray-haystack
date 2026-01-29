@@ -196,11 +196,11 @@ prompts:
 | `rag_latency_seconds` | `stage=embedding` | [x] | [x] |
 | `rag_latency_seconds` | `stage=retrieval` | [x] | [x] |
 | `rag_latency_seconds` | `stage=inference` | [x] | [x] |
-| `rag_k_retrieved` | - | [x] | [x] |
+| `rag_k_retrieved` | - | [x] | [x] Complete (0.3.7) |
 
-**Status:** Attribution metrics exist in backend.
+**Status:** All attribution metrics implemented. Provider labels added via Prometheus `externalLabels`.
 
-**Gap:** Dashboard queries may need verification to match actual label names.
+**Note:** The `provider` label is added by Prometheus scraper config (`prometheus-values.yaml` → `externalLabels`), not in application code. Each cluster's Prometheus must be deployed with the correct provider label.
 
 ### 2.8 Benchmark JSON Output Format
 
@@ -356,6 +356,7 @@ Update the following sections:
 | 0.3.4 | Added rag_tpot_seconds Prometheus histogram for Grafana |
 | 0.3.5 | Added max_output_tokens control for consistent benchmarks |
 | 0.3.6 | Dashboard fix: aggregate metrics for clean provider lines |
+| 0.3.7 | Added rag_k_retrieved histogram for dashboard "Avg k Retrieved" panel |
 
 **Documentation created:**
 - `docs/BENCHMARKING.md` - Explains all measurement methods (UI, N-S, in-cluster)

@@ -484,6 +484,11 @@ class RagApp:
             "rag_tokens_total",
             "Total tokens generated (estimated)",
         )
+        self.k_retrieved_histogram = Histogram(
+            "rag_k_retrieved",
+            "Number of documents retrieved per query",
+            buckets=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20],
+        )
         self.timings = TimingTracker()
         self.use_embeddings = env_flag("RAG_USE_EMBEDDINGS", "true")
         self.qdrant_url = os.getenv("QDRANT_URL", "")
@@ -1094,6 +1099,8 @@ class RagApp:
             result = self.retriever.run(query=query, top_k=self.top_k)
         documents = result.get("documents", [])
         retrieval_time = time.perf_counter() - retrieval_start
+        k = len(documents)
+        self.k_retrieved_histogram.observe(k)
 
         prompt = self._build_prompt(query, history, documents)
 
@@ -1198,6 +1205,7 @@ class RagApp:
         documents = result.get("documents", [])
         retrieval_time = time.perf_counter() - retrieval_start
         k = len(documents)
+        self.k_retrieved_histogram.observe(k)
 
         prompt = self._build_prompt(query, history, documents)
 
