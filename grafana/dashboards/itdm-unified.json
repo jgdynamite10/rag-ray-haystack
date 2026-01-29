@@ -44,370 +44,22 @@
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "datasource",
-        "uid": "-- Mixed --"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Provider"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 100
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "GPU Model"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 250
-              }
-            ]
-          }
-        ]
-      },
       "gridPos": {
-        "h": 5,
-        "w": 14,
+        "h": 10,
+        "w": 24,
         "x": 0,
         "y": 3
       },
       "id": 61,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds_lke}"
-          },
-          "expr": "DCGM_FI_DEV_GPU_TEMP",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "",
-          "refId": "LKE"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds_eks}"
-          },
-          "expr": "DCGM_FI_DEV_GPU_TEMP",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "",
-          "refId": "EKS"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds_gke}"
-          },
-          "expr": "DCGM_FI_DEV_GPU_TEMP",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "",
-          "refId": "GKE"
-        }
-      ],
-      "title": "GPU Hardware (Live from DCGM)",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "Value": true,
-              "__name__": true,
-              "container": true,
-              "device": true,
-              "endpoint": true,
-              "gpu": true,
-              "instance": true,
-              "job": true,
-              "namespace": true,
-              "pci_bus_id": true,
-              "pod": true,
-              "pod_uid": true,
-              "service": true,
-              "UUID": true
-            },
-            "indexByName": {
-              "provider": 0,
-              "modelName": 1,
-              "DCGM_FI_DRIVER_VERSION": 2,
-              "Hostname": 3
-            },
-            "renameByName": {
-              "provider": "Provider",
-              "modelName": "GPU Model",
-              "DCGM_FI_DRIVER_VERSION": "Driver Version",
-              "Hostname": "Node"
-            }
-          }
-        }
-      ],
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "datasource",
-        "uid": "-- Mixed --"
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 10,
-        "x": 14,
-        "y": 3
-      },
-      "id": 62,
-      "options": {
-        "basemap": {
-          "config": {},
-          "name": "Layer 0",
-          "type": "carto"
-        },
-        "controls": {
-          "mouseWheelZoom": true,
-          "showAttribution": false,
-          "showDebug": false,
-          "showMeasure": false,
-          "showScale": false,
-          "showZoom": true
-        },
-        "layers": [
-          {
-            "config": {
-              "showLegend": true,
-              "style": {
-                "color": {
-                  "fixed": "#37872D"
-                },
-                "opacity": 0.9,
-                "rotation": {
-                  "fixed": 0,
-                  "max": 360,
-                  "min": -360,
-                  "mode": "mod"
-                },
-                "size": {
-                  "fixed": 10,
-                  "max": 15,
-                  "min": 5
-                },
-                "symbol": {
-                  "fixed": "img/icons/marker/circle.svg",
-                  "mode": "fixed"
-                },
-                "textConfig": {
-                  "fontSize": 12,
-                  "offsetX": 0,
-                  "offsetY": 0,
-                  "textAlign": "center",
-                  "textBaseline": "middle"
-                }
-              }
-            },
-            "location": {
-              "mode": "coords"
-            },
-            "name": "LKE Chicago",
-            "tooltip": true,
-            "type": "markers"
-          },
-          {
-            "config": {
-              "showLegend": true,
-              "style": {
-                "color": {
-                  "fixed": "#FF9830"
-                },
-                "opacity": 0.9,
-                "rotation": {
-                  "fixed": 0,
-                  "max": 360,
-                  "min": -360,
-                  "mode": "mod"
-                },
-                "size": {
-                  "fixed": 10,
-                  "max": 15,
-                  "min": 5
-                },
-                "symbol": {
-                  "fixed": "img/icons/marker/circle.svg",
-                  "mode": "fixed"
-                },
-                "textConfig": {
-                  "fontSize": 12,
-                  "offsetX": 0,
-                  "offsetY": 0,
-                  "textAlign": "center",
-                  "textBaseline": "middle"
-                }
-              }
-            },
-            "location": {
-              "mode": "coords"
-            },
-            "name": "EKS N. Virginia",
-            "tooltip": true,
-            "type": "markers"
-          },
-          {
-            "config": {
-              "showLegend": true,
-              "style": {
-                "color": {
-                  "fixed": "#3274D9"
-                },
-                "opacity": 0.9,
-                "rotation": {
-                  "fixed": 0,
-                  "max": 360,
-                  "min": -360,
-                  "mode": "mod"
-                },
-                "size": {
-                  "fixed": 10,
-                  "max": 15,
-                  "min": 5
-                },
-                "symbol": {
-                  "fixed": "img/icons/marker/circle.svg",
-                  "mode": "fixed"
-                },
-                "textConfig": {
-                  "fontSize": 12,
-                  "offsetX": 0,
-                  "offsetY": 0,
-                  "textAlign": "center",
-                  "textBaseline": "middle"
-                }
-              }
-            },
-            "location": {
-              "mode": "coords"
-            },
-            "name": "GKE Iowa",
-            "tooltip": true,
-            "type": "markers"
-          }
-        ],
-        "tooltip": {
-          "mode": "details"
-        },
-        "view": {
-          "allLayers": true,
-          "id": "coords",
-          "lat": 39.5,
-          "lon": -95,
-          "zoom": 4
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds_lke}"
-          },
-          "expr": "vector(1)",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "LKE Chicago",
-          "refId": "LKE"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds_eks}"
-          },
-          "expr": "vector(1)",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "EKS N. Virginia",
-          "refId": "EKS"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds_gke}"
-          },
-          "expr": "vector(1)",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "GKE Iowa",
-          "refId": "GKE"
-        }
-      ],
-      "title": "Provider Regions",
-      "description": "\ud83d\udfe2 LKE: Chicago (us-ord) | \ud83d\udfe0 EKS: N. Virginia (us-east-1) | \ud83d\udd35 GKE: Iowa (us-central1)\n\nNorth-South Test: Your machine \u2192 Internet \u2192 Cluster",
-      "type": "geomap"
-    },
-    {
-      "gridPos": {
-        "h": 3,
-        "w": 24,
-        "x": 0,
-        "y": 8
-      },
-      "id": 64,
-      "options": {
         "code": {
           "language": "plaintext",
           "showLineNumbers": false
         },
-        "content": "**Reference Specs** (not live - update manually if instance types change): LKE g2-gpu-rtx4000a1-s (20GB VRAM, 6144 CUDA, Ada Lovelace) | EKS g5.xlarge (24GB VRAM, 9216 CUDA, Ampere) | GKE n1-standard-4+T4 (16GB VRAM, 2560 CUDA, Turing) | **Model:** Qwen/Qwen3-1.7B | **Embedding:** BAAI/bge-small-en-v1.5 | **Vector DB:** Qdrant",
+        "content": "## Provider Infrastructure Comparison\n\n| | \ud83d\udfe2 **Akamai LKE** | \ud83d\udfe0 **AWS EKS** | \ud83d\udd35 **GCP GKE** |\n|:---|:---:|:---:|:---:|\n| **Region** | us-ord (Chicago) | us-east-1 (N. Virginia) | us-central1 (Iowa) |\n| **Instance Type** | g2-gpu-rtx4000a1-s | g5.xlarge | n1-standard-4 + T4 |\n| **GPU Model** | RTX 4000 Ada | A10G | Tesla T4 |\n| **GPU Manufacturer** | NVIDIA | NVIDIA | NVIDIA |\n| **GPU Architecture** | Ada Lovelace | Ampere | Turing |\n| **GPU Memory** | 20 GB GDDR6 | 24 GB GDDR6 | 16 GB GDDR6 |\n| **CUDA Cores** | 6,144 | 9,216 | 2,560 |\n| **vCPUs** | 8 | 4 | 4 |\n| **System RAM** | 32 GB | 16 GB | 15 GB |\n| | | | |\n| **GPU $/hr** | $${lke_gpu_cost} | $${eks_gpu_cost} | $${gke_gpu_cost} |\n| **CPU $/hr** | $${lke_cpu_cost} | $${eks_cpu_cost} | $${gke_cpu_cost} |\n| **Mgmt $/hr** | $${lke_mgmt_cost} | $${eks_mgmt_cost} | $${gke_mgmt_cost} |\n| | | | |\n| **Model** | Qwen/Qwen3-1.7B | Qwen/Qwen3-1.7B | Qwen/Qwen3-1.7B |\n| **Embedding** | BAAI/bge-small-en-v1.5 | BAAI/bge-small-en-v1.5 | BAAI/bge-small-en-v1.5 |\n| **Vector DB** | Qdrant | Qdrant | Qdrant |\n| **Serving** | Ray Serve + vLLM | Ray Serve + vLLM | Ray Serve + vLLM |\n\n> \u26a0\ufe0f **Note:** Hardware specs are reference values. Update this table if you deploy different instance types. Pricing uses dashboard variables (editable in dropdowns above).",
         "mode": "markdown"
       },
-      "title": "",
-      "transparent": true,
+      "title": "Infrastructure & Pricing",
       "type": "text"
     },
     {
@@ -416,7 +68,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 11
+        "y": 13
       },
       "id": 10,
       "panels": [],
@@ -505,7 +157,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 12
+        "y": 14
       },
       "id": 11,
       "options": {
@@ -636,7 +288,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 12
+        "y": 14
       },
       "id": 12,
       "options": {
@@ -767,7 +419,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 12
+        "y": 14
       },
       "id": 13,
       "options": {
@@ -898,7 +550,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 12
+        "y": 14
       },
       "id": 14,
       "options": {
@@ -1029,7 +681,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 12
+        "y": 14
       },
       "id": 15,
       "options": {
@@ -1161,7 +813,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 12
+        "y": 14
       },
       "id": 16,
       "options": {
@@ -1216,7 +868,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 18
       },
       "id": 20,
       "panels": [],
@@ -1306,7 +958,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 17
+        "y": 19
       },
       "id": 21,
       "options": {
@@ -1426,7 +1078,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 17
+        "y": 19
       },
       "id": 22,
       "options": {
@@ -1546,7 +1198,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 17
+        "y": 19
       },
       "id": 23,
       "options": {
@@ -1678,7 +1330,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 17
+        "y": 19
       },
       "id": 24,
       "options": {
@@ -1732,7 +1384,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 17
+        "y": 19
       },
       "id": 26,
       "options": {
@@ -1752,7 +1404,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 23
       },
       "id": 30,
       "panels": [],
@@ -1865,7 +1517,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 22
+        "y": 24
       },
       "id": 31,
       "options": {
@@ -2021,7 +1673,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 22
+        "y": 24
       },
       "id": 32,
       "options": {
@@ -2177,7 +1829,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 29
+        "y": 31
       },
       "id": 33,
       "options": {
@@ -2333,7 +1985,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 29
+        "y": 31
       },
       "id": 34,
       "options": {
@@ -2389,7 +2041,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 38
       },
       "id": 50,
       "panels": [],
@@ -2478,7 +2130,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 37
+        "y": 39
       },
       "id": 51,
       "options": {
@@ -2611,7 +2263,7 @@
         "h": 4,
         "w": 4,
         "x": 6,
-        "y": 37
+        "y": 39
       },
       "id": 52,
       "options": {
@@ -2745,7 +2397,7 @@
         "h": 4,
         "w": 4,
         "x": 10,
-        "y": 37
+        "y": 39
       },
       "id": 53,
       "options": {
@@ -2877,7 +2529,7 @@
         "h": 4,
         "w": 4,
         "x": 14,
-        "y": 37
+        "y": 39
       },
       "id": 54,
       "options": {
@@ -3009,7 +2661,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 37
+        "y": 39
       },
       "id": 55,
       "options": {
@@ -3167,7 +2819,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 41
+        "y": 43
       },
       "id": 56,
       "options": {
@@ -3326,7 +2978,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 41
+        "y": 43
       },
       "id": 57,
       "options": {
@@ -3383,7 +3035,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 47
+        "y": 49
       },
       "id": 40,
       "panels": [],
@@ -3586,7 +3238,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 48
+        "y": 50
       },
       "id": 41,
       "options": {
