@@ -278,6 +278,8 @@ The **ITDM - Unified Dashboard** (`grafana/dashboards/itdm-unified.json`) provid
   "avg_tokens_per_sec": 43.78,
   "total_tokens": 8756,
   "avg_output_tokens": 87.6,
+  "total_prompt_tokens": 15200,
+  "avg_prompt_tokens": 152.0,
   
   "phases": {
     "warmup": {

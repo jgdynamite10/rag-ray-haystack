@@ -106,13 +106,14 @@ curl -X POST http://.../benchmark/run -d '{"max_output_tokens": 256}'
 
 | Task | File(s) | Status |
 |------|---------|--------|
-| Prompt token count in output | `stream_bench.py` | [ ] |
+| Prompt token count in output | `stream_bench.py` | [x] `prompt_tokens` |
 | Output token count in output | `stream_bench.py` | [x] `token_count` |
-| Backend exposes token counts in SSE | `main.py` | [~] Partial |
+| Backend exposes token counts in SSE | `main.py` | [x] Complete |
 
-**Gap:** Prompt tokens not counted. Need to either:
-- Tokenize locally (requires tokenizer, adds dependency)
-- Have backend return `prompt_tokens` in SSE stream
+**Status:** Complete. vLLM returns `prompt_tokens` via `stream_options: {"include_usage": true}`.
+Backend includes `prompt_tokens` in SSE `done` event. Benchmark outputs:
+- `total_prompt_tokens`: Sum of all prompt tokens
+- `avg_prompt_tokens`: Average prompt tokens per request
 
 ### 2.4 Warmup vs Measured Phases
 
@@ -205,7 +206,7 @@ prompts:
 | phases.warmup, phases.measured | [x] | |
 | workload_manifest_hash | [x] | |
 | run_metadata | [x] | |
-| prompt_tokens | [ ] | Missing |
+| prompt_tokens | [x] | Complete (total_prompt_tokens, avg_prompt_tokens) |
 | max_output_tokens | [x] | Complete |
 | cost_reference | [ ] | Missing |
 | netprobe_reference | [ ] | Missing |
@@ -256,7 +257,7 @@ prompts:
 |-----|--------|--------|
 | ~~Cost documentation~~ | ~~Users can't understand cost model~~ | ~~[x] Complete~~ |
 | ~~`max_output_tokens` control~~ | ~~Benchmark results vary with response length~~ | ~~[x] Complete~~ |
-| Prompt token counting | Incomplete token accounting | Medium |
+| ~~Prompt token counting~~ | ~~Incomplete token accounting~~ | ~~[x] Complete~~ |
 
 ### Medium Priority
 | Gap | Impact | Effort |
@@ -341,6 +342,8 @@ Update the following sections:
 | 0.3.2 | Embedded BENCH_SCRIPT with Phase 2 features (TPOT, warmup, run_metadata) |
 | 0.3.3 | Fixed warmup_requests passthrough in /benchmark/run API |
 | 0.3.4 | Added rag_tpot_seconds Prometheus histogram for Grafana |
+| 0.3.5 | Added max_output_tokens control for consistent benchmarks |
+| 0.3.6 | Added prompt token counting (prompt_tokens in SSE done event) |
 
 **Documentation created:**
 - `docs/BENCHMARKING.md` - Explains all measurement methods (UI, N-S, in-cluster)

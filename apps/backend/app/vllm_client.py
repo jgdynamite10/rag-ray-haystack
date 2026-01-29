@@ -1,7 +1,16 @@
 import json
+from dataclasses import dataclass
 from typing import AsyncIterator
 
 import httpx
+
+
+@dataclass
+class StreamUsage:
+    """Usage info returned at the end of streaming."""
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
 
 
 class VllmStreamingGenerator:
@@ -23,7 +32,13 @@ class VllmStreamingGenerator:
 
     async def stream_chat(
         self, prompt: str, max_tokens: int | None = None
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[str | StreamUsage]:
+        """Stream chat completions, yielding text deltas and usage info.
+        
+        Yields:
+            str: Text delta tokens
+            StreamUsage: Final usage info (prompt_tokens, completion_tokens, total_tokens)
+        """
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
@@ -31,7 +46,10 @@ class VllmStreamingGenerator:
             "temperature": self.temperature,
             "top_p": self.top_p,
             "stream": True,
+            "stream_options": {"include_usage": True},
         }
+
+        usage_info: StreamUsage | None = None
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             async with client.stream(
@@ -48,6 +66,16 @@ class VllmStreamingGenerator:
                     if data == "[DONE]":
                         break
                     chunk = json.loads(data)
+                    
+                    # Check for usage info (sent in final chunk)
+                    usage = chunk.get("usage")
+                    if usage:
+                        usage_info = StreamUsage(
+                            prompt_tokens=usage.get("prompt_tokens", 0),
+                            completion_tokens=usage.get("completion_tokens", 0),
+                            total_tokens=usage.get("total_tokens", 0),
+                        )
+                    
                     delta = (
                         chunk.get("choices", [{}])[0]
                         .get("delta", {})
@@ -55,6 +83,10 @@ class VllmStreamingGenerator:
                     )
                     if delta:
                         yield delta
+        
+        # Yield usage info at the end if available
+        if usage_info:
+            yield usage_info
 
     async def complete_chat(
         self, prompt: str, max_tokens: int | None = None
