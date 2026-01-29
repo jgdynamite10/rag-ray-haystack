@@ -106,14 +106,20 @@ curl -X POST http://.../benchmark/run -d '{"max_output_tokens": 256}'
 
 | Task | File(s) | Status |
 |------|---------|--------|
-| Prompt token count in output | `stream_bench.py` | [x] `prompt_tokens` |
+| Prompt token count in output | `stream_bench.py` | [~] Deferred |
 | Output token count in output | `stream_bench.py` | [x] `token_count` |
-| Backend exposes token counts in SSE | `main.py` | [x] Complete |
+| Backend exposes token counts in SSE | `main.py` | [~] Deferred |
 
-**Status:** Complete. vLLM returns `prompt_tokens` via `stream_options: {"include_usage": true}`.
-Backend includes `prompt_tokens` in SSE `done` event. Benchmark outputs:
-- `total_prompt_tokens`: Sum of all prompt tokens
-- `avg_prompt_tokens`: Average prompt tokens per request
+**Status:** Deferred. Output token counting is complete (`token_count`).
+
+**Why prompt tokens are deferred:** For cross-provider GPU throughput/latency comparisons
+(LKE vs EKS vs GKE), prompt token counting is not critical because:
+1. We use the **same prompts** across all providers (controlled variable)
+2. Our primary metrics (TTFT, TPOT, latency, tokens/sec) already capture performance
+3. Cost comparisons use cluster-level pricing, not per-token API costs
+4. Adding prompt tokens requires vLLM `stream_options` which adds complexity
+
+Prompt token counting can be added later if per-token cost analysis becomes necessary.
 
 ### 2.4 Warmup vs Measured Phases
 
@@ -252,25 +258,26 @@ prompts:
 
 ## Remaining Gaps Summary
 
-### High Priority
-| Gap | Impact | Effort |
-|-----|--------|--------|
-| ~~Cost documentation~~ | ~~Users can't understand cost model~~ | ~~[x] Complete~~ |
-| ~~`max_output_tokens` control~~ | ~~Benchmark results vary with response length~~ | ~~[x] Complete~~ |
-| ~~Prompt token counting~~ | ~~Incomplete token accounting~~ | ~~[x] Complete~~ |
+### High Priority (Critical for Cross-Provider Comparison)
+| Gap | Impact | Effort | Status |
+|-----|--------|--------|--------|
+| ~~Cost documentation~~ | ~~Users can't understand cost model~~ | ~~Low~~ | [x] Complete |
+| ~~`max_output_tokens` control~~ | ~~Benchmark results vary with response length~~ | ~~Medium~~ | [x] Complete |
+| ~~ITDM Unified Dashboard~~ | ~~No single pane for comparison~~ | ~~Medium~~ | [x] Complete |
 
 ### Medium Priority
-| Gap | Impact | Effort |
-|-----|--------|--------|
-| East-West network probe | No in-cluster network latency data | Medium |
-| Workload manifest schema | Benchmarks not reproducible | Low |
-| Run metadata schema | Inconsistent field names | Low |
+| Gap | Impact | Effort | Status |
+|-----|--------|--------|--------|
+| East-West network probe | Can't attribute latency to network vs GPU | Medium | [ ] |
+| PROJECT_STATE.md update | Outdated docs for users | Low | [ ] |
 
-### Low Priority
-| Gap | Impact | Effort |
-|-----|--------|--------|
-| JSON schemas | No validation | Low |
-| PROJECT_STATE.md update | Outdated docs | Low |
+### Deferred (Not Critical for Provider Comparison)
+| Gap | Reason Deferred | 
+|-----|-----------------|
+| Prompt token counting | Same prompts across providers; output tokens sufficient |
+| Workload manifest schema | Current CLI args work; formal schema is nice-to-have |
+| Run metadata schema | Current fields work; formalization is nice-to-have |
+| JSON schemas | Validation not blocking; manual review sufficient |
 
 ---
 
@@ -343,7 +350,7 @@ Update the following sections:
 | 0.3.3 | Fixed warmup_requests passthrough in /benchmark/run API |
 | 0.3.4 | Added rag_tpot_seconds Prometheus histogram for Grafana |
 | 0.3.5 | Added max_output_tokens control for consistent benchmarks |
-| 0.3.6 | Added prompt token counting (prompt_tokens in SSE done event) |
+| 0.3.6 | Dashboard fix: aggregate metrics for clean provider lines |
 
 **Documentation created:**
 - `docs/BENCHMARKING.md` - Explains all measurement methods (UI, N-S, in-cluster)
