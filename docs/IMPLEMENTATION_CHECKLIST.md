@@ -274,7 +274,7 @@ prompts:
 | Gap | Impact | Effort | Status |
 |-----|--------|--------|--------|
 | ~~East-West network probe~~ | ~~Can't attribute latency to network vs GPU~~ | ~~Medium~~ | [x] Complete |
-| PROJECT_STATE.md update | Outdated docs for users | Low | [ ] |
+| ~~PROJECT_STATE.md update~~ | ~~Outdated docs for users~~ | ~~Low~~ | [x] Complete |
 
 ### Deferred (Not Critical for Provider Comparison)
 | Gap | Reason Deferred | 

@@ -2,46 +2,194 @@
 
 This file is safe to publish. Keep it sanitized and avoid sensitive details.
 
-## Current status
+## Current Status
 
-- Infrastructure: Terraform scaffolding exists for Akamai LKE.
-- Deployment: Helm chart for backend, frontend, Qdrant, RayService, and vLLM.
-- GPU: vLLM runs on GPU nodes when `nvidia.com/gpu` capacity is available.
-- Verification: vLLM streaming check passes on dev; backend pods Ready with service endpoints.
-- Images: GHCR images published for backend/frontend (tag `0.3.0`).
+**Phase 1: Core Infrastructure** - ✅ Complete
+**Phase 2: Measurement Rigor** - ✅ Complete (core features)
 
-## Benchmark results (dev, in-cluster)
+### What's Working
 
-- Requests: 100
-- Concurrency: 10
-- Success: 100 (errors: 0)
-- TTFT p50: 82.03 ms
-- TTFT p95: 479.48 ms
-- Latency p50: 11157.53 ms
-- Latency p95: 11761.82 ms
-- Avg tokens/sec: 43.78
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Helm/Kustomize deployment | ✅ | Backend, frontend, Qdrant, RayService, vLLM |
+| GPU inference (vLLM) | ✅ | Runs on GPU nodes with `nvidia.com/gpu` |
+| North-South benchmark | ✅ | `run_ns.sh` with warmup phases, TPOT |
+| East-West probe | ✅ | `run_ew.sh` for in-cluster network (needs tuning per cluster) |
+| Cost model | ✅ | Per-provider configs, cost computation |
+| Central Grafana | ✅ | Multi-cluster observability |
+| ITDM Dashboard | ✅ | Unified 3-provider comparison |
 
-## Benchmark metric definitions
+### Images
 
-- TTFT p50/p95: time to first token for the 50th/95th percentile; lower is better.
-- Latency p50/p95: total time to finish streaming the response.
-- Avg tokens/sec: approximate throughput computed from streamed tokens.
-- Success/errors: request-level success rate for the benchmark run.
+| Image | Tag | Notes |
+|-------|-----|-------|
+| Backend | 0.3.6 | TPOT metrics, max_output_tokens |
+| Frontend | 0.3.0 | SSE streaming with metrics |
 
-## Akamai Value
+---
 
-- Public URL (frontend): <public-url>
-- Backend API is available via `http://<public-url>/api/*` (frontend proxy).
-- In-cluster benchmark (dev): TTFT p50 82.03 ms, p95 479.48 ms; avg tokens/sec 43.78.
+## Benchmark Tools
 
-## Open items
+### North-South Benchmark (Client → Service)
 
-- Decide if the benchmark Job should be automated (CronJob/CI).
+```bash
+# Basic usage
+./scripts/benchmark/run_ns.sh <provider> --url <endpoint>
 
-## Environment (sanitized)
+# With all options
+./scripts/benchmark/run_ns.sh akamai-lke \
+  --url http://<public-ip>/api/query/stream \
+  --requests 100 \
+  --warmup-requests 10 \
+  --concurrency 10 \
+  --max-output-tokens 256 \
+  --with-cost
+```
 
-- Provider: <provider>
-- Namespace: <namespace>
-- Release: <release>
-- Image registry: ghcr.io/<owner>
-- Image tag: 0.3.0
+**Output:** `benchmarks/ns/<provider>/<timestamp>.json`
+
+### East-West Probe (In-Cluster Network)
+
+```bash
+./scripts/netprobe/run_ew.sh --provider akamai-lke --kubeconfig ~/.kube/lke.yaml
+```
+
+**Measures:** TCP throughput (Gbps), UDP jitter, TCP latency
+**Output:** `benchmarks/ew/<provider>/<timestamp>.json`
+
+### Cost Computation
+
+```bash
+python scripts/cost/compute_cost.py \
+  --benchmark benchmarks/ns/akamai-lke/2026-01-28.json \
+  --cost-config cost/akamai-lke.yaml
+```
+
+---
+
+## Benchmark Results (LKE, Latest)
+
+| Metric | Value |
+|--------|-------|
+| Requests | 100 (measured) |
+| Warmup | 10 |
+| Concurrency | 10 |
+| Success Rate | 100% |
+| TTFT p50 | 221.37 ms |
+| TTFT p95 | 700.40 ms |
+| TPOT p50 | 26.13 ms |
+| TPOT p95 | 27.02 ms |
+| Latency p50 | 10,734 ms |
+| Latency p95 | 13,948 ms |
+| Avg tokens/sec | 37.29 |
+| Avg output tokens | 382.9 |
+
+### Metric Definitions
+
+| Metric | Description |
+|--------|-------------|
+| TTFT | Time to first token (lower is better) |
+| TPOT | Time per output token after first (lower is better) |
+| Latency | Total response time including all tokens |
+| Tokens/sec | Streaming throughput |
+
+---
+
+## Observability
+
+### Central Grafana
+
+Deployed via Terraform to a dedicated VM. Aggregates metrics from all clusters.
+
+**Setup:** See `docs/OBSERVABILITY.md`
+
+### Dashboards
+
+| Dashboard | Purpose |
+|-----------|---------|
+| ITDM - Unified | 3-provider comparison (LKE/EKS/GKE) with costs |
+| RAG Overview | Per-cluster ITDMs |
+| vLLM Metrics | Inference server stats |
+| GPU Utilization | DCGM metrics |
+
+### Prometheus Metrics (Backend)
+
+| Metric | Type | Labels |
+|--------|------|--------|
+| `rag_ttft_seconds` | Histogram | - |
+| `rag_tpot_seconds` | Histogram | - |
+| `rag_latency_seconds` | Histogram | `stage` (embedding/retrieval/inference) |
+| `rag_tokens_total` | Counter | - |
+| `rag_k_retrieved` | Histogram | - |
+
+---
+
+## Cross-Provider Comparison Workflow
+
+1. **Deploy** the stack to each cluster (LKE, EKS, GKE)
+2. **Configure** Prometheus per cluster with `prometheus-values.yaml`
+3. **Run** North-South benchmark against each cluster's public endpoint
+4. **Optionally run** East-West probe for network attribution
+5. **View** results in ITDM Unified Dashboard
+6. **Compute** costs with provider-specific configs
+
+---
+
+## Directory Structure
+
+```
+rag-ray-haystack/
+├── apps/
+│   ├── backend/           # FastAPI + Ray Serve
+│   └── frontend/          # React UI
+├── deploy/
+│   ├── helm/rag-app/      # Main Helm chart
+│   ├── overlays/          # Kustomize per provider
+│   ├── netprobe/          # East-West probe manifests
+│   └── monitoring/        # Grafana, Prometheus configs
+├── scripts/
+│   ├── benchmark/         # run_ns.sh, stream_bench.py
+│   ├── netprobe/          # run_ew.sh
+│   └── cost/              # compute_cost.py
+├── grafana/dashboards/    # Dashboard JSON exports
+├── cost/                  # Cost config examples
+├── benchmarks/            # Results storage
+└── docs/                  # Documentation
+```
+
+---
+
+## Documentation
+
+| Doc | Purpose |
+|-----|---------|
+| `docs/BENCHMARKING.md` | How to run benchmarks |
+| `docs/OBSERVABILITY.md` | Prometheus + Grafana setup |
+| `docs/COST_MODEL.md` | Cost computation guide |
+| `docs/IMPLEMENTATION_CHECKLIST.md` | Feature tracking |
+| `docs/ARCHITECTURE.md` | System architecture |
+
+---
+
+## Known Limitations
+
+1. **East-West probe**: May need network policy adjustments per cluster (iperf3 connections can be reset)
+2. **Prompt tokens**: Deferred - not critical for cross-provider comparison
+3. **Workload manifests**: CLI args work; formal schema is nice-to-have
+
+---
+
+## Open Items
+
+- [ ] Verify dashboards with live EKS/GKE data
+- [ ] Test East-West probe on EKS and GKE
+- [ ] Compare benchmark results across all 3 providers
+
+---
+
+## Environment (Sanitized)
+
+- Provider: `<provider>`
+- Namespace: `rag`
+- Image registry: `ghcr.io/<owner>`
+- Image tag: `0.3.6`
