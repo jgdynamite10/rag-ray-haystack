@@ -103,6 +103,9 @@ fi
 
 # Cleanup function
 cleanup() {
+    # Always clean up temp manifest
+    [[ -n "$TEMP_MANIFEST" ]] && rm -f "$TEMP_MANIFEST" 2>/dev/null || true
+    
     if [[ "$KEEP_RESOURCES" == "false" ]]; then
         log "Cleaning up resources..."
         kubectl delete namespace "$NAMESPACE" --ignore-not-found=true --wait=false &>/dev/null || true
@@ -121,9 +124,13 @@ if kubectl get namespace "$NAMESPACE" &>/dev/null; then
     sleep 5
 fi
 
-# Deploy netprobe resources
+# Deploy netprobe resources with provider label injected
 log "Deploying netprobe resources..."
-kubectl apply -f "$MANIFEST"
+# Create temp manifest with provider injected (handles YAML whitespace)
+TEMP_MANIFEST=$(mktemp)
+sed 's/value: "unknown".*# Override/value: "'"$PROVIDER"'"  # Override/' "$MANIFEST" > "$TEMP_MANIFEST"
+kubectl apply -f "$TEMP_MANIFEST"
+# Don't remove temp manifest yet - used again for client job restart
 
 # Wait for server to be ready
 log "Waiting for iperf3 server to be ready..."
@@ -139,7 +146,7 @@ sleep 2
 
 # Recreate client job (to ensure fresh run)
 log "Starting client job..."
-kubectl apply -f "$MANIFEST"
+kubectl apply -f "$TEMP_MANIFEST"
 
 # Wait for client job to complete
 log "Waiting for tests to complete (up to 60s)..."
@@ -173,24 +180,55 @@ log "Collecting results..."
 CLIENT_POD=$(kubectl get pods -n "$NAMESPACE" -l app=iperf3-client --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null)
 RAW_RESULTS=$(kubectl logs -n "$NAMESPACE" "$CLIENT_POD" 2>/dev/null)
 
-# Extract JSON - find lines starting with { and capture until final }
-# The JSON output is the last thing printed by the container
-JSON_RESULTS=$(echo "$RAW_RESULTS" | awk '/^{\"test_type\":/,/^}$/' | head -50)
+# Extract JSON - look for the complete JSON object with test_type
+# The output format is: {"test_type": "east-west", ...}
+JSON_RESULTS=$(echo "$RAW_RESULTS" | grep -E '^\{"test_type"' | head -1)
 
-# If that didn't work, try extracting from the last { to the end
+# If single-line didn't work, try multi-line extraction
 if [[ -z "$JSON_RESULTS" ]]; then
-    JSON_RESULTS=$(echo "$RAW_RESULTS" | grep -A100 '^{"test_type"' | head -50)
+    JSON_RESULTS=$(echo "$RAW_RESULTS" | awk '/^{\"test_type\":/,/^}$/' | head -50)
 fi
 
+# If still no luck, try Python to find and parse the JSON
+if [[ -z "$JSON_RESULTS" ]] || ! echo "$JSON_RESULTS" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+    log "Attempting Python extraction..."
+    JSON_RESULTS=$(python3 -c "
+import sys
+import json
+import re
+
+text = '''$RAW_RESULTS'''
+
+# Look for JSON starting with test_type
+match = re.search(r'\{\"test_type\".*?\n\}', text, re.DOTALL)
+if match:
+    try:
+        data = json.loads(match.group())
+        print(json.dumps(data))
+    except:
+        pass
+" 2>/dev/null)
+fi
+
+# Final fallback - extract values manually
 if [[ -z "$JSON_RESULTS" ]] || ! echo "$JSON_RESULTS" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
     warn "Could not extract clean JSON, attempting to build from raw values..."
-    # Try to extract key values directly
+    # Extract the key values from the output
     TCP_GBPS=$(echo "$RAW_RESULTS" | grep -o '"gbps": [0-9.]*' | head -1 | grep -o '[0-9.]*')
     TCP_MBPS=$(echo "$RAW_RESULTS" | grep -o '"mbps": [0-9.]*' | head -1 | grep -o '[0-9.]*')
-    if [[ -n "$TCP_GBPS" ]]; then
-        # Build minimal JSON from extracted values
-        JSON_RESULTS="{\"test_type\": \"east-west\", \"tcp_throughput\": {\"gbps\": $TCP_GBPS, \"mbps\": $TCP_MBPS}, \"udp_jitter\": {\"jitter_ms\": 0}, \"latency\": {\"avg_ms\": 0}}"
-        log "Built minimal JSON from extracted values"
+    TCP_RETRANS=$(echo "$RAW_RESULTS" | grep -o '"retransmits": [0-9]*' | head -1 | grep -o '[0-9]*')
+    UDP_JITTER=$(echo "$RAW_RESULTS" | grep -o '"jitter_ms": [0-9.]*' | head -1 | grep -o '[0-9.]*')
+    LAT_AVG=$(echo "$RAW_RESULTS" | grep -o '"avg_ms": [0-9.]*' | head -1 | grep -o '[0-9.]*')
+    
+    TCP_GBPS=${TCP_GBPS:-0}
+    TCP_MBPS=${TCP_MBPS:-0}
+    TCP_RETRANS=${TCP_RETRANS:-0}
+    UDP_JITTER=${UDP_JITTER:-0}
+    LAT_AVG=${LAT_AVG:-0}
+    
+    if [[ "$TCP_GBPS" != "0" ]] || [[ "$TCP_MBPS" != "0" ]]; then
+        JSON_RESULTS="{\"test_type\": \"east-west\", \"tcp_throughput\": {\"gbps\": $TCP_GBPS, \"mbps\": $TCP_MBPS, \"retransmits\": $TCP_RETRANS}, \"udp_jitter\": {\"jitter_ms\": $UDP_JITTER}, \"latency\": {\"avg_ms\": $LAT_AVG}}"
+        log "Built JSON from extracted values: TCP=${TCP_GBPS}Gbps"
     else
         error "Failed to parse results JSON"
         echo "Raw output:"

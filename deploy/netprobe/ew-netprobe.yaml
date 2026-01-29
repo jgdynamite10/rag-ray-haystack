@@ -219,11 +219,66 @@ spec:
               
               # Output final JSON
               cat /tmp/results.json
+              
+              # Push metrics to Pushgateway (if available in cluster)
+              PUSHGATEWAY_URL="${PUSHGATEWAY_URL:-http://prometheus-pushgateway.monitoring.svc.cluster.local:9091}"
+              PROVIDER="${PROVIDER:-unknown}"
+              
+              echo "Pushing metrics to Pushgateway: $PUSHGATEWAY_URL" >&2
+              
+              # Build Prometheus text format
+              cat > /tmp/metrics.txt << METRICS_EOF
+              # HELP ew_tcp_throughput_gbps East-West TCP throughput in Gbps
+              # TYPE ew_tcp_throughput_gbps gauge
+              ew_tcp_throughput_gbps{provider="$PROVIDER"} $TCP_GBPS
+              
+              # HELP ew_tcp_throughput_bps East-West TCP throughput in bps
+              # TYPE ew_tcp_throughput_bps gauge
+              ew_tcp_throughput_bps{provider="$PROVIDER"} ${TCP_BPS:-0}
+              
+              # HELP ew_tcp_retransmits East-West TCP retransmits
+              # TYPE ew_tcp_retransmits gauge
+              ew_tcp_retransmits{provider="$PROVIDER"} ${TCP_RETRANSMITS:-0}
+              
+              # HELP ew_udp_jitter_ms East-West UDP jitter in ms
+              # TYPE ew_udp_jitter_ms gauge
+              ew_udp_jitter_ms{provider="$PROVIDER"} ${UDP_JITTER:-0}
+              
+              # HELP ew_udp_loss_percent East-West UDP packet loss percent
+              # TYPE ew_udp_loss_percent gauge
+              ew_udp_loss_percent{provider="$PROVIDER"} ${UDP_LOSS_PCT:-0}
+              
+              # HELP ew_latency_avg_ms East-West average latency in ms
+              # TYPE ew_latency_avg_ms gauge
+              ew_latency_avg_ms{provider="$PROVIDER"} ${AVG_LAT:-0}
+              
+              # HELP ew_latency_min_ms East-West min latency in ms
+              # TYPE ew_latency_min_ms gauge
+              ew_latency_min_ms{provider="$PROVIDER"} ${MIN_LAT:-0}
+              
+              # HELP ew_latency_max_ms East-West max latency in ms
+              # TYPE ew_latency_max_ms gauge
+              ew_latency_max_ms{provider="$PROVIDER"} ${MAX_LAT:-0}
+              METRICS_EOF
+              
+              # Remove leading whitespace from metrics file
+              sed -i 's/^[[:space:]]*//' /tmp/metrics.txt
+              
+              # Push to Pushgateway (ignore errors if not available)
+              if curl -s --connect-timeout 5 -X POST "$PUSHGATEWAY_URL/metrics/job/east_west_probe/provider/$PROVIDER" --data-binary @/tmp/metrics.txt; then
+                echo "Metrics pushed successfully" >&2
+              else
+                echo "Pushgateway not available, skipping metric push" >&2
+              fi
           env:
             - name: NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: PROVIDER
+              value: "unknown"  # Override via kubectl set env or kustomize
+            - name: PUSHGATEWAY_URL
+              value: "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
           resources:
             requests:
               cpu: "100m"

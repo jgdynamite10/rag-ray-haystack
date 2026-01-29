@@ -1,0 +1,19 @@
+{
+  "test_type": "east-west",
+  "tcp_throughput": {
+    "gbps": 1.1066,
+    "mbps": 1106.64,
+    "retransmits": 1547
+  },
+  "udp_jitter": {
+    "jitter_ms": 0
+  },
+  "latency": {
+    "avg_ms": 0
+  },
+  "provider": "akamai-lke",
+  "cluster": "lke561078-ctx",
+  "server_node": "lke561078-818958-4d4783670000",
+  "client_node": "lke561078-818957-4ab4a6130000",
+  "same_node": false
+}
