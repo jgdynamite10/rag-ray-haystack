@@ -74,7 +74,6 @@ async def run_request(
     last_token_time: Optional[float] = None
     token_count = 0
     done_token_count: Optional[int] = None
-    done_prompt_tokens: Optional[int] = None
 
     try:
         async with client.stream("POST", url, json=request_payload) as response:
@@ -105,7 +104,6 @@ async def run_request(
                         token_count += max(1, len(payload.get("text", "").split()))
                     if event_name == "done":
                         done_token_count = payload.get("token_count")
-                        done_prompt_tokens = payload.get("prompt_tokens")
                         break
                     event_name = None
                     event_data = None
@@ -129,7 +127,6 @@ async def run_request(
             "total": total,
             "tpot": tpot,
             "token_count": final_token_count,
-            "prompt_tokens": done_prompt_tokens,
             "tokens_per_second": tokens_per_second,
         }
     except Exception as exc:  # noqa: BLE001
@@ -193,7 +190,6 @@ def compute_phase_stats(results: list[dict[str, Any]]) -> dict[str, Any]:
     tokens_per_second = [r["tokens_per_second"] for r in success]
     tpot_values = [r["tpot"] for r in success if r.get("tpot") is not None]
     token_counts = [r["token_count"] for r in success if r.get("token_count")]
-    prompt_token_counts = [r["prompt_tokens"] for r in success if r.get("prompt_tokens") is not None]
 
     return {
         "requests": len(results),
@@ -212,10 +208,6 @@ def compute_phase_stats(results: list[dict[str, Any]]) -> dict[str, Any]:
         "avg_output_tokens": round(
             statistics.mean(token_counts) if token_counts else 0.0, 1
         ),
-        "total_prompt_tokens": sum(prompt_token_counts) if prompt_token_counts else None,
-        "avg_prompt_tokens": round(
-            statistics.mean(prompt_token_counts) if prompt_token_counts else 0.0, 1
-        ) if prompt_token_counts else None,
     }
 
 
@@ -301,8 +293,6 @@ async def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         "avg_tokens_per_sec": measured_stats["avg_tokens_per_sec"],
         "total_tokens": measured_stats["total_tokens"],
         "avg_output_tokens": measured_stats["avg_output_tokens"],
-        "total_prompt_tokens": measured_stats.get("total_prompt_tokens"),
-        "avg_prompt_tokens": measured_stats.get("avg_prompt_tokens"),
         # Phase details
         "phases": {
             "warmup": warmup_stats,
