@@ -210,7 +210,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(rag_requests_total{endpoint=\"query_stream\"}[5m]))",
+          "expr": "sum(rate(rag_requests_total[5m]))",
           "legendFormat": "req/sec",
           "refId": "A"
         }
@@ -447,19 +447,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${ds_lke}" },
-          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) / 3600 / (sum(rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m])) + 0.001)",
+          "expr": "($lke_gpu_cost * $gpu_nodes + $lke_cpu_cost * $cpu_nodes + $lke_mgmt_cost) / 3600 / (sum(rate(rag_requests_total[5m])) + 0.001)",
           "legendFormat": "LKE",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_eks}" },
-          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) / 3600 / (sum(rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m])) + 0.001)",
+          "expr": "($eks_gpu_cost * $gpu_nodes + $eks_cpu_cost * $cpu_nodes + $eks_mgmt_cost) / 3600 / (sum(rate(rag_requests_total[5m])) + 0.001)",
           "legendFormat": "EKS",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${ds_gke}" },
-          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) / 3600 / (sum(rate(rag_requests_total{exported_endpoint=\"query_stream\"}[5m])) + 0.001)",
+          "expr": "($gke_gpu_cost * $gpu_nodes + $gke_cpu_cost * $cpu_nodes + $gke_mgmt_cost) / 3600 / (sum(rate(rag_requests_total[5m])) + 0.001)",
           "legendFormat": "GKE",
           "refId": "C"
         }
