@@ -372,23 +372,69 @@ kubectl apply -f deploy/monitoring/dcgm-servicemonitor.yaml
 
 #### GCP GKE
 
-GKE with GPU node pools includes the NVIDIA device plugin but **not** DCGM exporter.
+GKE with GPU node pools includes a **managed DCGM exporter** in the `gke-managed-system` namespace, but it has no Service by default. You need to create a Service and ServiceMonitor to expose it to Prometheus.
 
-**Install DCGM Exporter:**
+**Option A: Use GKE's Managed DCGM (Recommended)**
+
 ```bash
-# Add NVIDIA Helm repo
+# Verify GKE's DCGM exporter is running
+kubectl -n gke-managed-system get pods | grep dcgm
+
+# Create Service for GKE-managed DCGM
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Service
+metadata:
+  name: dcgm-exporter-gke
+  namespace: gke-managed-system
+  labels:
+    app: dcgm-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: gke-managed-dcgm-exporter
+  ports:
+    - name: metrics
+      port: 9400
+      targetPort: 9400
+EOF
+
+# Create ServiceMonitor for Prometheus scraping
+kubectl apply -f - <<'EOF'
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: dcgm-exporter-gke
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  namespaceSelector:
+    matchNames:
+      - gke-managed-system
+  selector:
+    matchLabels:
+      app: dcgm-exporter
+  endpoints:
+    - port: metrics
+      interval: 15s
+EOF
+
+# Verify endpoints
+kubectl -n gke-managed-system get endpoints dcgm-exporter-gke
+```
+
+**Option B: Install DCGM via Helm (Alternative)**
+
+If GKE's managed DCGM is not available:
+```bash
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
 helm repo update
 
-# Install DCGM exporter
 helm install dcgm-exporter nvidia/dcgm-exporter \
   --namespace gpu-operator --create-namespace \
   --set serviceMonitor.enabled=true \
   --set arguments[0]="--kubernetes"
-```
 
-Then apply the ServiceMonitor:
-```bash
 kubectl apply -f deploy/monitoring/dcgm-servicemonitor.yaml
 ```
 
