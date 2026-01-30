@@ -86,51 +86,82 @@ python3 scripts/cost/compute_cost.py \
 Location: `cost/cost-config.yaml`
 
 ```yaml
+# Cost configuration - Updated January 30, 2026 from live cluster queries
 providers:
   akamai-lke:
-    as_of: "2026-01-30"                    # When prices were captured
-    notes: "Linode list prices - actual deployed instances"
+    as_of: "2026-01-30"
+    notes: "Queried from live cluster - us-ord region"
     
-    # Core compute costs (USD per hour)
-    gpu_node_usd_per_hr: 0.52              # g2-gpu-rtx4000a1-s (RTX 4000 Ada Small)
-    cpu_node_usd_per_hr: 0.03              # g6-standard-2 (Shared CPU 4GB)
+    # Compute (USD per hour)
+    gpu_node_usd_per_hr: 0.52              # g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB)
+    cpu_node_usd_per_hr: 0.036             # g6-standard-2 (2 vCPU, 4GB)
     
-    # Network costs (USD per GB)
-    egress_usd_per_gb: 0.005               # Outbound data transfer (overage)
-    ingress_usd_per_gb: 0.0                # Inbound (free)
+    # Management
+    cluster_mgmt_usd_per_hr: 0.0           # Free control plane
     
-    # Storage costs
-    storage_usd_per_gb_month: 0.10         # linode-block-storage (NVMe)
+    # Storage
+    storage_usd_per_gb_month: 0.10         # linode-block-storage
     
-    # Cluster overhead
-    cluster_mgmt_usd_per_hr: 0.0           # No control plane fee
+    # Network
+    egress_usd_per_gb: 0.02                # Overage rate (9TB pooled included)
+    ingress_usd_per_gb: 0.0                # Free
 
   aws-eks:
-    as_of: "2026-01-27"
-    gpu_node_usd_per_hr: 0.8048            # g6.xlarge (NVIDIA L4)
-    cpu_node_usd_per_hr: 0.096             # m5.large
+    as_of: "2026-01-30"
+    notes: "Queried from live cluster - us-east-1 region (multi-AZ)"
+    
+    # Compute (USD per hour)
+    gpu_node_usd_per_hr: 0.80              # g6.xlarge (NVIDIA L4 24GB)
+    cpu_node_usd_per_hr: 0.096             # m5.large (2 vCPU, 8GB)
+    
+    # Management
     cluster_mgmt_usd_per_hr: 0.10          # EKS control plane
+    
+    # Storage
+    storage_usd_per_gb_month: 0.10         # EBS gp2
+    
+    # Network
+    nat_gateway_usd_per_hr: 0.045          # NAT Gateway provisioning
+    nat_data_usd_per_gb: 0.045             # NAT data processing
+    egress_usd_per_gb: 0.09                # Internet egress
+    cross_az_usd_per_gb: 0.01              # Cross-AZ traffic
 
   gcp-gke:
     as_of: "2026-01-30"
+    notes: "Queried from live cluster - us-central1-a zone (single-zone)"
+    
+    # Compute (USD per hour)
     gpu_node_usd_per_hr: 0.8536            # g2-standard-8 (NVIDIA L4 24GB)
-    cpu_node_usd_per_hr: 0.134             # e2-standard-4 (actual deployed)
+    cpu_node_usd_per_hr: 0.134             # e2-standard-4 (4 vCPU, 16GB)
+    
+    # Management
     cluster_mgmt_usd_per_hr: 0.10          # GKE management fee
+    
+    # Storage
     storage_usd_per_gb_month: 0.17         # pd-ssd (standard-rwo)
+    
+    # Network
+    egress_usd_per_gb: 0.12                # Internet egress (Premium tier)
+    ingress_usd_per_gb: 0.0                # Free
 
-# Benchmark context (node counts for cost attribution)
+# Cluster topology (all providers)
 benchmark_context:
-  gpu_node_count: 1                        # Number of GPU nodes
-  cpu_node_count: 2                        # Number of CPU nodes
+  gpu_node_count: 1
+  cpu_node_count: 2
 ```
 
-### Provider Pricing Sources (Actual Deployed Instances)
+### Provider Pricing Sources (Queried January 30, 2026)
 
-| Provider | GPU Instance | CPU Instance | Price Source |
-|----------|--------------|--------------|--------------|
-| Akamai LKE | g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB) $0.52/hr | g6-standard-2 (2 vCPU, 4GB) ~$0.03/hr | [Linode Pricing](https://www.linode.com/pricing/) |
-| AWS EKS | g6.xlarge (NVIDIA L4 24GB) $0.8048/hr | m5.large (2 vCPU, 8GB) $0.096/hr | [EC2 Pricing](https://aws.amazon.com/ec2/pricing/on-demand/) |
-| GCP GKE | g2-standard-8 (NVIDIA L4 24GB) $0.8536/hr | e2-standard-4 (4 vCPU, 16GB) $0.134/hr | [GCE Pricing](https://cloud.google.com/compute/vm-instance-pricing) |
+| Provider | GPU Instance | GPU $/hr | CPU Instance | CPU $/hr | Mgmt $/hr |
+|----------|--------------|----------|--------------|----------|-----------|
+| Akamai LKE | g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB) | **$0.52** | g6-standard-2 (2 vCPU, 4GB) | $0.036 | $0.00 |
+| AWS EKS | g6.xlarge (NVIDIA L4 24GB) | **$0.80** | m5.large (2 vCPU, 8GB) | $0.096 | $0.10 |
+| GCP GKE | g2-standard-8 (NVIDIA L4 24GB) | **$0.8536** | e2-standard-4 (4 vCPU, 16GB) | $0.134 | $0.10 |
+
+**Pricing Sources:**
+- [Linode Pricing](https://www.linode.com/pricing/) | [GPU Plans](https://www.linode.com/docs/products/compute/compute-instances/plans/gpu/)
+- [AWS EC2 Pricing](https://aws.amazon.com/ec2/pricing/on-demand/) | [EKS Pricing](https://aws.amazon.com/eks/pricing/)
+- [GCP Compute Pricing](https://cloud.google.com/compute/vm-instance-pricing) | [GKE Pricing](https://cloud.google.com/kubernetes-engine/pricing)
 
 ---
 
@@ -140,9 +171,9 @@ The cost computation outputs JSON with these sections:
 
 ```json
 {
-  "provider": "akamai-lke",
-  "benchmark_file": "benchmarks/ns/akamai-lke/2026-01-28.json",
-  "cost_config_as_of": "2026-01-27",
+  "provider": "<provider-name>",
+  "benchmark_file": "benchmarks/ns/<provider>/<timestamp>.json",
+  "cost_config_as_of": "2026-01-30",
   
   "benchmark_summary": {
     "requests": 100,
@@ -156,19 +187,19 @@ The cost computation outputs JSON with these sections:
   },
   
   "cost_inputs": {
-    "gpu_node_usd_per_hr": 1.50,
-    "cpu_node_usd_per_hr": 0.036,
-    "cluster_mgmt_usd_per_hr": 0.0,
+    "gpu_node_usd_per_hr": "<from config>",
+    "cpu_node_usd_per_hr": "<from config>",
+    "cluster_mgmt_usd_per_hr": "<from config>",
     "gpu_node_count": 1,
     "cpu_node_count": 2
   },
   
   "derived_metrics": {
-    "usd_per_1m_tokens": 1.37,
-    "usd_per_request": 0.000524,
-    "usd_per_successful_request": 0.000524,
-    "hourly_cluster_cost": 1.572,
-    "benchmark_run_cost": 0.0524
+    "usd_per_1m_tokens": "<computed>",
+    "usd_per_request": "<computed>",
+    "usd_per_successful_request": "<computed>",
+    "hourly_cluster_cost": "<computed>",
+    "benchmark_run_cost": "<computed>"
   }
 }
 ```
@@ -218,14 +249,6 @@ find benchmarks -name "*-cost.json" -exec cat {} \; | jq -s '
   }
 '
 ```
-
-### Example Comparison Table (Actual Deployed - January 2026)
-
-| Provider | GPU | Instance | $/hr (cluster) | Monthly |
-|----------|-----|----------|----------------|---------|
-| Akamai LKE | RTX 4000 Ada | g2-gpu-rtx4000a1-s | **$0.58** | $424 |
-| GCP GKE | NVIDIA L4 | g2-standard-8 | **$1.22** | $893 |
-| AWS EKS | NVIDIA L4 | g6.xlarge | ~$1.10 | ~$800 (destroyed) |
 
 ---
 
