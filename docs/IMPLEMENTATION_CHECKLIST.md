@@ -230,34 +230,35 @@ prompts:
 
 | Dashboard | Query | Backend Metric | Verified |
 |-----------|-------|----------------|----------|
-| RAG Overview | `rate(rag_requests_total[5m])` | `rag_requests_total` | [ ] |
-| RAG Overview | `histogram_quantile(0.95, rag_ttft_seconds_bucket)` | `rag_ttft_seconds` | [ ] |
-| RAG Overview | `histogram_quantile(0.95, rag_tpot_seconds_bucket)` | `rag_tpot_seconds` | [ ] |
-| vLLM Metrics | `vllm:num_requests_running` | vLLM native | [ ] |
-| vLLM Metrics | `vllm:gpu_cache_usage_perc` | vLLM native | [ ] |
-| GPU Utilization | `DCGM_FI_DEV_GPU_UTIL` | DCGM exporter | [ ] |
+| ITDM Unified | `rate(rag_requests_total[5m])` | `rag_requests_total` | [x] LKE |
+| ITDM Unified | `histogram_quantile(0.95, rag_ttft_seconds_bucket)` | `rag_ttft_seconds` | [x] LKE |
+| ITDM Unified | `histogram_quantile(0.95, rag_tpot_seconds_bucket)` | `rag_tpot_seconds` | [x] LKE |
+| ITDM Unified | `ew_tcp_throughput_gbps` | Pushgateway | [x] LKE |
+| GPU Metrics | `DCGM_FI_DEV_GPU_UTIL` | DCGM exporter | [x] LKE |
+| GPU Metrics | `DCGM_FI_DEV_FB_USED` | DCGM exporter | [x] LKE |
 
-**Action:** After deploying to cluster with Prometheus, verify each query returns data.
+**Status:** All metrics verified on LKE. Pending verification on EKS and GKE after deployment.
 
 ---
 
 ## Files to Create
 
-### Priority 1 (Blocking)
+### Priority 1 (Blocking) - ALL COMPLETE
 1. ~~`scripts/benchmark/run_ns.sh`~~ - [x] Complete
 2. ~~`docs/OBSERVABILITY.md`~~ - [x] Complete
 3. ~~`docs/COST_MODEL.md`~~ - [x] Complete
 
-### Priority 2 (Important)
-4. `deploy/netprobe/ew-netprobe-job.yaml` - East-West probe manifest
-5. `scripts/netprobe/run_ew.sh` - East-West runner
-6. `schemas/workload.schema.json` - Workload manifest schema
-7. `workloads/standard.yaml` - Default workload manifest
+### Priority 2 (Important) - COMPLETE
+4. ~~`deploy/netprobe/ew-netprobe.yaml`~~ - [x] Complete (E-W probe manifest)
+5. ~~`scripts/netprobe/run_ew.sh`~~ - [x] Complete (E-W runner with Pushgateway)
+6. ~~`deploy/monitoring/pushgateway.yaml`~~ - [x] Complete (Pushgateway for E-W metrics)
+7. `schemas/workload.schema.json` - [ ] Deferred (not critical)
+8. `workloads/standard.yaml` - [ ] Deferred (not critical)
 
-### Priority 3 (Nice to Have)
-8. `schemas/run-metadata.schema.json` - Run metadata schema
-9. `schemas/benchmark-output.schema.json` - Output JSON schema
-10. `schemas/netprobe-ew.schema.json` - Netprobe output schema
+### Priority 3 (Nice to Have) - DEFERRED
+9. `schemas/run-metadata.schema.json` - Deferred
+10. `schemas/benchmark-output.schema.json` - Deferred
+11. `schemas/netprobe-ew.schema.json` - Deferred
 
 ---
 
@@ -327,13 +328,19 @@ async def query_stream(request: QueryRequest):
 
 After implementing changes:
 
-- [ ] Local standalone benchmark runs: `python stream_bench.py --warmup-requests 5`
-- [ ] In-cluster benchmark via API: `POST /benchmark/run`
-- [ ] Cost script processes output: `python compute_cost.py`
-- [ ] Prometheus scrapes metrics: check `/metrics` endpoint
-- [ ] Grafana dashboards load without errors
-- [ ] Dashboard queries return data
-- [ ] JSON output matches expected schema
+- [x] Local standalone benchmark runs: `python stream_bench.py --warmup-requests 5`
+- [x] In-cluster benchmark via API: `POST /benchmark/run`
+- [x] Cost script processes output: `python compute_cost.py`
+- [x] Prometheus scrapes metrics: check `/metrics` endpoint
+- [x] Grafana dashboards load without errors
+- [x] Dashboard queries return data (verified on LKE Load Test 2026-01-29)
+- [x] JSON output matches expected schema
+
+**LKE Load Test Results (2026-01-29):**
+- 500 requests, 50 concurrency, 97.4% success
+- TTFT p50/p95: 1.1s / 4.0s
+- TPOT p50/p95: 47.5ms / 56.4ms
+- E-W TCP: 1.02 Gbps
 
 ---
 
@@ -358,13 +365,22 @@ Update the following sections:
 | 0.3.6 | Dashboard fix: aggregate metrics for clean provider lines |
 | 0.3.7 | Added rag_k_retrieved histogram for dashboard "Avg k Retrieved" panel |
 
+**Infrastructure deployed (2026-01-29):**
+- East-West probe with in-cluster Pushgateway push
+- ITDM Unified Dashboard with E-W panels
+- LKE Load Test: 500 req, 50 concurrent, 97.4% success
+
 **Documentation created:**
 - `docs/BENCHMARKING.md` - Explains all measurement methods (UI, N-S, in-cluster)
-- `docs/CENTRAL_MONITORING.md` - Central Grafana setup guide
+- `docs/OBSERVABILITY.md` - Central Grafana + Pushgateway setup
 - `docs/IMPLEMENTATION_CHECKLIST.md` - This file
+- `docs/PROJECT_STATE.public.md` - Current status and results
 
-**Dashboards created:**
-- `grafana/dashboards/rag-overview.json` - ITDMs overview
-- `grafana/dashboards/vllm-metrics.json` - vLLM inference metrics
-- `grafana/dashboards/gpu-utilization.json` - DCGM GPU metrics
-- `grafana/dashboards/provider-comparison.json` - Side-by-side provider comparison
+**Dashboards:**
+- `grafana/dashboards/itdm-unified.json` - Primary dashboard for 3-provider comparison
+- Includes: Key Performance Metrics, GPU Metrics, Latency Breakdown, E-W Network
+
+**Ready for multi-provider testing:**
+- [x] LKE - Complete (Load Test verified)
+- [ ] EKS - Terraform ready, deployment pending
+- [ ] GKE - Terraform ready, deployment pending
