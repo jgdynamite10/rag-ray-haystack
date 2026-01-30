@@ -615,3 +615,59 @@ curl -s http://<FRONTEND_IP>/api/healthz
 ```
 
 The app is functional despite the probe restarts. To fix permanently, the backend Docker image needs `wget` installed or the rayservice template needs custom probes using `curl`.
+
+---
+
+## Version Compatibility
+
+### Recommended Versions (January 2026)
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| **Frontend** | `0.3.5` | **Use this version.** Version 0.3.7 has a regression where Rolling metrics don't populate and status stays "Streaming..." |
+| **Backend** | `0.3.7` | Latest stable |
+| **vLLM** | `v0.6.2` | Works with RTX 4000 Ada and NVIDIA L4 GPUs |
+
+### Frontend Version 0.3.7 Regression
+
+Version `0.3.7` of the frontend has a bug where:
+- The "Rolling metrics" widget never populates
+- The status stays "Streaming..." even after the response completes
+- Latency breakdown shows "—" instead of actual values
+
+**Fix:** Use frontend version `0.3.5`:
+
+```bash
+# Update frontend image on a deployment
+kubectl -n rag-app set image deployment/rag-app-rag-app-frontend \
+  frontend=ghcr.io/jgdynamite10/rag-ray-frontend:0.3.5
+
+# Or via Helm
+helm upgrade rag-app deploy/helm/rag-app \
+  --namespace rag-app \
+  --set frontend.image.tag=0.3.5 \
+  --reuse-values
+```
+
+### Backend QDRANT_URL Requirement
+
+The backend requires the `QDRANT_URL` environment variable to use Qdrant for document storage. Without it, the backend falls back to **in-memory storage** which:
+- Loses documents on pod restart
+- Doesn't record `rag_k_retrieved` metrics
+
+**Verify QDRANT_URL is set:**
+
+```bash
+kubectl -n rag-app get deployment rag-app-rag-app-backend \
+  -o jsonpath='{.spec.template.spec.containers[0].env}' | jq '.[] | select(.name=="QDRANT_URL")'
+```
+
+**If missing, redeploy with:**
+
+```bash
+helm upgrade rag-app deploy/helm/rag-app \
+  --namespace rag-app \
+  --reuse-values
+```
+
+The base Helm chart now includes `QDRANT_URL=http://rag-app-rag-app-qdrant:6333` by default.

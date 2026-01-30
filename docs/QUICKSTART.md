@@ -644,3 +644,33 @@ make destroy PROVIDER=akamai-lke ENV=dev
 ```bash
 make verify PROVIDER=akamai-lke ENV=dev NAMESPACE=rag-app RELEASE=rag-app
 ```
+
+---
+
+## Recommended Image Versions
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| **Frontend** | `0.3.5` | **Required.** Version 0.3.7 has Rolling metrics bug |
+| **Backend** | `0.3.7` | Latest stable |
+| **vLLM** | `v0.6.2` | Compatible with RTX 4000 Ada / NVIDIA L4 |
+
+### Known Issues
+
+**Frontend 0.3.7 Regression:** The Rolling metrics widget doesn't work and status stays "Streaming..." even after completion. Use version `0.3.5`:
+
+```bash
+kubectl -n rag-app set image deployment/rag-app-rag-app-frontend \
+  frontend=ghcr.io/jgdynamite10/rag-ray-frontend:0.3.5
+```
+
+**Backend Missing QDRANT_URL:** If `Avg k Retrieved` shows 0 in the dashboard, the backend is using in-memory storage instead of Qdrant. Ensure the Helm chart includes `QDRANT_URL`:
+
+```bash
+# Verify
+kubectl -n rag-app exec deployment/rag-app-rag-app-backend -- env | grep QDRANT_URL
+
+# Should show: QDRANT_URL=http://rag-app-rag-app-qdrant:6333
+```
+
+See `docs/DEPLOYMENT.md` for detailed troubleshooting.

@@ -562,3 +562,140 @@ curl "https://your-app.com/api/benchmark/status?job=rag-stream-bench-abc123"
 # Get benchmark logs
 curl "https://your-app.com/api/benchmark/logs?job=rag-stream-bench-abc123"
 ```
+
+---
+
+## East-West Network Benchmark
+
+The East-West benchmark measures **in-cluster network performance** between nodes. This is critical for understanding cross-node communication overhead for distributed workloads.
+
+### What It Measures
+
+| Metric | Description |
+|--------|-------------|
+| **TCP Throughput** | Maximum bandwidth between nodes (Gbps) |
+| **TCP Retransmits** | Packet retransmissions (indicator of congestion) |
+| **UDP Jitter** | Variation in packet arrival times (ms) |
+| **UDP Loss** | Percentage of dropped packets |
+| **Latency** | TCP connection establishment time (min/avg/max ms) |
+
+### Running East-West Benchmarks
+
+```bash
+# Activate Python environment
+source .venv/bin/activate
+
+# Run for each provider (requires kubeconfig access)
+./scripts/netprobe/run_ew.sh --provider akamai-lke --kubeconfig ~/.kube/rag-ray-haystack-kubeconfig.yaml
+./scripts/netprobe/run_ew.sh --provider aws-eks --kubeconfig ~/.kube/eks-kubeconfig.yaml
+./scripts/netprobe/run_ew.sh --provider gcp-gke --kubeconfig ~/.kube/gke-kubeconfig.yaml
+```
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--provider` | Provider name (akamai-lke, aws-eks, gcp-gke) |
+| `--kubeconfig` | Path to kubeconfig file |
+| `--output` | Output directory (default: benchmarks/ew) |
+| `--pushgateway-url` | Push metrics to Prometheus Pushgateway |
+| `--keep` | Don't cleanup resources after test (for debugging) |
+
+### How It Works
+
+1. Deploys an iperf3 server pod on one node
+2. Deploys an iperf3 client job on a **different** node (enforced via pod anti-affinity)
+3. Runs TCP throughput, UDP jitter, and latency tests
+4. Collects results and optionally pushes to Prometheus Pushgateway
+5. Cleans up resources
+
+### Reference Results (January 2026)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 1.11 Gbps | 4.78 Gbps | **6.97 Gbps** |
+| **TCP Retransmits** | 2,291 | **308** | 64,112 |
+| **Cross-Node** | ✅ | ✅ | ✅ |
+
+**Analysis:**
+- **GCP GKE** has highest raw throughput (6.97 Gbps) but high retransmits indicating aggressive congestion control
+- **AWS EKS** offers best balance: 4.78 Gbps with minimal retransmits (308) - most stable network
+- **Akamai LKE** at 1.11 Gbps with moderate retransmits - suitable for typical workloads
+
+### Troubleshooting
+
+**GKE: iperf3 "Bad file descriptor" or "unable to receive cookie" errors**
+
+This is a known iperf3 bug when the server can't handle multiple connection attempts cleanly. The fix (already applied in this repo):
+
+1. Server runs in `--one-off` loop mode (handles one test, restarts cleanly)
+2. Server uses `--forceflush` to avoid buffering issues
+3. Client waits for server readiness with active probes
+4. Client uses `--connect-timeout` for robust connections
+
+If you still see issues:
+```bash
+# Run with --keep to inspect logs
+./scripts/netprobe/run_ew.sh --provider gcp-gke --keep
+
+# Check server logs
+kubectl -n netprobe logs -l app=iperf3-server
+
+# Check client logs  
+kubectl -n netprobe logs -l app=iperf3-client
+
+# Manual cleanup
+kubectl delete namespace netprobe
+```
+
+**Test shows "Same Node: True"**
+
+The pods scheduled on the same node. This can happen if:
+- Cluster has only one node
+- Pod anti-affinity couldn't be satisfied
+
+Results from same-node tests don't reflect real cross-node performance.
+
+### Output Schema
+
+```json
+{
+  "test_type": "east-west",
+  "provider": "gcp-gke",
+  "cluster": "gke_rag-ray-haystack_us-central1-a_rag-ray-haystack",
+  "server_node": "gke-rag-ray-haystack-...-h5jk",
+  "client_node": "gke-rag-ray-haystack-...-21wq",
+  "same_node": false,
+  "tcp_throughput": {
+    "gbps": 6.97,
+    "mbps": 6967,
+    "retransmits": 64112,
+    "duration_seconds": 10
+  },
+  "udp_jitter": {
+    "jitter_ms": 0.015,
+    "lost_packets": 0,
+    "total_packets": 12500,
+    "loss_percent": 0.0
+  },
+  "latency": {
+    "min_ms": 0.2,
+    "avg_ms": 0.35,
+    "max_ms": 1.2,
+    "samples": 10
+  }
+}
+```
+
+### Metrics Pushed to Prometheus
+
+When `--pushgateway-url` is provided (or Pushgateway exists in-cluster):
+
+| Metric | Description |
+|--------|-------------|
+| `ew_tcp_throughput_gbps` | TCP throughput in Gbps |
+| `ew_tcp_retransmits` | TCP retransmit count |
+| `ew_udp_jitter_ms` | UDP jitter in milliseconds |
+| `ew_udp_loss_percent` | UDP packet loss percentage |
+| `ew_latency_avg_ms` | Average latency in milliseconds |
+| `ew_latency_min_ms` | Minimum latency in milliseconds |
+| `ew_latency_max_ms` | Maximum latency in milliseconds |

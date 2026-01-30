@@ -33,7 +33,18 @@ spec:
         - name: iperf3
           # Use same image as client for compatibility
           image: nicolaka/netshoot:latest
-          command: ["iperf3", "-s"]
+          # Use --forceflush to avoid buffering issues, -D for daemon mode
+          # Wrap in loop to restart server between tests (fixes "bad file descriptor" on GKE)
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting iperf3 server in one-off loop mode..."
+              while true; do
+                iperf3 -s --one-off --forceflush 2>&1
+                echo "Test completed, restarting server..."
+                sleep 1
+              done
           ports:
             - containerPort: 5201
               name: iperf
@@ -42,8 +53,8 @@ spec:
               cpu: "100m"
               memory: "64Mi"
             limits:
-              cpu: "500m"
-              memory: "128Mi"
+              cpu: "1000m"
+              memory: "256Mi"
       # Try to schedule on a different node than client
       affinity:
         podAntiAffinity:
@@ -99,21 +110,32 @@ spec:
               # Get node info
               echo '"client_node": "'${NODE_NAME:-unknown}'",' >> /tmp/results.json
               
-              # Wait for server to be ready (simple approach - just wait)
+              # Wait for server to be ready with active probe
               echo "Waiting for iperf3 server..." >&2
-              sleep 10
+              for i in $(seq 1 30); do
+                if nc -z -w 2 iperf3-server 5201 2>/dev/null; then
+                  echo "Server is ready after $i attempts" >&2
+                  break
+                fi
+                echo "Waiting for server... attempt $i" >&2
+                sleep 2
+              done
+              # Extra wait to ensure server is fully initialized
+              sleep 5
               
-              # TCP throughput test (10 seconds) with retry
+              # TCP throughput test (10 seconds) with retry and longer waits
               echo "Running TCP throughput test..." >&2
               TCP_RESULT=""
               for attempt in 1 2 3; do
-                TCP_RESULT=$(iperf3 -c iperf3-server -t 10 -J 2>&1)
+                # Wait for server to be in listening state
+                sleep 3
+                TCP_RESULT=$(iperf3 -c iperf3-server -t 10 -J --connect-timeout 10000 2>&1)
                 if echo "$TCP_RESULT" | grep -q '"bits_per_second"'; then
                   echo "TCP test succeeded on attempt $attempt" >&2
                   break
                 fi
-                echo "TCP test attempt $attempt failed, retrying in 5s..." >&2
-                sleep 5
+                echo "TCP test attempt $attempt failed, waiting 10s for server to reset..." >&2
+                sleep 10
               done
               echo "TCP raw result (first 500 chars):" >&2
               echo "$TCP_RESULT" | head -c 500 >&2
@@ -135,9 +157,13 @@ spec:
               echo '  "duration_seconds": 10' >> /tmp/results.json
               echo '},' >> /tmp/results.json
               
+              # Wait for server to restart after TCP test
+              echo "Waiting for server to reset..." >&2
+              sleep 5
+              
               # UDP jitter test (5 seconds, 100Mbps target)
               echo "Running UDP jitter test..." >&2
-              UDP_RESULT=$(iperf3 -c iperf3-server -u -b 100M -t 5 -J 2>&1)
+              UDP_RESULT=$(iperf3 -c iperf3-server -u -b 100M -t 5 -J --connect-timeout 10000 2>&1)
               echo "UDP raw (first 300 chars):" >&2
               echo "$UDP_RESULT" | head -c 300 >&2
               echo "" >&2

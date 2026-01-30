@@ -274,3 +274,84 @@ helm -n <namespace> uninstall <release>
 # delete namespace if desired (optional)
 kubectl delete ns <namespace>
 ```
+
+## East-West Network Benchmark
+
+Measures in-cluster TCP throughput, UDP jitter, and latency between nodes.
+
+```bash
+# Run for each provider
+./scripts/netprobe/run_ew.sh --provider akamai-lke --kubeconfig ~/.kube/rag-ray-haystack-kubeconfig.yaml
+./scripts/netprobe/run_ew.sh --provider aws-eks --kubeconfig ~/.kube/eks-kubeconfig.yaml
+./scripts/netprobe/run_ew.sh --provider gcp-gke --kubeconfig ~/.kube/gke-kubeconfig.yaml
+
+# With Pushgateway metrics
+./scripts/netprobe/run_ew.sh --provider gcp-gke \
+  --pushgateway-url http://prometheus-pushgateway.monitoring:9091
+```
+
+**Reference Results (January 2026):**
+
+| Provider | TCP Throughput | Retransmits |
+|----------|----------------|-------------|
+| Akamai LKE | 1.11 Gbps | 2,291 |
+| AWS EKS | 4.78 Gbps | 308 |
+| GCP GKE | 6.97 Gbps | 64,112 |
+
+### Troubleshooting East-West
+
+**GKE: iperf3 "Bad file descriptor" error**
+
+If you see "unable to receive cookie" or "Bad file descriptor" errors on GKE:
+
+```bash
+# Check server logs
+./scripts/netprobe/run_ew.sh --provider gcp-gke --keep
+kubectl -n netprobe logs -l app=iperf3-server
+
+# Manual cleanup if needed
+kubectl delete namespace netprobe
+```
+
+The fix (already applied): Server runs in `--one-off` loop mode with `--forceflush` to handle connections cleanly.
+
+**Same-node test warning**
+
+If you see "Server and client on same node", the cluster may have only one schedulable node or anti-affinity couldn't be satisfied. Cross-node tests require at least 2 nodes.
+
+See `docs/BENCHMARKING.md` for complete East-West documentation.
+
+## Version Compatibility
+
+### Recommended Versions (January 2026)
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| **Frontend** | `0.3.5` | **Required** - 0.3.7 has Rolling metrics bug |
+| **Backend** | `0.3.7` | Latest stable |
+| **vLLM** | `v0.6.2` | Compatible with RTX 4000 Ada / NVIDIA L4 |
+
+### Quick Fixes
+
+**Fix frontend Rolling metrics (downgrade from 0.3.7):**
+```bash
+kubectl -n rag-app set image deployment/rag-app-rag-app-frontend \
+  frontend=ghcr.io/jgdynamite10/rag-ray-frontend:0.3.5
+```
+
+**Fix backend QDRANT_URL (if Avg k Retrieved = 0):**
+```bash
+# Verify QDRANT_URL is set
+kubectl -n rag-app exec deployment/rag-app-rag-app-backend -- env | grep QDRANT_URL
+
+# If missing, redeploy with Helm (base chart now includes QDRANT_URL)
+helm upgrade rag-app deploy/helm/rag-app -n rag-app --reuse-values
+```
+
+**Verify all images across providers:**
+```bash
+for ctx in lke561078-ctx arn:aws:eks:us-east-1:494507830157:cluster/rag-ray-haystack gke_rag-ray-haystack_us-central1-a_rag-ray-haystack; do
+  echo "=== $ctx ==="
+  kubectl --context="$ctx" -n rag-app get deployments -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.template.spec.containers[0].image}{"\n"}{end}'
+done
+```

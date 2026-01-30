@@ -36,6 +36,10 @@ backend:
       value: "4"
     - name: RAG_MAX_HISTORY
       value: "6"
+    - name: QDRANT_URL
+      value: "http://rag-app-rag-app-qdrant:6333"
+    - name: QDRANT_COLLECTION
+      value: "rag-documents"
     - name: VLLM_BASE_URL
       value: "http://rag-app-rag-app-vllm:8000"
     - name: VLLM_MODEL
