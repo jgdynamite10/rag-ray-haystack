@@ -97,16 +97,33 @@ kubectl get pods -n kube-system | grep nvidia
 kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
 ```
 
-### Step 6: Deploy RAG Application
+### Step 6: Install KubeRay Operator
+
+The RAG app uses Ray Serve, which requires the KubeRay operator for RayService CRDs.
 
 ```bash
-helm upgrade --install rag-app ./helm/rag-app \
-  --namespace default \
-  --set backend.image.tag=0.3.7 \
-  --set frontend.image.tag=0.3.0
+# Add KubeRay Helm repo
+helm repo add kuberay https://ray-project.github.io/kuberay-helm/
+helm repo update
+
+# Install KubeRay operator
+helm install kuberay-operator kuberay/kuberay-operator \
+  --namespace ray-system --create-namespace
+
+# Wait for operator to be ready
+kubectl get pods -n ray-system
 ```
 
-### Step 7: Get External IPs
+### Step 7: Deploy RAG Application
+
+```bash
+helm upgrade --install rag-app ./deploy/helm/rag-app \
+  --namespace default \
+  --set backend.image.tag=0.3.7 \
+  --set frontend.image.tag=0.3.7
+```
+
+### Step 8: Get External IPs
 
 ```bash
 # Prometheus (for Central Grafana datasource)
@@ -116,7 +133,7 @@ kubectl get svc -n monitoring prometheus-kube-prometheus-prometheus
 kubectl get svc rag-app-frontend
 ```
 
-### Step 8: Add to Central Grafana
+### Step 9: Add to Central Grafana
 
 Add a new Prometheus datasource:
 - **Name**: `Prometheus-EKS`
@@ -163,13 +180,31 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 kubectl apply -f deploy/monitoring/pushgateway.yaml
 ```
 
-### Step 5: Deploy RAG Application
+### Step 5: Install NVIDIA Device Plugin (if needed)
 
 ```bash
-helm upgrade --install rag-app ./helm/rag-app \
+kubectl get pods -n kube-system | grep nvidia
+# If not present:
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
+```
+
+### Step 6: Install KubeRay Operator
+
+```bash
+helm repo add kuberay https://ray-project.github.io/kuberay-helm/
+helm repo update
+helm install kuberay-operator kuberay/kuberay-operator \
+  --namespace ray-system --create-namespace
+kubectl get pods -n ray-system
+```
+
+### Step 7: Deploy RAG Application
+
+```bash
+helm upgrade --install rag-app ./deploy/helm/rag-app \
   --namespace default \
   --set backend.image.tag=0.3.7 \
-  --set frontend.image.tag=0.3.0
+  --set frontend.image.tag=0.3.7
 ```
 
 ---
@@ -213,13 +248,32 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 kubectl apply -f deploy/monitoring/pushgateway.yaml
 ```
 
-### Step 5: Deploy RAG Application
+### Step 5: Install NVIDIA Device Plugin (if needed)
 
 ```bash
-helm upgrade --install rag-app ./helm/rag-app \
+kubectl get pods -n kube-system | grep nvidia
+# GKE with GPU node pools usually has this pre-installed
+# If not present:
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
+```
+
+### Step 6: Install KubeRay Operator
+
+```bash
+helm repo add kuberay https://ray-project.github.io/kuberay-helm/
+helm repo update
+helm install kuberay-operator kuberay/kuberay-operator \
+  --namespace ray-system --create-namespace
+kubectl get pods -n ray-system
+```
+
+### Step 7: Deploy RAG Application
+
+```bash
+helm upgrade --install rag-app ./deploy/helm/rag-app \
   --namespace default \
   --set backend.image.tag=0.3.7 \
-  --set frontend.image.tag=0.3.0
+  --set frontend.image.tag=0.3.7
 ```
 
 ---
