@@ -22,13 +22,8 @@ curl -X POST "http://<PUBLIC_IP>/api/ingest" \
   -F "file=@/path/to/your/document.pdf"
 
 # Step 3: Run East-West probe (in-cluster network metrics)
-# First, get Pushgateway URL (if deployed)
-PUSHGATEWAY_URL="http://$(kubectl get svc -n monitoring prometheus-pushgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):9091"
-
-./scripts/netprobe/run_ew.sh \
-  --provider akamai-lke \
-  --kubeconfig ~/.kube/lke.yaml \
-  --pushgateway-url "$PUSHGATEWAY_URL"
+# Metrics are pushed to Pushgateway automatically from inside the cluster
+./scripts/netprobe/run_ew.sh --provider akamai-lke
 
 # Step 4: Run North-South benchmark (all LLM metrics)
 ./scripts/benchmark/run_ns.sh akamai-lke \

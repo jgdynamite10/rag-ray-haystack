@@ -446,47 +446,28 @@ The East-West network probe pushes metrics to Prometheus via Pushgateway. This i
 
 ### Deploy Pushgateway
 
-Add Pushgateway to your Prometheus stack:
+Deploy the Pushgateway manifest (ClusterIP - internal access only):
 
 ```bash
-# Using Helm (add to existing kube-prometheus-stack)
-helm upgrade prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --set prometheus.prometheusSpec.enablePushgateway=true \
-  --set pushgateway.enabled=true
+kubectl apply -f deploy/monitoring/pushgateway.yaml
 ```
 
-Or deploy standalone:
+This creates:
+- Deployment: `prometheus-pushgateway`
+- Service: `prometheus-pushgateway` (ClusterIP on port 9091)
+- ServiceMonitor: Auto-discovered by Prometheus
+
+**Note:** No external LoadBalancer needed - the E-W probe pod pushes metrics directly to the internal service.
+
+### Run East-West Probe
+
+The probe automatically pushes metrics from inside the cluster:
 
 ```bash
-helm install pushgateway prometheus-community/prometheus-pushgateway \
-  --namespace monitoring \
-  --set serviceMonitor.enabled=true
+./scripts/netprobe/run_ew.sh --provider akamai-lke
 ```
 
-### Expose Pushgateway
-
-For the East-West script to push metrics, expose Pushgateway:
-
-```bash
-# Option 1: Port-forward (for testing)
-kubectl port-forward -n monitoring svc/prometheus-pushgateway 9091:9091
-
-# Option 2: LoadBalancer (for production)
-kubectl patch svc prometheus-pushgateway -n monitoring -p '{"spec":{"type":"LoadBalancer"}}'
-```
-
-### Run East-West with Pushgateway
-
-```bash
-# Get Pushgateway URL
-PUSHGATEWAY_URL="http://$(kubectl get svc -n monitoring prometheus-pushgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):9091"
-
-# Run East-West probe and push metrics
-./scripts/netprobe/run_ew.sh \
-  --provider akamai-lke \
-  --pushgateway-url "$PUSHGATEWAY_URL"
-```
+The iperf3-client pod pushes metrics to `prometheus-pushgateway.monitoring.svc.cluster.local:9091`.
 
 ### East-West Metrics
 
