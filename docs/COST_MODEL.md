@@ -360,20 +360,21 @@ This section documents the **actual deployed infrastructure** queried directly f
 - Region: `us-central1` / Zone: `us-central1-a`
 - Kubernetes Control Plane: `https://35.194.42.146`
 - Kubeconfig: `~/.kube/gke-kubeconfig.yaml`
+- Deployment: Single-zone (all nodes in us-central1-a)
 
 **Compute Nodes (Queried January 30, 2026):**
 
-| Node Name | Instance Type | vCPU | Memory | GPU | On-Demand $/hr |
-|-----------|---------------|------|--------|-----|----------------|
-| gke-rag-ray-haystack-rag-ray-haystack-2279193b-b4gd | `g2-standard-8` | 8 | 32 GB | 1x NVIDIA L4 (24GB) | **$0.8536** |
-| gke-rag-ray-haystack-rag-ray-haystack-c0133a71-21wq | `e2-standard-4` | 4 | 16 GB | — | **$0.134** |
-| gke-rag-ray-haystack-rag-ray-haystack-c0133a71-h5jk | `e2-standard-4` | 4 | 16 GB | — | **$0.134** |
+| Node Name | Instance Type | vCPU | Memory | GPU | Zone | On-Demand $/hr |
+|-----------|---------------|------|--------|-----|------|----------------|
+| gke-rag-ray-haystack-...-2279193b-b4gd | `g2-standard-8` | 8 | 32 GB | 1x NVIDIA L4 (24GB) | us-central1-a | **$0.8536** |
+| gke-rag-ray-haystack-...-c0133a71-21wq | `e2-standard-4` | 4 | 16 GB | — | us-central1-a | **$0.134** |
+| gke-rag-ray-haystack-...-c0133a71-h5jk | `e2-standard-4` | 4 | 16 GB | — | us-central1-a | **$0.134** |
 
 **Storage (Queried January 30, 2026):**
 
 | PVC | Namespace | Storage Class | Provisioned | Actual Used | $/GB/month |
 |-----|-----------|---------------|-------------|-------------|------------|
-| qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `standard-rwo` | 10 Gi | **40 KB (0.0004%)** | $0.17 |
+| qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `standard-rwo` (pd-ssd) | 10 Gi | **40 KB (0.0004%)** | $0.17 |
 
 **Pod Placement:**
 - vLLM → GPU node (2279193b-b4gd)
@@ -384,25 +385,55 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 | Cost Category | Calculation | Monthly Cost |
 |---------------|-------------|--------------|
+| **Compute** | | |
 | GPU Node (1x g2-standard-8) | $0.8536 × 730 hrs | $623.13 |
 | CPU Nodes (2x e2-standard-4) | $0.134 × 730 hrs × 2 | $195.64 |
-| GKE Management Fee | $0.10 × 730 hrs | $73.00 |
-| Storage (10 GB pd-ssd) | 10 GB × $0.17 | $1.70 |
-| **Total** | | **$893.47** |
+| **Management** | | |
+| GKE Control Plane (Standard) | $0.10 × 730 hrs | $73.00 |
+| GKE Free Tier Credit | -$74.40 (1 zonal cluster free) | ($0.00 net) |
+| **Storage** | | |
+| Persistent Disk SSD (10 GB) | 10 GB × $0.17 | $1.70 |
+| **Networking (Estimated)** | | |
+| Internet Egress (~100GB, Premium) | 100 GB × $0.12 | $12.00 |
+| Inter-zone Traffic | $0.00 (single-zone deployment) | $0.00 |
+| Intra-zone Traffic | Free (internal) | $0.00 |
+| **Total (with networking)** | | **$905.47** |
+| **Total (compute only)** | | **$893.47** |
 
-**Hourly Run Rate:** $1.22/hr
+**Hourly Run Rate:** $1.24/hr (with networking) | $1.22/hr (compute only)
+
+**Networking Details:**
+- **Internet Egress (Premium Tier)**: $0.12/GB for first 1 TB/month
+  - Tiered pricing: $0.11/GB (1-10 TB), $0.085/GB (10+ TB)
+- **Inter-zone Traffic**: $0.01/GB (not applicable - single-zone)
+- **Inter-region Traffic**: $0.02/GB (within North America)
+- **Inbound Traffic**: Free
+- **Private Network (intra-zone)**: Free
+- **No NAT Gateway Required**: GKE nodes have public IPs by default
+- **Cloud NAT (optional)**: $0.045/hr + $0.045/GB if private nodes
+
+**Management Details:**
+- **GKE Standard Mode**: $0.10/hr cluster management fee
+- **Free Tier**: $74.40/month credit covers ~1 zonal cluster
+- **Autopilot Mode**: $0.10/hr included in pod pricing
+- **Regional Cluster**: Same $0.10/hr (high availability included)
 
 **Storage Optimization Note:** Only 40 KB of 10 GB is used (0.0004%). Could reduce to 1 GB minimum and save $1.53/month.
 
-**Commitment Discounts Available:**
-- 1-year CUD: ~37% savings on compute
-- 3-year CUD: ~55% savings on compute
-- Spot VMs: ~60% savings (but can be preempted)
+**Cost Optimization Options:**
+- **Committed Use Discounts (CUD)**:
+  - 1-year: ~37% savings on compute ($570/mo savings)
+  - 3-year: ~55% savings on compute ($850/mo savings)
+- **Spot VMs**: ~60% savings (g2-standard-8: $0.34/hr vs $0.85/hr)
+- **Sustained Use Discounts**: Automatic for e2 instances (up to 30% savings)
+- **Standard Tier Networking**: Lower cost egress (use public internet routing)
 
 **Pricing Sources (January 2026):**
 - [GCP Compute Engine Pricing](https://cloud.google.com/compute/vm-instance-pricing)
 - [GKE Pricing](https://cloud.google.com/kubernetes-engine/pricing)
 - [Persistent Disk Pricing](https://cloud.google.com/compute/disks-image-pricing)
+- [Network Pricing](https://cloud.google.com/vpc/network-pricing)
+- [GPU Pricing](https://cloud.google.com/compute/gpus-pricing)
 
 ---
 
@@ -576,12 +607,22 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 **Key Findings:**
 1. **Akamai LKE is 49% cheaper than AWS EKS** and **52% cheaper than GCP GKE**
-2. **No management fee** on LKE saves $73/month vs AWS/GCP
-3. **LKE includes 9TB network transfer** in plan (vs AWS NAT Gateway fees)
+2. **No management fee** on LKE saves $73/month vs AWS/GCP (GKE free tier may offset)
+3. **LKE includes 9TB network transfer** in plan (vs paid egress on AWS/GCP)
 4. **AWS networking adds significant cost**: NAT Gateway ($32.85/mo) + data processing + cross-AZ traffic
-5. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
-6. **GCP has most powerful CPU nodes** (4 vCPU vs 2 vCPU) but highest total cost
-7. **AWS multi-AZ deployment** increases reliability but adds cross-AZ charges
+5. **GCP networking is moderate**: $12/mo for 100GB egress, no NAT required, single-zone avoids inter-zone charges
+6. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
+7. **GCP has most powerful CPU nodes** (4 vCPU/16GB vs AWS 2 vCPU/8GB vs LKE 2 vCPU/4GB)
+8. **AWS multi-AZ deployment** spans 3 zones (highest availability but higher network cost)
+9. **GCP/LKE single-zone** deployments have no inter-zone charges but lower fault tolerance
+
+**Networking Cost Comparison:**
+
+| Provider | NAT/Gateway | Egress (100GB) | Cross-Zone | Total Network |
+|----------|-------------|----------------|------------|---------------|
+| **Akamai LKE** | $0 | $0-2 (pooled) | N/A | **~$2** |
+| **AWS EKS** | $32.85 + $4.50 | $9.00 | ~$1.00 | **~$47** |
+| **GCP GKE** | $0 (public IPs) | $12.00 | $0 (single-zone) | **~$12** |
 
 ---
 
