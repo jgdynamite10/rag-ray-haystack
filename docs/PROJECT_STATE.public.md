@@ -23,8 +23,16 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 
 | Image | Tag | Notes |
 |-------|-----|-------|
-| Backend | 0.3.6 | TPOT metrics, max_output_tokens |
-| Frontend | 0.3.0 | SSE streaming with metrics |
+| Backend | 0.3.7 | TPOT metrics, max_output_tokens, k_retrieved histogram |
+| Frontend | 0.3.7 | SSE streaming with metrics |
+
+### Provider Deployment Status
+
+| Provider | Status | Endpoint | Notes |
+|----------|--------|----------|-------|
+| Akamai LKE | ✅ Deployed | http://172.236.105.4 | Load tested |
+| AWS EKS | ✅ Deployed | ELB endpoint | Ready for benchmarks |
+| GCP GKE | ⏳ Pending | - | Next up |
 
 ---
 
@@ -204,13 +212,17 @@ rag-ray-haystack/
 1. **East-West probe**: May need network policy adjustments per cluster (iperf3 connections can be reset)
 2. **Prompt tokens**: Deferred - not critical for cross-provider comparison
 3. **Workload manifests**: CLI args work; formal schema is nice-to-have
+4. **Ray pod probes**: Default KubeRay probes use `wget` which isn't in our backend image. Pods restart periodically but recover quickly. App remains functional.
 
 ---
 
 ## Open Items
 
-- [ ] Verify dashboards with live EKS/GKE data
-- [ ] Test East-West probe on EKS and GKE
+- [x] Deploy to AWS EKS
+- [ ] Run benchmarks on AWS EKS
+- [ ] Verify dashboards with live EKS data
+- [ ] Test East-West probe on EKS
+- [ ] Deploy to GCP GKE
 - [ ] Compare benchmark results across all 3 providers
 
 ---

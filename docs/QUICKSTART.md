@@ -546,6 +546,47 @@ EKS requires explicit access entries. See step 4 for IAM access configuration.
 **Qdrant PVC stuck in Pending**
 Ensure the EBS CSI driver addon is installed with proper IAM role (step 6).
 
+**EBS CSI controller CrashLoopBackOff with "sts:AssumeRoleWithWebIdentity AccessDenied"**
+This happens when the IAM role trust policy has the wrong OIDC ID (e.g., from a previous cluster).
+Fix by recreating the IAM role with the current cluster's OIDC ID:
+```bash
+# Get current cluster's OIDC ID
+OIDC_ID=$(aws eks describe-cluster --name rag-ray-haystack --region us-east-1 \
+  --query 'cluster.identity.oidc.issuer' --output text | cut -d'/' -f5)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# Delete old role and recreate
+aws iam detach-role-policy --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy 2>/dev/null || true
+aws iam delete-role --role-name AmazonEKS_EBS_CSI_DriverRole 2>/dev/null || true
+
+# Create with correct OIDC ID
+cat << EOF > /tmp/trust-policy.json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Federated": "arn:aws:iam::${ACCOUNT_ID}:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/${OIDC_ID}"},
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "oidc.eks.us-east-1.amazonaws.com/id/${OIDC_ID}:aud": "sts.amazonaws.com",
+        "oidc.eks.us-east-1.amazonaws.com/id/${OIDC_ID}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+      }
+    }
+  }]
+}
+EOF
+
+aws iam create-role --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --assume-role-policy-document file:///tmp/trust-policy.json
+aws iam attach-role-policy --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+
+# Restart EBS CSI pods
+kubectl -n kube-system delete pods -l app=ebs-csi-controller
+```
+
 **vLLM pod fails with "no space left on device"**
 The GPU node needs 100GB disk for the vLLM image. The Terraform config uses `block_device_mappings` 
 to provision 100GB gp3 volumes. If you see this error, verify the GPU node has sufficient ephemeral storage:

@@ -471,6 +471,49 @@ aws eks create-access-entry \
   --region us-east-1
 ```
 
+### EKS: EBS CSI CrashLoopBackOff
+
+If `ebs-csi-controller` pods are in CrashLoopBackOff with "sts:AssumeRoleWithWebIdentity AccessDenied":
+
+The IAM role trust policy has the wrong OIDC ID (common when recreating clusters). Fix:
+
+```bash
+# Get current cluster's OIDC ID
+OIDC_ID=$(aws eks describe-cluster --name rag-ray-haystack --region us-east-1 \
+  --query 'cluster.identity.oidc.issuer' --output text | cut -d'/' -f5)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# Delete and recreate IAM role with correct OIDC ID
+aws iam detach-role-policy --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy 2>/dev/null || true
+aws iam delete-role --role-name AmazonEKS_EBS_CSI_DriverRole 2>/dev/null || true
+
+cat << EOF > /tmp/trust-policy.json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Federated": "arn:aws:iam::${ACCOUNT_ID}:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/${OIDC_ID}"},
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "oidc.eks.us-east-1.amazonaws.com/id/${OIDC_ID}:aud": "sts.amazonaws.com",
+        "oidc.eks.us-east-1.amazonaws.com/id/${OIDC_ID}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+      }
+    }
+  }]
+}
+EOF
+
+aws iam create-role --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --assume-role-policy-document file:///tmp/trust-policy.json
+aws iam attach-role-policy --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+
+# Restart pods
+kubectl -n kube-system delete pods -l app=ebs-csi-controller
+```
+
 ### GPU Pods Pending
 
 If GPU pods are stuck in Pending:
@@ -496,3 +539,15 @@ kubectl get servicemonitor -n monitoring
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
 # Then visit http://localhost:9090/targets
 ```
+
+### Ray Pods Show 0/1 Ready with Restarts
+
+This is a known cosmetic issue. The default KubeRay probes use `wget` which isn't installed in the backend container. The pods restart periodically but recover quickly.
+
+**Verify the app still works:**
+```bash
+curl -s http://<FRONTEND_IP>/api/healthz
+# Should return: {"status":"ok"}
+```
+
+The app is functional despite the probe restarts. To fix permanently, the backend Docker image needs `wget` installed or the rayservice template needs custom probes using `curl`.
