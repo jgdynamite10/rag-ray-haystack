@@ -16,6 +16,8 @@ backend:
     create: true
   service:
     port: 8000
+  serviceMonitor:
+    enabled: true
   health:
     livenessInitialDelaySeconds: 180
     readinessInitialDelaySeconds: 120
