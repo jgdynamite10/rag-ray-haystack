@@ -357,7 +357,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 ### GCP GKE
 
 **Cluster Info:**
-- Region: `us-central1-a`
+- Region: `us-central1` / Zone: `us-central1-a`
 - Kubernetes Control Plane: `https://35.194.42.146`
 - Kubeconfig: `~/.kube/gke-kubeconfig.yaml`
 
@@ -365,15 +365,20 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 | Node Name | Instance Type | vCPU | Memory | GPU | On-Demand $/hr |
 |-----------|---------------|------|--------|-----|----------------|
-| gke-rag-ray-haystack-...-2279193b-b4gd | `g2-standard-8` | 8 | 32 GB | 1x NVIDIA L4 (24GB) | **$0.8536** |
-| gke-rag-ray-haystack-...-c0133a71-21wq | `e2-standard-4` | 4 | 16 GB | — | **$0.134** |
-| gke-rag-ray-haystack-...-c0133a71-h5jk | `e2-standard-4` | 4 | 16 GB | — | **$0.134** |
+| gke-rag-ray-haystack-rag-ray-haystack-2279193b-b4gd | `g2-standard-8` | 8 | 32 GB | 1x NVIDIA L4 (24GB) | **$0.8536** |
+| gke-rag-ray-haystack-rag-ray-haystack-c0133a71-21wq | `e2-standard-4` | 4 | 16 GB | — | **$0.134** |
+| gke-rag-ray-haystack-rag-ray-haystack-c0133a71-h5jk | `e2-standard-4` | 4 | 16 GB | — | **$0.134** |
 
 **Storage (Queried January 30, 2026):**
 
 | PVC | Namespace | Storage Class | Provisioned | Actual Used | $/GB/month |
 |-----|-----------|---------------|-------------|-------------|------------|
 | qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `standard-rwo` | 10 Gi | **40 KB (0.0004%)** | $0.17 |
+
+**Pod Placement:**
+- vLLM → GPU node (2279193b-b4gd)
+- Backend, Ray worker → CPU node (c0133a71-21wq)
+- Frontend, Qdrant, Ray head → CPU node (c0133a71-h5jk)
 
 **Monthly Cost Breakdown (On-Demand):**
 
