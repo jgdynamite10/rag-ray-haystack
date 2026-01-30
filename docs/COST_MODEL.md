@@ -453,29 +453,67 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 ### AWS EKS
 
-**Status:** Cluster destroyed (January 27, 2026)
+**Status:** Cluster destroyed (January 27, 2026) to avoid ongoing costs
 
-When deployed, the configuration was:
-- GPU Node: `g6.xlarge` (4 vCPU, 16GB, NVIDIA L4) - $0.8048/hr
-- CPU Nodes: 2x `m5.large` (2 vCPU, 8GB) - $0.096/hr each
-- Management Fee: $0.10/hr
-- Storage: EBS gp2 - $0.10/GB/month
+**Kubeconfig Status (Queried January 30, 2026):**
+- `~/.kube/aws-eks-dev-config.yaml` - Invalid (cluster destroyed)
+- `~/.kube/eks-kubeconfig.yaml` - Mislabeled, actually points to GKE
+
+**Last Known Configuration (Before Destruction):**
+
+| Node Type | Instance Type | vCPU | Memory | GPU | On-Demand $/hr |
+|-----------|---------------|------|--------|-----|----------------|
+| GPU | `g6.xlarge` | 4 | 16 GB | 1x NVIDIA L4 (24GB) | **$0.8048** |
+| CPU | `m5.large` | 2 | 8 GB | — | **$0.096** |
+| CPU | `m5.large` | 2 | 8 GB | — | **$0.096** |
+
+**Storage (Before Destruction):**
+
+| PVC | Storage Class | Provisioned | $/GB/month |
+|-----|---------------|-------------|------------|
+| qdrant-storage | `gp2` (EBS) | 10 Gi | $0.08 |
+
+**Estimated Monthly Cost (If Running):**
+
+| Cost Category | Calculation | Monthly Cost |
+|---------------|-------------|--------------|
+| GPU Node (1x g6.xlarge) | $0.8048 × 730 hrs | $587.50 |
+| CPU Nodes (2x m5.large) | $0.096 × 730 hrs × 2 | $140.16 |
+| EKS Management Fee | $0.10 × 730 hrs | $73.00 |
+| Storage (10 GB EBS gp2) | 10 GB × $0.08 | $0.80 |
+| **Total** | | **$801.46** |
+
+**Hourly Run Rate (If Running):** $1.10/hr
+
+**To Redeploy:**
+```bash
+cd infra/terraform/aws-eks
+terraform apply
+aws eks update-kubeconfig --name rag-ray-haystack --region us-east-1 \
+  --kubeconfig ~/.kube/aws-eks-dev-config.yaml
+```
+
+**Pricing Sources (January 2026):**
+- [EC2 Pricing](https://aws.amazon.com/ec2/pricing/on-demand/)
+- [EKS Pricing](https://aws.amazon.com/eks/pricing/)
+- [EBS Pricing](https://aws.amazon.com/ebs/pricing/)
 
 ---
 
-### Cost Comparison Summary
+### Cost Comparison Summary (January 30, 2026)
 
-| Provider | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
-|----------|----------|----------|-----------|-----------------|---------------|--------------|
-| **GCP GKE** | $0.8536 | $0.134 | $0.10 | $0.17 | **$893.47** | $1.22 |
-| **Akamai LKE** | $0.52 | ~$0.03 | $0.00 | $0.10 | **$424.40** | $0.58 |
-| AWS EKS (destroyed) | $0.8048 | $0.096 | $0.10 | $0.08 | ~$800 | ~$1.10 |
+| Provider | Status | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
+|----------|--------|----------|----------|-----------|-----------------|---------------|--------------|
+| **Akamai LKE** | ✅ Running | $0.52 | ~$0.03 | $0.00 | $0.10 | **$424.40** | $0.58 |
+| **AWS EKS** | ❌ Destroyed | $0.8048 | $0.096 | $0.10 | $0.08 | **$801.46** | $1.10 |
+| **GCP GKE** | ✅ Running | $0.8536 | $0.134 | $0.10 | $0.17 | **$893.47** | $1.22 |
 
 **Key Findings:**
-1. **Akamai LKE is 53% cheaper** than GCP GKE for this configuration
-2. **No management fee** on LKE saves $73/month
-3. **Storage is over-provisioned** on both: 10GB allocated, <1MB used
-4. **GCP has more powerful CPU nodes** (4 vCPU vs 2 vCPU) which increases cost
+1. **Akamai LKE is 47% cheaper than AWS EKS** and **53% cheaper than GCP GKE**
+2. **No management fee** on LKE saves $73/month vs AWS/GCP
+3. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
+4. **GCP has most powerful CPU nodes** (4 vCPU vs 2 vCPU) but highest total cost
+5. **AWS offers best balance** between cost and CPU power (if running)
 
 ---
 
