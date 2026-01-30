@@ -84,7 +84,33 @@ python scripts/cost/compute_cost.py \
 
 ---
 
-## Benchmark Results (LKE, 2026-01-29)
+## Benchmark Results
+
+### AWS EKS (2026-01-30) - Load Test
+
+| Metric | Value |
+|--------|-------|
+| Requests | 500 (measured) |
+| Warmup | 20 |
+| Concurrency | 50 |
+| Success Rate | 100% (500/500) |
+| TTFT p50 | 536 ms |
+| TTFT p95 | 3,314 ms |
+| TPOT p50 | 57.6 ms |
+| TPOT p95 | 60.3 ms |
+| Latency p50 | 15,276 ms |
+| Latency p95 | 17,228 ms |
+| Avg tokens/sec | 16.5 |
+| Duration | 152 seconds |
+
+**East-West Network (AWS EKS):**
+| Metric | Value |
+|--------|-------|
+| TCP Throughput | 4.96 Gbps |
+| TCP Retransmits | 173 |
+| Cross-node | Yes |
+
+### LKE (2026-01-29) - Load Test
 
 ### Load Test (High Concurrency)
 
@@ -219,9 +245,9 @@ rag-ray-haystack/
 ## Open Items
 
 - [x] Deploy to AWS EKS
-- [ ] Run benchmarks on AWS EKS
-- [ ] Verify dashboards with live EKS data
-- [ ] Test East-West probe on EKS
+- [x] Run benchmarks on AWS EKS (Load test: 500 requests, 50 concurrency)
+- [x] Verify dashboards with live EKS data
+- [x] Test East-West probe on EKS (4.96 Gbps)
 - [ ] Deploy to GCP GKE
 - [ ] Compare benchmark results across all 3 providers
 

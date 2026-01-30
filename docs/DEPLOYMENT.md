@@ -188,6 +188,12 @@ helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --set frontend.image.tag=${IMAGE_TAG}
 ```
 
+**Note:** The Helm chart automatically deploys a ServiceMonitor for Prometheus scraping. Verify it's working:
+```bash
+kubectl get servicemonitor -n rag-app
+# Should show: rag-app-rag-app-backend
+```
+
 **Note:** If you get StatefulSet errors on upgrade, delete and reinstall:
 ```bash
 helm uninstall rag-app -n rag-app
