@@ -97,7 +97,65 @@ kubectl get pods -n kube-system | grep nvidia
 kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
 ```
 
-### Step 6: Install KubeRay Operator
+### Step 6: Install EBS CSI Driver (required for persistent storage)
+
+EKS requires the EBS CSI driver addon for PersistentVolumeClaims (Qdrant storage):
+
+```bash
+# Get OIDC provider ID
+OIDC_ID=$(aws eks describe-cluster --name rag-ray-haystack --region us-east-1 \
+  --query 'cluster.identity.oidc.issuer' --output text | cut -d'/' -f5)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# Create OIDC provider (if not exists)
+aws iam create-open-id-connect-provider \
+  --url https://oidc.eks.us-east-1.amazonaws.com/id/$OIDC_ID \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list 9e99a48a9960b14926bb7f3b02e22da2b0ab7280 2>/dev/null || true
+
+# Create trust policy for EBS CSI
+cat > /tmp/ebs-trust.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Federated": "arn:aws:iam::\${ACCOUNT_ID}:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/\${OIDC_ID}"},
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "oidc.eks.us-east-1.amazonaws.com/id/\${OIDC_ID}:aud": "sts.amazonaws.com",
+        "oidc.eks.us-east-1.amazonaws.com/id/\${OIDC_ID}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+      }
+    }
+  }]
+}
+EOF
+
+# Create IAM role
+aws iam create-role \
+  --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --assume-role-policy-document file:///tmp/ebs-trust.json 2>/dev/null || true
+
+aws iam attach-role-policy \
+  --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy 2>/dev/null || true
+
+# Install EBS CSI addon
+aws eks create-addon \
+  --cluster-name rag-ray-haystack \
+  --addon-name aws-ebs-csi-driver \
+  --service-account-role-arn arn:aws:iam::${ACCOUNT_ID}:role/AmazonEKS_EBS_CSI_DriverRole \
+  --region us-east-1
+
+# Verify addon is ACTIVE
+aws eks describe-addon --cluster-name rag-ray-haystack \
+  --addon-name aws-ebs-csi-driver --region us-east-1 --query 'addon.status'
+
+# Verify pods are running
+kubectl get pods -n kube-system | grep ebs
+```
+
+### Step 7: Install KubeRay Operator
 
 The RAG app uses Ray Serve, which requires the KubeRay operator for RayService CRDs.
 
@@ -114,7 +172,7 @@ helm install kuberay-operator kuberay/kuberay-operator \
 kubectl get pods -n ray-system
 ```
 
-### Step 7: Deploy RAG Application
+### Step 8: Deploy RAG Application
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
@@ -137,7 +195,7 @@ kubectl delete pvc -n rag-app --all
 # Then run the install command above
 ```
 
-### Step 8: Get External IPs
+### Step 9: Get External IPs
 
 ```bash
 # Prometheus (for Central Grafana datasource)
@@ -150,7 +208,7 @@ kubectl get svc -n rag-app rag-app-rag-app-frontend
 kubectl get pods -n rag-app -w
 ```
 
-### Step 9: Add to Central Grafana
+### Step 10: Add to Central Grafana
 
 Add a new Prometheus datasource:
 - **Name**: `Prometheus-EKS`
