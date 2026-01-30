@@ -373,6 +373,32 @@ helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
 
 ---
 
+## Provider Configuration Differences
+
+### Storage Classes
+
+Each provider uses a different storage class for PersistentVolumeClaims (Qdrant data):
+
+| Provider | Storage Class | Description |
+|----------|---------------|-------------|
+| Akamai LKE | `linode-block-storage` | Linode Block Storage (NVMe SSD) |
+| AWS EKS | `gp2` | EBS General Purpose SSD (requires EBS CSI driver) |
+| GCP GKE | `standard-rwo` | Persistent Disk (SSD, ReadWriteOnce) |
+
+These are configured in each provider's overlay values file:
+- `deploy/overlays/akamai-lke/dev/values.yaml`
+- `deploy/overlays/aws-eks/dev/values.yaml`
+- `deploy/overlays/gcp-gke/dev/values.yaml`
+
+### LLM Model
+
+All providers use the same model for fair benchmarking comparison:
+- **Model**: `Qwen/Qwen2.5-3B-Instruct`
+- **Served Name**: `rag-default`
+- **Max Model Length**: 2048 tokens
+
+---
+
 ## Post-Deployment: Run Benchmarks
 
 After deploying to any provider, run the benchmark workflow:
