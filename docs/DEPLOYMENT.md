@@ -15,6 +15,90 @@ This guide covers deploying the RAG system to Akamai LKE, AWS EKS, and GCP GKE.
 
 ---
 
+## Quickstart (Fast Path)
+
+### GPU instances by provider
+
+| Provider | Instance | GPU | vRAM |
+|----------|----------|-----|------|
+| Akamai | g2-gpu-rtx4000a1-s | RTX 4000 Ada | 20 GB |
+| AWS | g6.xlarge | NVIDIA L4 | 24 GB |
+| GCP | g2-standard-8 | NVIDIA L4 | 24 GB |
+
+### End-to-end Akamai LKE (cluster → app)
+
+1. Clone the repo
+
+```bash
+git clone https://github.com/jgdynamite10/rag-ray-haystack
+cd rag-ray-haystack
+```
+
+2. Create the cluster (Terraform)
+
+```bash
+cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lke/terraform.tfvars
+terraform -chdir=infra/terraform/akamai-lke init
+terraform -chdir=infra/terraform/akamai-lke apply
+```
+
+3. Fetch kubeconfig and install dependencies
+
+```bash
+make kubeconfig PROVIDER=akamai-lke ENV=dev
+export KUBECONFIG=~/.kube/akamai-lke-dev-config.yaml
+```
+
+Install KubeRay operator:
+
+```bash
+KUBECONFIG_PATH="$KUBECONFIG" make install-kuberay PROVIDER=akamai-lke ENV=dev
+```
+
+Install GPU Operator + Node Feature Discovery:
+
+```bash
+helm repo add nvidia-gpu https://nvidia.github.io/gpu-operator
+helm repo add nfd https://kubernetes-sigs.github.io/node-feature-discovery/charts
+helm repo update
+helm upgrade --install gpu-operator nvidia-gpu/gpu-operator \
+  --namespace gpu-operator --create-namespace
+helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
+  --namespace node-feature-discovery --create-namespace
+```
+
+Apply GPU labels/taints (required for vLLM scheduling):
+
+```bash
+KUBECONFIG_PATH="$KUBECONFIG" make fix-gpu PROVIDER=akamai-lke ENV=dev
+```
+
+4. Deploy app images (replace with your registry/tag):
+
+```bash
+export IMAGE_REGISTRY=ghcr.io/<owner>
+export IMAGE_TAG=0.3.7
+make deploy PROVIDER=akamai-lke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
+```
+
+5. Verify workloads
+
+```bash
+KUBECONFIG_PATH="$KUBECONFIG" make verify PROVIDER=akamai-lke ENV=dev NAMESPACE=rag-app RELEASE=rag-app
+kubectl -n rag-app get svc
+```
+
+Optional in-cluster streaming check:
+
+```bash
+kubectl -n rag-app port-forward svc/rag-app-rag-app-backend 8000:8000
+curl -N -X POST http://localhost:8000/query/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Explain what this system is and why vLLM matters."}'
+```
+
+---
+
 ## AWS EKS Deployment
 
 ### Step 1: Deploy EKS Cluster
@@ -428,6 +512,152 @@ All providers use the same model for fair benchmarking comparison:
 - **Model**: `Qwen/Qwen2.5-3B-Instruct`
 - **Served Name**: `rag-default`
 - **Max Model Length**: 2048 tokens
+
+---
+
+## Operations Runbook (Day-2)
+
+### Build and push images
+
+```bash
+export IMAGE_REGISTRY=registry.example.com/your-team
+export IMAGE_TAG=0.3.7
+./scripts/build-images.sh
+./scripts/push-images.sh
+```
+
+### Deploy (scripted)
+
+```bash
+cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lke/terraform.tfvars
+./scripts/deploy.sh --provider akamai-lke --env dev --action apply
+```
+
+### Install KubeRay operator
+
+```bash
+export KUBECONFIG=~/.kube/akamai-lke-dev-config.yaml
+KUBECONFIG_PATH="$KUBECONFIG" make install-kuberay PROVIDER=akamai-lke ENV=dev
+```
+
+### GPU bring-up (automated)
+
+```bash
+helm repo add nvidia-gpu https://nvidia.github.io/gpu-operator
+helm repo add nfd https://kubernetes-sigs.github.io/node-feature-discovery/charts
+helm repo update
+helm upgrade --install gpu-operator nvidia-gpu/gpu-operator \
+  --namespace gpu-operator --create-namespace
+helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
+  --namespace node-feature-discovery --create-namespace
+
+KUBECONFIG_PATH="$KUBECONFIG" make fix-gpu PROVIDER=akamai-lke ENV=dev
+kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}{' -> '}{.status.capacity['nvidia.com/gpu']}{'\n'}{end}"
+```
+
+### Verify
+
+```bash
+kubectl config current-context
+kubectl get ns
+kubectl -n <namespace> get svc
+kubectl -n <namespace> get pods
+make verify NAMESPACE=<namespace> RELEASE=<release>
+```
+
+### Backend configuration (env vars)
+
+- `RAG_USE_EMBEDDINGS` (default `true`)
+- `EMBEDDING_MODEL_ID` (default `sentence-transformers/all-MiniLM-L6-v2`)
+- `RAG_TOP_K` (default `4`)
+- `RAG_MAX_HISTORY` (default `6`)
+- `QDRANT_URL` (optional, e.g. `http://rag-app-rag-app-qdrant:6333`)
+- `QDRANT_COLLECTION` (default `rag-documents`)
+- `VLLM_BASE_URL` (default `http://vllm:8000`)
+- `VLLM_MODEL` (default `Qwen/Qwen2.5-7B-Instruct`)
+- `VLLM_MAX_TOKENS` (default `512`)
+- `VLLM_TEMPERATURE` (default `0.2`)
+- `VLLM_TOP_P` (default `0.95`)
+- `VLLM_TIMEOUT_SECONDS` (default `30`)
+
+### Streaming responses
+
+SSE event types:
+- `meta` (retrieval timings + documents)
+- `ttft` (time-to-first-token)
+- `token` (token delta)
+- `done` (final timings + citations)
+
+### Swap vLLM models
+
+- Helm: set `vllm.model` and (optionally) `vllm.quantization`.
+- Backend env: set `VLLM_MODEL`.
+
+Common options:
+- Smaller / lower cost: `Qwen/Qwen2.5-3B-Instruct`
+- Balanced default: `Qwen/Qwen2.5-7B-Instruct`
+- Higher quality / more VRAM: `Qwen/Qwen2.5-14B-Instruct`
+
+### Connector inputs
+
+`/ingest` accepts:
+- multipart files: `.pdf`, `.docx`, `.html`, `.txt`
+- JSON body with `texts`, `documents`, `urls`, or `sitemap_url`
+
+Example:
+```json
+{
+  "urls": ["https://example.com/docs"],
+  "sitemap_url": "https://example.com/sitemap.xml"
+}
+```
+
+### In-cluster sanity checks
+
+#### A. vLLM streaming (direct)
+
+```bash
+kubectl -n <namespace> get svc | grep vllm
+kubectl -n <namespace> port-forward svc/<release>-vllm 8001:8000
+
+export VLLM_MODEL_ID="Qwen/Qwen2.5-7B-Instruct"
+curl -N http://localhost:8001/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "'"$VLLM_MODEL_ID"'",
+    "messages": [{"role":"user","content":"Say hello in 20 words."}],
+    "stream": true,
+    "max_tokens": 64
+  }'
+```
+
+Expected behavior: many incremental `data:` events, not a single buffered response.
+
+#### B. Ray Serve → vLLM streaming relay (SSE end-to-end)
+
+```bash
+kubectl -n <namespace> get svc | grep backend
+kubectl -n <namespace> port-forward svc/<release>-backend 8000:8000
+
+curl -N -X POST http://localhost:8000/query/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Explain what this system is and why vLLM matters."}'
+```
+
+Expected behavior: `meta` → `ttft` → repeated `token` → `done` events.
+
+#### C. Disable buffering for SSE paths
+
+If deploying behind an ingress, disable response buffering for SSE paths. Example
+NGINX ingress snippet:
+
+```yaml
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X-Accel-Buffering "no";
+```
 
 ---
 

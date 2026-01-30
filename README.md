@@ -72,8 +72,8 @@ Quick verification:
 
 ## Sanity checks and benchmarking
 
-- In-cluster sanity check (Kubernetes): see `docs/RUNBOOK.md#in-cluster-sanity-check-kubernetes`
-- Benchmarking (portable): see `docs/RUNBOOK.md#benchmarking-portable`
+- In-cluster sanity check (Kubernetes): see `docs/DEPLOYMENT.md`
+- Benchmarking (portable): see `docs/BENCHMARKING.md`
 
 ## Why this stack
 
@@ -86,7 +86,7 @@ Quick verification:
 ## Project context (public)
 
 - `docs/PROJECT_STATE.public.md`
-- `docs/OPERATIONS.public.md`
+- `docs/DEPLOYMENT.md`
 
 ## vLLM Helm values
 

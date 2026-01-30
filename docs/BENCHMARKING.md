@@ -364,6 +364,63 @@ python stream_bench.py \
 
 **Use case:** Measure what users actually experience. Compare across regions/providers.
 
+### North-South Deep Dive (Flow + Dependencies)
+
+```
+    NORTH (Client)
+    ┌──────────────────┐
+    │  Your Laptop     │
+    │  run_ns.sh       │
+    └────────┬─────────┘
+             │
+             │  Internet / Public Network
+             │
+             ▼
+    SOUTH (Cluster)
+    ┌──────────────────┐
+    │  Kubernetes      │
+    │  (RAG System)    │
+    └──────────────────┘
+```
+
+#### Request flow
+
+```
+[Client: run_ns.sh / stream_bench.py]
+        │
+        │ (1) HTTP POST /api/query/stream
+        │     Body: {"query": "..."}
+        ▼
+[Load Balancer]
+        │
+        ▼
+[Frontend (nginx proxy)]
+        │
+        ▼
+[Backend (Ray Serve)]
+        │
+        ├─ (embedding)  SentenceTransformers on CPU
+        ├─ (retrieval)  Qdrant (top-k)
+        └─ (generation) vLLM on GPU (streamed tokens)
+        ▼
+[Client receives SSE token stream]
+```
+
+#### Dependencies that impact results
+
+| Component | Affects | Notes |
+|-----------|---------|-------|
+| Network path | TTFT, total latency | ISP, region, packet loss, jitter |
+| Load balancer | TTFT, total latency | LB type/config adds overhead |
+| Frontend proxy | TTFT | Nginx buffering or timeouts |
+| Embedding model | TTFT | Larger model = slower embedding |
+| Qdrant | TTFT | Index size, hardware, query complexity |
+| vLLM model | TTFT, TPOT, tokens/sec | Largest impact on generation speed |
+| vLLM config | TPOT, tokens/sec | dtype, quantization, max_model_len |
+| GPU hardware | TPOT, tokens/sec | GPU model drives throughput |
+| CPU hardware | TTFT | Impacts embedding latency |
+| Concurrency | All | Contention increases latency |
+
 ---
 
 ## Comparison: UI vs Benchmarks
