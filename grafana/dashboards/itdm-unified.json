@@ -968,7 +968,7 @@
         { "id": "organize", "options": { "excludeByName": {}, "indexByName": {}, "renameByName": { "DCGM_FI_DRIVER_VERSION (lastNotNull)": "Driver Version", "Hostname (lastNotNull)": "Node", "modelName (lastNotNull)": "GPU Model (Detected)" } } }
       ],
       "type": "table"
-    },
+    }
   ],
   "preload": false,
   "refresh": "30s",
@@ -1009,7 +1009,7 @@
       { "current": { "text": "16 GB", "value": "16 GB" }, "hide": 2, "name": "gke_vram", "options": [{ "selected": true, "text": "16 GB", "value": "16 GB" }, { "selected": false, "text": "40 GB", "value": "40 GB" }], "query": "16 GB, 40 GB", "type": "custom" },
       { "current": { "text": "2560", "value": "2560" }, "hide": 2, "name": "gke_cuda", "options": [{ "selected": true, "text": "2560", "value": "2560" }, { "selected": false, "text": "6912", "value": "6912" }], "query": "2560, 6912", "type": "custom" },
       { "current": { "text": "Qwen/Qwen3-1.7B", "value": "Qwen/Qwen3-1.7B" }, "hide": 2, "name": "model_name", "options": [{ "selected": true, "text": "Qwen/Qwen3-1.7B", "value": "Qwen/Qwen3-1.7B" }, { "selected": false, "text": "meta-llama/Llama-2-7b", "value": "meta-llama/Llama-2-7b" }], "query": "Qwen/Qwen3-1.7B, meta-llama/Llama-2-7b", "type": "custom" },
-      { "current": { "text": "BAAI/bge-small-en-v1.5", "value": "BAAI/bge-small-en-v1.5" }, "hide": 2, "name": "embedding_model", "options": [{ "selected": true, "text": "BAAI/bge-small-en-v1.5", "value": "BAAI/bge-small-en-v1.5" }], "query": "BAAI/bge-small-en-v1.5", "type": "custom" },
+      { "current": { "text": "BAAI/bge-small-en-v1.5", "value": "BAAI/bge-small-en-v1.5" }, "hide": 2, "name": "embedding_model", "options": [{ "selected": true, "text": "BAAI/bge-small-en-v1.5", "value": "BAAI/bge-small-en-v1.5" }], "query": "BAAI/bge-small-en-v1.5", "type": "custom" }
     ]
   },
   "time": { "from": "now-1h", "to": "now" },
