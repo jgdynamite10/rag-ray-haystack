@@ -412,14 +412,15 @@ This section documents the **actual deployed infrastructure** queried directly f
 - Region: `us-ord` (Chicago)
 - Control Plane: `https://06d998c7-a2de-4b55-a7c6-8b20c0d47a81.us-ord-2-gw.linodelke.net:443`
 - Kubeconfig: `~/.kube/rag-ray-haystack-kubeconfig.yaml`
+- Zone: Single region (no multi-AZ like AWS)
 
 **Compute Nodes (Queried January 30, 2026):**
 
 | Node Name | Instance Type | vCPU | Memory | GPU | On-Demand $/hr |
 |-----------|---------------|------|--------|-----|----------------|
 | lke561078-818958-4d4783670000 | `g2-gpu-rtx4000a1-s` | 4 | 16 GB | 1x RTX 4000 Ada (20GB) | **$0.52** |
-| lke561078-818957-4ab4a6130000 | `g6-standard-2` | 2 | 4 GB | — | **~$0.03** |
-| lke561078-818957-50ad39bd0000 | `g6-standard-2` | 2 | 4 GB | — | **~$0.03** |
+| lke561078-818957-4ab4a6130000 | `g6-standard-2` | 2 | 4 GB | — | **$0.036** |
+| lke561078-818957-50ad39bd0000 | `g6-standard-2` | 2 | 4 GB | — | **$0.036** |
 
 **Storage (Queried January 30, 2026):**
 
@@ -429,25 +430,57 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 **Pod Placement:**
 - Backend, Qdrant, vLLM → GPU node (lke561078-818958)
-- Frontend → CPU node (lke561078-818957)
+- Frontend → CPU node (lke561078-818957-50ad39bd0000)
 
 **Monthly Cost Breakdown (On-Demand):**
 
 | Cost Category | Calculation | Monthly Cost |
 |---------------|-------------|--------------|
+| **Compute** | | |
 | GPU Node (1x g2-gpu-rtx4000a1-s) | $0.52 × 730 hrs | $379.60 |
-| CPU Nodes (2x g6-standard-2) | $0.03 × 730 hrs × 2 | $43.80 |
-| LKE Management Fee | $0.00 | $0.00 |
-| Storage (10 GB block) | 10 GB × $0.10 | $1.00 |
-| **Total** | | **$424.40** |
+| CPU Nodes (2x g6-standard-2) | $0.036 × 730 hrs × 2 | $52.56 |
+| **Management** | | |
+| LKE Control Plane (Standard) | $0.00 (free) | $0.00 |
+| LKE HA Control Plane (optional) | $60/mo (if enabled) | ($60.00) |
+| **Storage** | | |
+| Block Storage (10 GB) | 10 GB × $0.10 | $1.00 |
+| **Networking** | | |
+| Network Transfer (pooled) | Included in plan | $0.00 |
+| Overage (~100GB excess) | $0.02/GB (if over pool) | ~$2.00 |
+| NodeBalancer (if used) | $10/mo (optional) | ($10.00) |
+| **Total (without HA/NodeBalancer)** | | **$433.16** |
+| **Total (with networking overage)** | | **$435.16** |
 
-**Hourly Run Rate:** $0.58/hr
+**Hourly Run Rate:** $0.59/hr
+
+**Networking Details:**
+- **Network Transfer Pool**: Each Linode contributes transfer allowance to a shared pool
+  - GPU node (g2-gpu-rtx4000a1-s): 5 TB/month included
+  - CPU nodes (g6-standard-2): 2 TB/month each = 4 TB
+  - **Total Pool: ~9 TB/month** (shared across all nodes)
+- **Overage Rate**: $0.02/GB for traffic exceeding pool
+- **Inbound Traffic**: Free (does not count against pool)
+- **Private Network**: Free (internal cluster traffic)
+- **No NAT Gateway Fees**: Unlike AWS, no separate NAT charges
+- **No Cross-AZ Charges**: Single-region deployment
+
+**Management Details:**
+- **Standard LKE**: Free control plane (no management fee)
+- **LKE Enterprise** (optional): Paid control plane with enhanced features
+- **HA Control Plane** (optional): $60/month for redundant control plane
 
 **Storage Optimization Note:** Only 2.1 MB of 10 GB is used (0.02%). Could reduce to 1 GB minimum and save $0.90/month.
+
+**Cost Optimization Options:**
+- No spot/preemptible instances available on Linode
+- Reserved capacity not available (flat on-demand pricing)
+- Simplicity advantage: predictable costs, no hidden fees
 
 **Pricing Sources (January 2026):**
 - [Linode Pricing](https://www.linode.com/pricing/)
 - [Linode GPU Plans](https://www.linode.com/docs/products/compute/compute-instances/plans/gpu/)
+- [Network Transfer](https://www.linode.com/docs/products/platform/get-started/guides/network-transfer/)
+- [Block Storage Pricing](https://www.linode.com/products/block-storage/)
 
 ---
 
@@ -529,7 +562,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 | Provider | Status | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
 |----------|--------|----------|----------|-----------|-----------------|---------------|--------------|
-| **Akamai LKE** | ✅ Running | $0.52 | ~$0.03 | $0.00 | $0.10 | **$424.40** | $0.58 |
+| **Akamai LKE** | ✅ Running | $0.52 | $0.036 | $0.00 | $0.10 | **$433.16** | $0.59 |
 | **AWS EKS** | ✅ Running | $0.80 | $0.096 | $0.10 | $0.10 | **$798.16** | $1.09 |
 | **GCP GKE** | ✅ Running | $0.8536 | $0.134 | $0.10 | $0.17 | **$893.47** | $1.22 |
 
@@ -537,17 +570,18 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 | Provider | Compute + Mgmt + Storage | Networking | Total w/ Network | Hourly Total |
 |----------|--------------------------|------------|------------------|--------------|
-| **Akamai LKE** | $424.40 | ~$0.50 (egress only) | **$424.90** | $0.58 |
+| **Akamai LKE** | $433.16 | ~$2.00 (overage if exceeds 9TB pool) | **$435.16** | $0.60 |
 | **AWS EKS** | $798.16 | ~$47.35 (NAT + egress + cross-AZ) | **$845.51** | $1.16 |
 | **GCP GKE** | $893.47 | ~$12.00 (egress only) | **$905.47** | $1.24 |
 
 **Key Findings:**
-1. **Akamai LKE is 50% cheaper than AWS EKS** and **53% cheaper than GCP GKE**
+1. **Akamai LKE is 49% cheaper than AWS EKS** and **52% cheaper than GCP GKE**
 2. **No management fee** on LKE saves $73/month vs AWS/GCP
-3. **AWS networking adds significant cost**: NAT Gateway ($32.85/mo) + data processing + cross-AZ traffic
-4. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
-5. **GCP has most powerful CPU nodes** (4 vCPU vs 2 vCPU) but highest total cost
-6. **AWS multi-AZ deployment** increases reliability but adds cross-AZ charges
+3. **LKE includes 9TB network transfer** in plan (vs AWS NAT Gateway fees)
+4. **AWS networking adds significant cost**: NAT Gateway ($32.85/mo) + data processing + cross-AZ traffic
+5. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
+6. **GCP has most powerful CPU nodes** (4 vCPU vs 2 vCPU) but highest total cost
+7. **AWS multi-AZ deployment** increases reliability but adds cross-AZ charges
 
 ---
 
