@@ -117,10 +117,24 @@ kubectl get pods -n ray-system
 ### Step 7: Deploy RAG Application
 
 ```bash
-helm upgrade --install rag-app ./deploy/helm/rag-app \
-  --namespace default \
-  --set backend.image.tag=0.3.7 \
-  --set frontend.image.tag=0.3.7
+export IMAGE_REGISTRY=ghcr.io/jgdynamite10
+export IMAGE_TAG=0.3.7
+
+helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
+  --create-namespace \
+  -f deploy/helm/rag-app/values.yaml \
+  -f deploy/overlays/aws-eks/dev/values.yaml \
+  --set backend.image.repository=${IMAGE_REGISTRY}/rag-ray-backend \
+  --set frontend.image.repository=${IMAGE_REGISTRY}/rag-ray-frontend \
+  --set backend.image.tag=${IMAGE_TAG} \
+  --set frontend.image.tag=${IMAGE_TAG}
+```
+
+**Note:** If you get StatefulSet errors on upgrade, delete and reinstall:
+```bash
+helm uninstall rag-app -n rag-app
+kubectl delete pvc -n rag-app --all
+# Then run the install command above
 ```
 
 ### Step 8: Get External IPs
@@ -130,7 +144,10 @@ helm upgrade --install rag-app ./deploy/helm/rag-app \
 kubectl get svc -n monitoring prometheus-kube-prometheus-prometheus
 
 # RAG App (for benchmarking)
-kubectl get svc rag-app-frontend
+kubectl get svc -n rag-app rag-app-rag-app-frontend
+
+# Watch pods until ready (Ctrl+C to exit)
+kubectl get pods -n rag-app -w
 ```
 
 ### Step 9: Add to Central Grafana
@@ -201,10 +218,17 @@ kubectl get pods -n ray-system
 ### Step 7: Deploy RAG Application
 
 ```bash
-helm upgrade --install rag-app ./deploy/helm/rag-app \
-  --namespace default \
-  --set backend.image.tag=0.3.7 \
-  --set frontend.image.tag=0.3.7
+export IMAGE_REGISTRY=ghcr.io/jgdynamite10
+export IMAGE_TAG=0.3.7
+
+helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
+  --create-namespace \
+  -f deploy/helm/rag-app/values.yaml \
+  -f deploy/overlays/akamai-lke/dev/values.yaml \
+  --set backend.image.repository=${IMAGE_REGISTRY}/rag-ray-backend \
+  --set frontend.image.repository=${IMAGE_REGISTRY}/rag-ray-frontend \
+  --set backend.image.tag=${IMAGE_TAG} \
+  --set frontend.image.tag=${IMAGE_TAG}
 ```
 
 ---
@@ -270,10 +294,17 @@ kubectl get pods -n ray-system
 ### Step 7: Deploy RAG Application
 
 ```bash
-helm upgrade --install rag-app ./deploy/helm/rag-app \
-  --namespace default \
-  --set backend.image.tag=0.3.7 \
-  --set frontend.image.tag=0.3.7
+export IMAGE_REGISTRY=ghcr.io/jgdynamite10
+export IMAGE_TAG=0.3.7
+
+helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
+  --create-namespace \
+  -f deploy/helm/rag-app/values.yaml \
+  -f deploy/overlays/gcp-gke/dev/values.yaml \
+  --set backend.image.repository=${IMAGE_REGISTRY}/rag-ray-backend \
+  --set frontend.image.repository=${IMAGE_REGISTRY}/rag-ray-frontend \
+  --set backend.image.tag=${IMAGE_TAG} \
+  --set frontend.image.tag=${IMAGE_TAG}
 ```
 
 ---
