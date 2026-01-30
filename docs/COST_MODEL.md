@@ -88,22 +88,22 @@ Location: `cost/cost-config.yaml`
 ```yaml
 providers:
   akamai-lke:
-    as_of: "2026-01-27"                    # When prices were captured
-    notes: "Linode list prices"             # Source documentation
+    as_of: "2026-01-30"                    # When prices were captured
+    notes: "Linode list prices - actual deployed instances"
     
     # Core compute costs (USD per hour)
-    gpu_node_usd_per_hr: 1.50              # GPU node (e.g., RTX 4000 Ada)
-    cpu_node_usd_per_hr: 0.036             # CPU node (e.g., g6-standard-2)
+    gpu_node_usd_per_hr: 0.52              # g2-gpu-rtx4000a1-s (RTX 4000 Ada Small)
+    cpu_node_usd_per_hr: 0.03              # g6-standard-2 (Shared CPU 4GB)
     
     # Network costs (USD per GB)
-    egress_usd_per_gb: 0.005               # Outbound data transfer
-    ingress_usd_per_gb: 0.0                # Inbound (usually free)
+    egress_usd_per_gb: 0.005               # Outbound data transfer (overage)
+    ingress_usd_per_gb: 0.0                # Inbound (free)
     
-    # Storage costs (optional)
-    storage_usd_per_gb_month: 0.10         # Block storage
+    # Storage costs
+    storage_usd_per_gb_month: 0.10         # linode-block-storage (NVMe)
     
     # Cluster overhead
-    cluster_mgmt_usd_per_hr: 0.0           # Control plane fee
+    cluster_mgmt_usd_per_hr: 0.0           # No control plane fee
 
   aws-eks:
     as_of: "2026-01-27"
@@ -112,10 +112,11 @@ providers:
     cluster_mgmt_usd_per_hr: 0.10          # EKS control plane
 
   gcp-gke:
-    as_of: "2026-01-27"
-    gpu_node_usd_per_hr: 0.942             # g2-standard-8 (NVIDIA L4)
-    cpu_node_usd_per_hr: 0.067             # e2-standard-2
+    as_of: "2026-01-30"
+    gpu_node_usd_per_hr: 0.8536            # g2-standard-8 (NVIDIA L4 24GB)
+    cpu_node_usd_per_hr: 0.134             # e2-standard-4 (actual deployed)
     cluster_mgmt_usd_per_hr: 0.10          # GKE management fee
+    storage_usd_per_gb_month: 0.17         # pd-ssd (standard-rwo)
 
 # Benchmark context (node counts for cost attribution)
 benchmark_context:
@@ -123,13 +124,13 @@ benchmark_context:
   cpu_node_count: 2                        # Number of CPU nodes
 ```
 
-### Provider Pricing Sources
+### Provider Pricing Sources (Actual Deployed Instances)
 
-| Provider | GPU Instance | Price Source |
-|----------|--------------|--------------|
-| Akamai LKE | g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB) | [Linode Pricing](https://www.linode.com/pricing/) |
-| AWS EKS | g6.xlarge (NVIDIA L4 24GB) | [EC2 Pricing](https://aws.amazon.com/ec2/pricing/on-demand/) |
-| GCP GKE | g2-standard-8 (NVIDIA L4 24GB) | [GCE Pricing](https://cloud.google.com/compute/vm-instance-pricing) |
+| Provider | GPU Instance | CPU Instance | Price Source |
+|----------|--------------|--------------|--------------|
+| Akamai LKE | g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB) $0.52/hr | g6-standard-2 (2 vCPU, 4GB) ~$0.03/hr | [Linode Pricing](https://www.linode.com/pricing/) |
+| AWS EKS | g6.xlarge (NVIDIA L4 24GB) $0.8048/hr | m5.large (2 vCPU, 8GB) $0.096/hr | [EC2 Pricing](https://aws.amazon.com/ec2/pricing/on-demand/) |
+| GCP GKE | g2-standard-8 (NVIDIA L4 24GB) $0.8536/hr | e2-standard-4 (4 vCPU, 16GB) $0.134/hr | [GCE Pricing](https://cloud.google.com/compute/vm-instance-pricing) |
 
 ---
 
@@ -218,13 +219,13 @@ find benchmarks -name "*-cost.json" -exec cat {} \; | jq -s '
 '
 ```
 
-### Example Comparison Table
+### Example Comparison Table (Actual Deployed - January 2026)
 
-| Provider | GPU | $/hr (cluster) | $/1M tokens | Tokens/sec | TTFT p50 |
-|----------|-----|----------------|-------------|------------|----------|
-| Akamai LKE | RTX 4000 Ada | $1.57 | $1.37 | 37.3 | 221ms |
-| AWS EKS | NVIDIA L4 | $0.99 | TBD | TBD | TBD |
-| GCP GKE | NVIDIA L4 | $1.18 | TBD | TBD | TBD |
+| Provider | GPU | Instance | $/hr (cluster) | Monthly |
+|----------|-----|----------|----------------|---------|
+| Akamai LKE | RTX 4000 Ada | g2-gpu-rtx4000a1-s | **$0.58** | $424 |
+| GCP GKE | NVIDIA L4 | g2-standard-8 | **$1.22** | $893 |
+| AWS EKS | NVIDIA L4 | g6.xlarge | ~$1.10 | ~$800 (destroyed) |
 
 ---
 
@@ -346,6 +347,130 @@ pip3 install pyyaml
 1. Check `gpu_node_count` and `cpu_node_count` in config
 2. Verify `duration_seconds` in benchmark results
 3. Confirm GPU price matches your actual instance type
+
+---
+
+## Actual Infrastructure (Queried January 30, 2026)
+
+This section documents the **actual deployed infrastructure** queried directly from the live clusters.
+
+### GCP GKE
+
+**Cluster Info:**
+- Region: `us-central1-a`
+- Kubernetes Control Plane: `https://35.194.42.146`
+- Kubeconfig: `~/.kube/gke-kubeconfig.yaml`
+
+**Compute Nodes (Queried January 30, 2026):**
+
+| Node Name | Instance Type | vCPU | Memory | GPU | On-Demand $/hr |
+|-----------|---------------|------|--------|-----|----------------|
+| gke-rag-ray-haystack-...-2279193b-b4gd | `g2-standard-8` | 8 | 32 GB | 1x NVIDIA L4 (24GB) | **$0.8536** |
+| gke-rag-ray-haystack-...-c0133a71-21wq | `e2-standard-4` | 4 | 16 GB | — | **$0.134** |
+| gke-rag-ray-haystack-...-c0133a71-h5jk | `e2-standard-4` | 4 | 16 GB | — | **$0.134** |
+
+**Storage (Queried January 30, 2026):**
+
+| PVC | Namespace | Storage Class | Provisioned | Actual Used | $/GB/month |
+|-----|-----------|---------------|-------------|-------------|------------|
+| qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `standard-rwo` | 10 Gi | **40 KB (0.0004%)** | $0.17 |
+
+**Monthly Cost Breakdown (On-Demand):**
+
+| Cost Category | Calculation | Monthly Cost |
+|---------------|-------------|--------------|
+| GPU Node (1x g2-standard-8) | $0.8536 × 730 hrs | $623.13 |
+| CPU Nodes (2x e2-standard-4) | $0.134 × 730 hrs × 2 | $195.64 |
+| GKE Management Fee | $0.10 × 730 hrs | $73.00 |
+| Storage (10 GB pd-ssd) | 10 GB × $0.17 | $1.70 |
+| **Total** | | **$893.47** |
+
+**Hourly Run Rate:** $1.22/hr
+
+**Storage Optimization Note:** Only 40 KB of 10 GB is used (0.0004%). Could reduce to 1 GB minimum and save $1.53/month.
+
+**Commitment Discounts Available:**
+- 1-year CUD: ~37% savings on compute
+- 3-year CUD: ~55% savings on compute
+- Spot VMs: ~60% savings (but can be preempted)
+
+**Pricing Sources (January 2026):**
+- [GCP Compute Engine Pricing](https://cloud.google.com/compute/vm-instance-pricing)
+- [GKE Pricing](https://cloud.google.com/kubernetes-engine/pricing)
+- [Persistent Disk Pricing](https://cloud.google.com/compute/disks-image-pricing)
+
+---
+
+### Akamai LKE
+
+**Cluster Info:**
+- Region: `us-ord` (Chicago)
+- Control Plane: `https://06d998c7-a2de-4b55-a7c6-8b20c0d47a81.us-ord-2-gw.linodelke.net:443`
+- Kubeconfig: `~/.kube/rag-ray-haystack-kubeconfig.yaml`
+
+**Compute Nodes (Queried January 30, 2026):**
+
+| Node Name | Instance Type | vCPU | Memory | GPU | On-Demand $/hr |
+|-----------|---------------|------|--------|-----|----------------|
+| lke561078-818958-4d4783670000 | `g2-gpu-rtx4000a1-s` | 4 | 16 GB | 1x RTX 4000 Ada (20GB) | **$0.52** |
+| lke561078-818957-4ab4a6130000 | `g6-standard-2` | 2 | 4 GB | — | **~$0.03** |
+| lke561078-818957-50ad39bd0000 | `g6-standard-2` | 2 | 4 GB | — | **~$0.03** |
+
+**Storage (Queried January 30, 2026):**
+
+| PVC | Namespace | Storage Class | Provisioned | Actual Used | $/GB/month |
+|-----|-----------|---------------|-------------|-------------|------------|
+| qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `linode-block-storage` | 10 Gi | **2.1 MB (0.02%)** | $0.10 |
+
+**Pod Placement:**
+- Backend, Qdrant, vLLM → GPU node (lke561078-818958)
+- Frontend → CPU node (lke561078-818957)
+
+**Monthly Cost Breakdown (On-Demand):**
+
+| Cost Category | Calculation | Monthly Cost |
+|---------------|-------------|--------------|
+| GPU Node (1x g2-gpu-rtx4000a1-s) | $0.52 × 730 hrs | $379.60 |
+| CPU Nodes (2x g6-standard-2) | $0.03 × 730 hrs × 2 | $43.80 |
+| LKE Management Fee | $0.00 | $0.00 |
+| Storage (10 GB block) | 10 GB × $0.10 | $1.00 |
+| **Total** | | **$424.40** |
+
+**Hourly Run Rate:** $0.58/hr
+
+**Storage Optimization Note:** Only 2.1 MB of 10 GB is used (0.02%). Could reduce to 1 GB minimum and save $0.90/month.
+
+**Pricing Sources (January 2026):**
+- [Linode Pricing](https://www.linode.com/pricing/)
+- [Linode GPU Plans](https://www.linode.com/docs/products/compute/compute-instances/plans/gpu/)
+
+---
+
+### AWS EKS
+
+**Status:** Cluster destroyed (January 27, 2026)
+
+When deployed, the configuration was:
+- GPU Node: `g6.xlarge` (4 vCPU, 16GB, NVIDIA L4) - $0.8048/hr
+- CPU Nodes: 2x `m5.large` (2 vCPU, 8GB) - $0.096/hr each
+- Management Fee: $0.10/hr
+- Storage: EBS gp2 - $0.10/GB/month
+
+---
+
+### Cost Comparison Summary
+
+| Provider | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
+|----------|----------|----------|-----------|-----------------|---------------|--------------|
+| **GCP GKE** | $0.8536 | $0.134 | $0.10 | $0.17 | **$893.47** | $1.22 |
+| **Akamai LKE** | $0.52 | ~$0.03 | $0.00 | $0.10 | **$424.40** | $0.58 |
+| AWS EKS (destroyed) | $0.8048 | $0.096 | $0.10 | $0.08 | ~$800 | ~$1.10 |
+
+**Key Findings:**
+1. **Akamai LKE is 53% cheaper** than GCP GKE for this configuration
+2. **No management fee** on LKE saves $73/month
+3. **Storage is over-provisioned** on both: 10GB allocated, <1MB used
+4. **GCP has more powerful CPU nodes** (4 vCPU vs 2 vCPU) which increases cost
 
 ---
 
