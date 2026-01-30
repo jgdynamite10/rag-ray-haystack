@@ -453,67 +453,101 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 ### AWS EKS
 
-**Status:** Cluster destroyed (January 27, 2026) to avoid ongoing costs
+**Cluster Info:**
+- Region: `us-east-1`
+- Zones: `us-east-1c`, `us-east-1d`, `us-east-1f` (multi-AZ)
+- Kubernetes Control Plane: `https://B698E4381E416AB41D3F0F6ABB030D84.gr7.us-east-1.eks.amazonaws.com`
+- Kubeconfig: `~/.kube/eks-kubeconfig-fresh.yaml`
 
-**Kubeconfig Status (Queried January 30, 2026):**
-- `~/.kube/aws-eks-dev-config.yaml` - Invalid (cluster destroyed)
-- `~/.kube/eks-kubeconfig.yaml` - Mislabeled, actually points to GKE
+**Compute Nodes (Queried January 30, 2026):**
 
-**Last Known Configuration (Before Destruction):**
+| Node Name | Instance Type | vCPU | Memory | GPU | Zone | On-Demand $/hr |
+|-----------|---------------|------|--------|-----|------|----------------|
+| ip-172-31-43-85.ec2.internal | `g6.xlarge` | 4 | 16 GB | 1x NVIDIA L4 (24GB) | us-east-1d | **$0.80** |
+| ip-172-31-56-49.ec2.internal | `m5.large` | 2 | 8 GB | — | us-east-1c | **$0.096** |
+| ip-172-31-92-17.ec2.internal | `m5.large` | 2 | 8 GB | — | us-east-1f | **$0.096** |
 
-| Node Type | Instance Type | vCPU | Memory | GPU | On-Demand $/hr |
-|-----------|---------------|------|--------|-----|----------------|
-| GPU | `g6.xlarge` | 4 | 16 GB | 1x NVIDIA L4 (24GB) | **$0.8048** |
-| CPU | `m5.large` | 2 | 8 GB | — | **$0.096** |
-| CPU | `m5.large` | 2 | 8 GB | — | **$0.096** |
+**Storage (Queried January 30, 2026):**
 
-**Storage (Before Destruction):**
+| PVC | Namespace | Storage Class | Provisioned | Actual Used | $/GB/month |
+|-----|-----------|---------------|-------------|-------------|------------|
+| qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `gp2` (EBS) | 10 Gi | **40 KB (0.0004%)** | $0.10 |
 
-| PVC | Storage Class | Provisioned | $/GB/month |
-|-----|---------------|-------------|------------|
-| qdrant-storage | `gp2` (EBS) | 10 Gi | $0.08 |
+**Pod Placement:**
+- vLLM → GPU node (us-east-1d)
+- Backend, Ray worker → CPU node (us-east-1c)
+- Frontend, Qdrant, Ray head → CPU node (us-east-1f)
 
-**Estimated Monthly Cost (If Running):**
+**Monthly Cost Breakdown (On-Demand):**
 
 | Cost Category | Calculation | Monthly Cost |
 |---------------|-------------|--------------|
-| GPU Node (1x g6.xlarge) | $0.8048 × 730 hrs | $587.50 |
+| **Compute** | | |
+| GPU Node (1x g6.xlarge) | $0.80 × 730 hrs | $584.00 |
 | CPU Nodes (2x m5.large) | $0.096 × 730 hrs × 2 | $140.16 |
-| EKS Management Fee | $0.10 × 730 hrs | $73.00 |
-| Storage (10 GB EBS gp2) | 10 GB × $0.08 | $0.80 |
-| **Total** | | **$801.46** |
+| **Management** | | |
+| EKS Control Plane (Standard) | $0.10 × 730 hrs | $73.00 |
+| **Storage** | | |
+| EBS gp2 (10 GB) | 10 GB × $0.10 | $1.00 |
+| **Networking (Estimated)** | | |
+| NAT Gateway (if used) | $0.045 × 730 hrs | $32.85 |
+| NAT Data Processing (~100GB) | 100 GB × $0.045 | $4.50 |
+| Data Transfer Out (~100GB) | 100 GB × $0.09 | $9.00 |
+| Cross-AZ Traffic (multi-AZ) | ~50 GB × $0.01 × 2 | $1.00 |
+| **Total (with networking)** | | **$845.51** |
+| **Total (compute only)** | | **$798.16** |
 
-**Hourly Run Rate (If Running):** $1.10/hr
+**Hourly Run Rate:** $1.16/hr (with networking) | $1.09/hr (compute only)
 
-**To Redeploy:**
-```bash
-cd infra/terraform/aws-eks
-terraform apply
-aws eks update-kubeconfig --name rag-ray-haystack --region us-east-1 \
-  --kubeconfig ~/.kube/aws-eks-dev-config.yaml
-```
+**Networking Notes:**
+- Nodes span 3 AZs (us-east-1c, us-east-1d, us-east-1f) - cross-AZ traffic is charged
+- NAT Gateway costs apply if pods need internet egress (model downloads, API calls)
+- Data transfer to internet: First 100 GB/month is $0.09/GB, then tiered down
+- Cross-AZ traffic: $0.01/GB in each direction
+
+**Storage Optimization Note:** Only 40 KB of 10 GB is used (0.0004%). Could reduce to 1 GB minimum and save $0.90/month.
+
+**Cost Optimization Options:**
+- **Spot Instances**: Save ~60-70% on GPU nodes (but can be interrupted)
+- **Reserved Instances (1-year)**: Save ~30-40% on compute
+- **Savings Plans (3-year)**: Save ~50-60% on compute
+- **Single-AZ Deployment**: Eliminate cross-AZ charges (reduced availability)
+- **VPC Endpoints**: Avoid NAT Gateway for AWS service traffic
 
 **Pricing Sources (January 2026):**
-- [EC2 Pricing](https://aws.amazon.com/ec2/pricing/on-demand/)
+- [EC2 On-Demand Pricing](https://aws.amazon.com/ec2/pricing/on-demand/)
 - [EKS Pricing](https://aws.amazon.com/eks/pricing/)
 - [EBS Pricing](https://aws.amazon.com/ebs/pricing/)
+- [Data Transfer Pricing](https://aws.amazon.com/ec2/pricing/on-demand/#Data_Transfer)
+- [NAT Gateway Pricing](https://aws.amazon.com/vpc/pricing/)
 
 ---
 
 ### Cost Comparison Summary (January 30, 2026)
 
+**Compute + Management + Storage (excluding network):**
+
 | Provider | Status | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
 |----------|--------|----------|----------|-----------|-----------------|---------------|--------------|
 | **Akamai LKE** | ✅ Running | $0.52 | ~$0.03 | $0.00 | $0.10 | **$424.40** | $0.58 |
-| **AWS EKS** | ❌ Destroyed | $0.8048 | $0.096 | $0.10 | $0.08 | **$801.46** | $1.10 |
+| **AWS EKS** | ✅ Running | $0.80 | $0.096 | $0.10 | $0.10 | **$798.16** | $1.09 |
 | **GCP GKE** | ✅ Running | $0.8536 | $0.134 | $0.10 | $0.17 | **$893.47** | $1.22 |
 
+**Including Estimated Networking (~100GB egress/month):**
+
+| Provider | Compute + Mgmt + Storage | Networking | Total w/ Network | Hourly Total |
+|----------|--------------------------|------------|------------------|--------------|
+| **Akamai LKE** | $424.40 | ~$0.50 (egress only) | **$424.90** | $0.58 |
+| **AWS EKS** | $798.16 | ~$47.35 (NAT + egress + cross-AZ) | **$845.51** | $1.16 |
+| **GCP GKE** | $893.47 | ~$12.00 (egress only) | **$905.47** | $1.24 |
+
 **Key Findings:**
-1. **Akamai LKE is 47% cheaper than AWS EKS** and **53% cheaper than GCP GKE**
+1. **Akamai LKE is 50% cheaper than AWS EKS** and **53% cheaper than GCP GKE**
 2. **No management fee** on LKE saves $73/month vs AWS/GCP
-3. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
-4. **GCP has most powerful CPU nodes** (4 vCPU vs 2 vCPU) but highest total cost
-5. **AWS offers best balance** between cost and CPU power (if running)
+3. **AWS networking adds significant cost**: NAT Gateway ($32.85/mo) + data processing + cross-AZ traffic
+4. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
+5. **GCP has most powerful CPU nodes** (4 vCPU vs 2 vCPU) but highest total cost
+6. **AWS multi-AZ deployment** increases reliability but adds cross-AZ charges
 
 ---
 
