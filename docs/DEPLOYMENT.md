@@ -345,7 +345,39 @@ kubectl get pods -n kube-system | grep nvidia
 kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
 ```
 
-### Step 6: Install KubeRay Operator
+### Step 6: Install DCGM Exporter (for GPU metrics)
+
+GKE has the device plugin pre-installed but NOT DCGM exporter. Install it for GPU metrics:
+
+```bash
+helm repo add gpu-helm-charts https://nvidia.github.io/dcgm-exporter/helm-charts
+helm repo update
+
+# Create values file (avoids shell escaping issues)
+cat > /tmp/dcgm-gke-values.yaml << 'EOF'
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: prometheus
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+EOF
+
+helm install dcgm-exporter gpu-helm-charts/dcgm-exporter \
+  --namespace monitoring \
+  -f /tmp/dcgm-gke-values.yaml
+
+# Verify running on GPU node
+kubectl get pods -n monitoring | grep dcgm
+```
+
+### Step 7: Install KubeRay Operator
 
 ```bash
 helm repo add kuberay https://ray-project.github.io/kuberay-helm/
@@ -355,7 +387,7 @@ helm install kuberay-operator kuberay/kuberay-operator \
 kubectl get pods -n ray-system
 ```
 
-### Step 7: Deploy RAG Application
+### Step 8: Deploy RAG Application
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
