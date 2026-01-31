@@ -617,6 +617,7 @@ class RagApp:
         )
 
     def _build_kube_api(self) -> dict[str, Any] | None:
+        """Build K8s API config. Token is read fresh each request to handle rotation."""
         host = os.getenv("KUBERNETES_SERVICE_HOST")
         port = os.getenv("KUBERNETES_SERVICE_PORT")
         if not host or not port:
@@ -625,11 +626,11 @@ class RagApp:
         ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
         if not os.path.exists(token_path):
             return None
-        token = Path(token_path).read_text().strip()
+        # Don't cache token - read fresh each request (tokens rotate hourly)
         verify = ca_path if os.path.exists(ca_path) else True
         return {
             "base_url": f"https://{host}:{port}",
-            "token": token,
+            "token_path": token_path,  # Store path, not token
             "verify": verify,
         }
 
@@ -643,8 +644,10 @@ class RagApp:
         if not self._kube_api:
             raise ValueError("Kubernetes API is not available in this environment.")
         url = f"{self._kube_api['base_url']}{path}"
+        # Read token fresh each request to handle automatic rotation
+        token = Path(self._kube_api['token_path']).read_text().strip()
         request_headers = {
-            "Authorization": f"Bearer {self._kube_api['token']}",
+            "Authorization": f"Bearer {token}",
             "Accept": "application/json",
         }
         if headers:
