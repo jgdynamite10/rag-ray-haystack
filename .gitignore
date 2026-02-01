@@ -12,6 +12,9 @@ terraform.tfvars
 /docs/OPERATIONS.local.md
 /docs/CONTEXT.local.md
 
+# --- Scripts with environment-specific IPs (use .example as template) ---
+/scripts/run_all_benchmarks.sh
+
 # --- Archived dashboards (local only) ---
 /grafana/dashboards/Old-dashboards/
 
