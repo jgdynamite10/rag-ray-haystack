@@ -7,7 +7,7 @@
 #   ./run_ns.sh <provider> [options]
 #
 # Examples:
-#   ./run_ns.sh akamai-lke --url http://172.236.105.4/api/query/stream
+#   ./run_ns.sh akamai-lke --url http://<FRONTEND-IP>/api/query/stream
 #   ./run_ns.sh aws-eks --url http://eks-lb.example.com/api/query/stream --requests 100
 #   ./run_ns.sh gcp-gke --url http://gke-lb.example.com/api/query/stream --with-cost
 #
@@ -63,7 +63,7 @@ Environment:
     VLLM_VERSION, BACKEND_IMAGE_TAG
 
 Examples:
-  $(basename "$0") akamai-lke --url http://172.236.105.4/api/query/stream
+  $(basename "$0") akamai-lke --url http://<FRONTEND-IP>/api/query/stream
   $(basename "$0") aws-eks --url http://eks.example.com/api/query/stream --requests 50 --with-cost
 EOF
     exit 1

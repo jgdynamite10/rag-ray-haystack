@@ -15,6 +15,11 @@ terraform.tfvars
 # --- Scripts with environment-specific IPs (use .example as template) ---
 /scripts/run_all_benchmarks.sh
 
+# --- Benchmark results with environment-specific data ---
+# Raw JSON results contain IPs and account IDs
+# Summary data is in docs/BENCHMARK_RESULTS.md
+/benchmarks/
+
 # --- Archived dashboards (local only) ---
 /grafana/dashboards/Old-dashboards/
 

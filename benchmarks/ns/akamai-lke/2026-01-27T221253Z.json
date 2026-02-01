@@ -1,9 +1,0 @@
-{
-  "_meta": {
-    "provider": "akamai-lke",
-    "endpoint": "http://172.236.105.4/api",
-    "timestamp": "2026-01-27T221253Z",
-    "job_name": "rag-stream-bench-24d7f86e",
-    "probe_type": "north_south"
-  }
-}

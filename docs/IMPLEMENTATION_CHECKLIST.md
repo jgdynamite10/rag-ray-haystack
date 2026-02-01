@@ -70,7 +70,7 @@ Usage:
 | ServiceMonitor/PodMonitor setup | Documented in OBSERVABILITY.md | [x] Complete |
 | Prometheus scraping RAG backend | Deployed to LKE | [x] Complete |
 
-**Status:** Complete. Central Grafana deployed at http://172.239.55.129:3000
+**Status:** Complete. Central Grafana deployed at http://<GRAFANA-IP>:3000
 
 ---
 

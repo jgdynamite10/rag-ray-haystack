@@ -58,7 +58,7 @@ The benchmark queries the RAG system, which:
 
 ```bash
 ./scripts/benchmark/run_ns.sh akamai-lke \
-  --url http://172.236.105.4/api/query/stream \
+  --url http://<FRONTEND-IP>/api/query/stream \
   --requests 20 \
   --concurrency 5 \
   --warmup 5 \
@@ -77,7 +77,7 @@ The benchmark queries the RAG system, which:
 
 ```bash
 ./scripts/benchmark/run_ns.sh akamai-lke \
-  --url http://172.236.105.4/api/query/stream \
+  --url http://<FRONTEND-IP>/api/query/stream \
   --requests 100 \
   --concurrency 10 \
   --warmup 10 \
@@ -96,7 +96,7 @@ The benchmark queries the RAG system, which:
 
 ```bash
 ./scripts/benchmark/run_ns.sh akamai-lke \
-  --url http://172.236.105.4/api/query/stream \
+  --url http://<FRONTEND-IP>/api/query/stream \
   --requests 500 \
   --concurrency 50 \
   --warmup 20 \
@@ -115,7 +115,7 @@ The benchmark queries the RAG system, which:
 
 ```bash
 ./scripts/benchmark/run_ns.sh akamai-lke \
-  --url http://172.236.105.4/api/query/stream \
+  --url http://<FRONTEND-IP>/api/query/stream \
   --requests 1000 \
   --concurrency 100 \
   --warmup 50 \
@@ -200,7 +200,7 @@ The benchmark queries the RAG system, which:
 
 ```bash
 # Akamai LKE
-./scripts/benchmark/run_ns.sh akamai-lke --url http://172.236.105.4/api/query/stream
+./scripts/benchmark/run_ns.sh akamai-lke --url http://<FRONTEND-IP>/api/query/stream
 
 # AWS EKS (when deployed)
 ./scripts/benchmark/run_ns.sh aws-eks --url http://<eks-lb-ip>/api/query/stream
@@ -500,7 +500,7 @@ The **ITDM - Unified Dashboard** (`grafana/dashboards/itdm-unified.json`) provid
 4. **Latency Breakdown** - Attribution by stage (embedding, retrieval, generation)
 
 **Import the dashboard:**
-1. Open Grafana (http://172.239.55.129:3000 for central instance)
+1. Open Grafana (http://<GRAFANA-IP>:3000 for central instance)
 2. **Dashboards** → **New** → **Import**
 3. Upload `grafana/dashboards/itdm-unified.json`
 4. Select your Prometheus datasource(s)

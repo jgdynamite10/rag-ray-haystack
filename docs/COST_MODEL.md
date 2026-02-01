@@ -222,7 +222,7 @@ The cost computation outputs JSON with these sections:
 ```bash
 # Akamai LKE
 ./scripts/benchmark/run_ns.sh akamai-lke \
-  --url http://172.236.105.4/api/query/stream \
+  --url http://<FRONTEND-IP>/api/query/stream \
   --with-cost
 
 # AWS EKS (when deployed)
@@ -381,7 +381,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 **Cluster Info:**
 - Region: `us-central1` / Zone: `us-central1-a`
-- Kubernetes Control Plane: `https://35.194.42.146`
+- Kubernetes Control Plane: `https://<GKE-CONTROL-PLANE-IP>`
 - Kubeconfig: `~/.kube/gke-kubeconfig.yaml`
 - Deployment: Single-zone (all nodes in us-central1-a)
 

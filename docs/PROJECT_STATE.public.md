@@ -30,7 +30,7 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 
 | Provider | Status | Endpoint | Notes |
 |----------|--------|----------|-------|
-| Akamai LKE | ✅ Deployed | http://172.236.105.4 | Load tested |
+| Akamai LKE | ✅ Deployed | http://<LKE-FRONTEND-IP> | Load tested |
 | AWS EKS | ✅ Deployed | ELB endpoint | Ready for benchmarks |
 | GCP GKE | ⏳ Pending | - | Next up |
 

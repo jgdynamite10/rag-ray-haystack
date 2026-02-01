@@ -182,7 +182,7 @@ kubectl -n monitoring get svc prometheus-kube-prometheus-prometheus
 
 # Example output:
 # NAME                                    TYPE           EXTERNAL-IP      PORT(S)
-# prometheus-kube-prometheus-prometheus   LoadBalancer   172.238.165.45   9090:32112/TCP
+# prometheus-kube-prometheus-prometheus   LoadBalancer   <PROMETHEUS-LKE-IP>   9090:32112/TCP
 ```
 
 ### Verify Scraping
@@ -212,7 +212,7 @@ cp terraform.tfvars.example terraform.tfvars
 #   - linode_token
 #   - root_password
 #   - grafana_admin_password
-#   - prometheus_lke_url (e.g., http://172.238.165.45:9090)
+#   - prometheus_lke_url (e.g., http://<PROMETHEUS-LKE-IP>:9090)
 
 # 2. Deploy
 terraform init
@@ -269,7 +269,7 @@ GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=YourSecurePassword
 
 # Prometheus endpoints
-PROMETHEUS_LKE_URL=http://172.238.165.45:9090
+PROMETHEUS_LKE_URL=http://<PROMETHEUS-LKE-IP>:9090
 PROMETHEUS_EKS_URL=
 PROMETHEUS_GKE_URL=
 ```
