@@ -133,6 +133,28 @@ flowchart TB
   PromLB --> Prom
 ```
 
+### Multi-Cluster Monitoring
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              Akamai VM (External)                       │
+│                   Grafana                               │
+│           (Unified dashboards)                          │
+└─────────┬─────────────┬─────────────┬───────────────────┘
+          │             │             │
+          ▼             ▼             ▼
+   ┌────────────┐ ┌────────────┐ ┌────────────┐
+   │ LKE Prom LB│ │ EKS Prom LB│ │ GKE Prom LB│
+   └──────┬─────┘ └──────┬─────┘ └──────┬─────┘
+          ▼              ▼              ▼
+   ┌────────────┐ ┌────────────┐ ┌────────────┐
+   │  LKE       │ │  EKS       │ │  GKE       │
+   │ Prometheus │ │ Prometheus │ │ Prometheus │
+   │ Pushgateway│ │ Pushgateway│ │ Pushgateway│
+   │ DCGM       │ │ DCGM       │ │ DCGM       │
+   └────────────┘ └────────────┘ └────────────┘
+```
+
 ### High-level components
 - **Frontend (UI)** — Collects user prompts, streams tokens, and records client-side TTFT/total latency.
 - **Backend (RAG API)** — Orchestrates retrieval + generation and emits SSE events (`meta`, `token`, `done`, `error`) and exposes `/metrics`.
