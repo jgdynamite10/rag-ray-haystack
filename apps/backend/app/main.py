@@ -876,10 +876,12 @@ class RagApp:
         pod_name = pods[0]["metadata"]["name"]
         # Fetch logs - LKE requires Accept header from allowed list even for plain text logs.
         log_url = f"{self._kube_api['base_url']}/api/v1/namespaces/{self.kube_namespace}/pods/{pod_name}/log"
+        # Read token fresh (tokens rotate hourly)
+        token = Path(self._kube_api['token_path']).read_text().strip()
         logs_response = requests.get(
             log_url,
             headers={
-                "Authorization": f"Bearer {self._kube_api['token']}",
+                "Authorization": f"Bearer {token}",
                 "Accept": "application/json",
             },
             timeout=30,
