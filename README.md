@@ -45,34 +45,27 @@ A Grafana dashboard intended to summarize:
 
 ---
 
-## Benchmark Results (January 31, 2026)
+## Benchmark Results (February 1, 2026)
 
 ### North-South (500 requests, 50 concurrency)
 
 | Metric | Akamai LKE | AWS EKS | GCP GKE |
 |--------|------------|---------|---------|
-| **Success** | 500/500 ✅ | 499/500 ⚠️ | 500/500 ✅ |
-| **TTFT p50** | **2,260 ms** 🏆 | 2,458 ms | 4,340 ms |
-| **TTFT p95** | **4,214 ms** 🏆 | 5,239 ms | 7,277 ms |
-| **Latency p50** | **13,588 ms** 🏆 | 18,031 ms | 21,350 ms |
-| **Latency p95** | **15,090 ms** 🏆 | 23,171 ms | 23,587 ms |
-| **TPOT p50** | **45.2 ms** 🏆 | 62.1 ms | 65.2 ms |
-| **Tokens/sec** | **18.82** 🏆 | 14.14 | 12.56 |
-| **Duration** | **145s** 🏆 | 238s | 226s |
+| **Success** | 500/500 ✅ | 500/500 ✅ | 500/500 ✅ |
+| **TTFT p50** | **1,994 ms** 🏆 | 3,407 ms | 2,544 ms |
+| **TTFT p95** | **4,328 ms** 🏆 | 7,230 ms | 6,683 ms |
+| **Latency p50** | **9,872 ms** 🏆 | 17,796 ms | 18,420 ms |
+| **Latency p95** | **14,597 ms** 🏆 | 19,888 ms | 20,212 ms |
+| **TPOT p50** | **31.3 ms** 🏆 | 53.4 ms | 59.9 ms |
+| **Tokens/sec** | **24.05** 🏆 | 15.42 | 15.13 |
+| **Duration** | **120s** 🏆 | 183s | 189s |
 
 ### East-West Network
 
 | Metric | Akamai LKE | AWS EKS | GCP GKE |
 |--------|------------|---------|---------|
-| **TCP Throughput** | 1.10 Gbps | 4.92 Gbps | **6.74 Gbps** 🏆 |
-| **Retransmits** | 10,598 | **171** 🏆 | 55,829 |
-
-### Key Insights
-
-- **Akamai LKE** won all LLM performance metrics (faster TTFT, latency, TPOT, tokens/sec)
-- **GCP GKE** has highest network throughput (6.74 Gbps)
-- **AWS EKS** has most stable network (only 171 retransmits)
-- AWS EKS had 1 error on 500 requests
+| **TCP Throughput** | 1.10 Gbps | 4.94 Gbps | **6.43 Gbps** 🏆 |
+| **Retransmits** | 3,833 | **222** 🏆 | 98,988 |
 
 ---
 
