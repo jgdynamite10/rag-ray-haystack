@@ -155,8 +155,8 @@ flowchart LR
   Ray -->|retrieve| Qdrant[(Qdrant)]
   Ray -->|stream chat| VLLM[vLLM OpenAI Server]
   Ray -->|SSE tokens| UI
-  Ray -->|/metrics scrape| Prom[(Prometheus - optional/external)]
-  subgraph Optional (future) gateway
+  Ray -->|/metrics scrape| Prom[(Prometheus)]
+  subgraph Future
     Zuplo[Zuplo Gateway]
   end
   UI -.-> Zuplo -.-> Ray
