@@ -86,7 +86,52 @@ A Grafana dashboard intended to summarize:
 
 ## Architecture
 
-![Architecture Diagram](docs/images/architecture.png)
+```mermaid
+flowchart TB
+  subgraph External
+    User[User Browser]
+    Grafana[Grafana<br/>Akamai VM]
+  end
+
+  subgraph K8s Cluster
+    subgraph Ingress Layer
+      AppLB[App LoadBalancer<br/>NodeBalancer / ELB / GCLB]
+      PromLB[Prometheus LoadBalancer]
+    end
+
+    subgraph Application
+      Frontend[Frontend<br/>React + Nginx]
+      Backend[Ray Serve Backend<br/>Haystack + vLLM Client]
+      Qdrant[(Qdrant<br/>Vector DB)]
+      VLLM[vLLM Server<br/>GPU]
+    end
+
+    subgraph Orchestration
+      KubeRay[KubeRay Operator]
+    end
+
+    subgraph Monitoring
+      Prom[(Prometheus)]
+      Push[Pushgateway]
+      DCGM[DCGM Exporter<br/>GPU Metrics]
+    end
+  end
+
+  User -->|HTTPS| AppLB
+  AppLB --> Frontend
+  AppLB --> Backend
+  Frontend -->|/api proxy| Backend
+  Backend -->|retrieve| Qdrant
+  Backend -->|stream chat| VLLM
+  KubeRay -.->|manages| Backend
+  
+  Backend -->|push job metrics| Push
+  Prom -->|scrape /metrics| Backend
+  Prom -->|scrape| Push
+  Prom -->|scrape| DCGM
+  Grafana -->|query| PromLB
+  PromLB --> Prom
+```
 
 ### High-level components
 - **Frontend (UI)** — Collects user prompts, streams tokens, and records client-side TTFT/total latency.
