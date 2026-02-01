@@ -77,7 +77,7 @@ KUBECONFIG_PATH="$KUBECONFIG" make fix-gpu PROVIDER=akamai-lke ENV=dev
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/<owner>
-export IMAGE_TAG=0.3.7
+export IMAGE_TAG=0.3.8
 make deploy PROVIDER=akamai-lke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
 ```
 
@@ -260,7 +260,7 @@ kubectl get pods -n ray-system
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
-export IMAGE_TAG=0.3.7
+export IMAGE_TAG=0.3.8
 
 helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --create-namespace \
@@ -367,7 +367,7 @@ kubectl get pods -n ray-system
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
-export IMAGE_TAG=0.3.7
+export IMAGE_TAG=0.3.8
 
 helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --create-namespace \
@@ -475,7 +475,7 @@ kubectl get pods -n ray-system
 
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
-export IMAGE_TAG=0.3.7
+export IMAGE_TAG=0.3.8
 
 helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --create-namespace \
@@ -521,7 +521,7 @@ All providers use the same model for fair benchmarking comparison:
 
 ```bash
 export IMAGE_REGISTRY=registry.example.com/your-team
-export IMAGE_TAG=0.3.7
+export IMAGE_TAG=0.3.8
 ./scripts/build-images.sh
 ./scripts/push-images.sh
 ```
@@ -855,7 +855,7 @@ The app is functional despite the probe restarts. To fix permanently, the backen
 | Component | Version | Notes |
 |-----------|---------|-------|
 | **Frontend** | `0.3.5` | **Use this version.** Version 0.3.7 has a regression where Rolling metrics don't populate and status stays "Streaming..." |
-| **Backend** | `0.3.7` | Latest stable |
+| **Backend** | `0.3.8` | Latest stable (fixes K8s token rotation for in-cluster jobs) |
 | **vLLM** | `v0.6.2` | Works with RTX 4000 Ada and NVIDIA L4 GPUs |
 
 ### Frontend Version 0.3.7 Regression
