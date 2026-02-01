@@ -149,24 +149,89 @@ Changing any component affects benchmark results:
 ## Architecture diagram
 
 ```mermaid
-flowchart LR
-  UI[Browser UI] -->|SSE| Ray[Ray Serve Backend]
-  UI -->|HTTP upload| Ray
-  Ray -->|retrieve| Qdrant[(Qdrant)]
-  Ray -->|stream chat| VLLM[vLLM OpenAI Server]
-  Ray -->|SSE tokens| UI
-  Ray -->|/metrics scrape| Prom[(Prometheus)]
-  subgraph Future
-    Zuplo[Zuplo Gateway]
+flowchart TB
+  subgraph External
+    User[User Browser]
+    Grafana[Grafana<br/>Akamai VM]
   end
-  UI -.-> Zuplo -.-> Ray
+
+  subgraph K8s Cluster
+    subgraph Ingress Layer
+      AppLB[App LoadBalancer<br/>NodeBalancer / ELB / GCLB]
+      PromLB[Prometheus LoadBalancer]
+    end
+
+    subgraph Application
+      Frontend[Frontend<br/>React + Nginx]
+      Backend[Ray Serve Backend<br/>Haystack + vLLM Client]
+      Qdrant[(Qdrant<br/>Vector DB)]
+      VLLM[vLLM Server<br/>GPU]
+    end
+
+    subgraph Orchestration
+      KubeRay[KubeRay Operator]
+    end
+
+    subgraph Monitoring
+      Prom[(Prometheus)]
+      Push[Pushgateway]
+      DCGM[DCGM Exporter<br/>GPU Metrics]
+    end
+  end
+
+  User -->|HTTPS| AppLB
+  AppLB --> Frontend
+  AppLB --> Backend
+  Frontend -->|/api proxy| Backend
+  Backend -->|retrieve| Qdrant
+  Backend -->|stream chat| VLLM
+  KubeRay -.->|manages| Backend
+  
+  Backend -->|push job metrics| Push
+  Prom -->|scrape /metrics| Backend
+  Prom -->|scrape| Push
+  Prom -->|scrape| DCGM
+  Grafana -->|query| PromLB
+  PromLB --> Prom
+```
+
+### Multi-Cluster Monitoring
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              Akamai VM (External)                       │
+│                   Grafana                               │
+│           (Unified dashboards)                          │
+└─────────┬─────────────┬─────────────┬───────────────────┘
+          │             │             │
+          ▼             ▼             ▼
+   ┌────────────┐ ┌────────────┐ ┌────────────┐
+   │ LKE Prom LB│ │ EKS Prom LB│ │ GKE Prom LB│
+   └──────┬─────┘ └──────┬─────┘ └──────┬─────┘
+          ▼              ▼              ▼
+   ┌────────────┐ ┌────────────┐ ┌────────────┐
+   │  LKE       │ │  EKS       │ │  GKE       │
+   │ Prometheus │ │ Prometheus │ │ Prometheus │
+   │ Pushgateway│ │ Pushgateway│ │ Pushgateway│
+   │ DCGM       │ │ DCGM       │ │ DCGM       │
+   └────────────┘ └────────────┘ └────────────┘
 ```
 
 ## Observability
 
-- `/metrics` exposes Prometheus-compatible counters and latency histograms.
-- `/stats` provides a lightweight UI-friendly snapshot of timings.
-- Structured JSON logs via `python-json-logger`.
+### Metrics Pipeline
+- **Backend `/metrics`**: Prometheus-compatible counters and latency histograms (TTFT, TPOT, tokens/sec)
+- **Backend `/stats`**: Lightweight UI-friendly snapshot of timings
+- **Pushgateway**: Receives metrics from ephemeral benchmark jobs
+- **DCGM Exporter**: GPU utilization, memory, temperature metrics
+- **Prometheus**: Scrapes all metric endpoints within each cluster
+
+### Visualization
+- **Grafana** (self-hosted on Akamai VM): Centralized dashboards querying Prometheus in each cluster
+- Unified view across LKE, EKS, and GKE deployments
+
+### Logging
+- Structured JSON logs via `python-json-logger`
 
 ## SSE event contract
 
