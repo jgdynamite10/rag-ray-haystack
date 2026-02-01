@@ -1,0 +1,19 @@
+{
+  "test_type": "east-west",
+  "tcp_throughput": {
+    "gbps": 6.7393,
+    "mbps": 6739.32,
+    "retransmits": 55829
+  },
+  "udp_jitter": {
+    "jitter_ms": 0
+  },
+  "latency": {
+    "avg_ms": 0
+  },
+  "provider": "gcp-gke",
+  "cluster": "rag-ray-haystack",
+  "server_node": "gke-rag-ray-haystack-rag-ray-haystack-c0133a71-x7ff",
+  "client_node": "gke-rag-ray-haystack-rag-ray-haystack-c0133a71-dcxt",
+  "same_node": false
+}

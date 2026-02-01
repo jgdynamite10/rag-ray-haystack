@@ -23,7 +23,7 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 
 | Image | Tag | Notes |
 |-------|-----|-------|
-| Backend | 0.3.8 | K8s token rotation fix, TPOT metrics, max_output_tokens, k_retrieved histogram |
+| Backend | 0.3.9 | Fixes benchmark_logs KeyError from 0.3.8, K8s token rotation fix, TPOT metrics, max_output_tokens, k_retrieved histogram |
 | Frontend | 0.3.5 | SSE streaming with metrics (0.3.7 has regression) |
 
 ### Provider Deployment Status
