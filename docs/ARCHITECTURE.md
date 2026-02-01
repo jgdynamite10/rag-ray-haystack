@@ -60,7 +60,7 @@
 | Property | Value |
 |----------|-------|
 | **Purpose** | Generate text responses using GPU-accelerated inference |
-| **Default model** | `Qwen/Qwen3-1.7B` (configurable) |
+| **Default model** | `Qwen/Qwen2.5-7B-Instruct` (configurable) |
 | **Runs on** | GPU (required) |
 | **Env vars** | `VLLM_BASE_URL`, `VLLM_MODEL`, `VLLM_MAX_TOKENS`, etc. |
 
