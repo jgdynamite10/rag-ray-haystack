@@ -71,9 +71,20 @@ A Grafana dashboard intended to summarize:
 
 ## Dashboard Screenshots
 
-<!-- TODO: Add Grafana dashboard screenshots here -->
+### Cost & Performance Scorecard
+Executive view comparing costs and key performance metrics across all three providers.
 
-*Screenshots coming soon*
+![Cost & Performance Scorecard](docs/images/dashboard-cost-scorecard.png)
+
+### Performance Monitoring
+Real-time throughput, latency, GPU utilization, and memory usage across providers.
+
+![Performance Dashboard](docs/images/dashboard-performance.png)
+
+### RAG Application UI
+The chat interface with PDF upload, streaming responses, and real-time metrics.
+
+![RAG UI](docs/images/rag-ui.png)
 
 ---
 
