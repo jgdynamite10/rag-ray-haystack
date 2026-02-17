@@ -687,11 +687,12 @@
         "name": "cpu_cost_hr",
         "options": [
           { "selected": true, "text": "0.036", "value": "0.036" },
+          { "selected": false, "text": "0.0416", "value": "0.0416" },
           { "selected": false, "text": "0.067", "value": "0.067" },
           { "selected": false, "text": "0.096", "value": "0.096" },
           { "selected": false, "text": "0.10", "value": "0.10" }
         ],
-        "query": "0.036, 0.067, 0.096, 0.10",
+        "query": "0.036, 0.0416, 0.067, 0.096, 0.10",
         "skipUrlSync": false,
         "type": "custom"
       },

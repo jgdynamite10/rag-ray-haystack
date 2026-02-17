@@ -35,7 +35,7 @@ providers:
     notes: "AWS us-east-1 on-demand prices. GPU: g6.xlarge (NVIDIA L4 24GB)"
     
     gpu_node_usd_per_hr: 0.8048    # g6.xlarge (NVIDIA L4 24GB)
-    cpu_node_usd_per_hr: 0.096     # m5.large (2 vCPU, 8GB)
+    cpu_node_usd_per_hr: 0.0416    # t3.medium (2 vCPU, 4GB)
     
     egress_usd_per_gb: 0.09        # First 10TB/month
     ingress_usd_per_gb: 0.0

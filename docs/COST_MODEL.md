@@ -112,7 +112,7 @@ providers:
     
     # Compute (USD per hour)
     gpu_node_usd_per_hr: 0.80              # g6.xlarge (NVIDIA L4 24GB)
-    cpu_node_usd_per_hr: 0.096             # m5.large (2 vCPU, 8GB)
+    cpu_node_usd_per_hr: 0.0416            # t3.medium (2 vCPU, 4GB)
     
     # Management
     cluster_mgmt_usd_per_hr: 0.10          # EKS control plane
@@ -155,7 +155,7 @@ benchmark_context:
 | Provider | GPU Instance | GPU $/hr | CPU Instance | CPU $/hr | Mgmt $/hr |
 |----------|--------------|----------|--------------|----------|-----------|
 | Akamai LKE | g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB) | **$0.52** | g6-standard-2 (2 vCPU, 4GB) | $0.036 | $0.00 |
-| AWS EKS | g6.xlarge (NVIDIA L4 24GB) | **$0.80** | m5.large (2 vCPU, 8GB) | $0.096 | $0.10 |
+| AWS EKS | g6.xlarge (NVIDIA L4 24GB) | **$0.80** | t3.medium (2 vCPU, 4GB) | $0.0416 | $0.10 |
 | GCP GKE | g2-standard-8 (NVIDIA L4 24GB) | **$0.8536** | e2-standard-4 (4 vCPU, 16GB) | $0.134 | $0.10 |
 
 **Pricing Sources:**
@@ -551,8 +551,8 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Node Name | Instance Type | vCPU | Memory | GPU | Zone | On-Demand $/hr |
 |-----------|---------------|------|--------|-----|------|----------------|
 | ip-172-31-43-85.ec2.internal | `g6.xlarge` | 4 | 16 GB | 1x NVIDIA L4 (24GB) | us-east-1d | **$0.80** |
-| ip-172-31-56-49.ec2.internal | `m5.large` | 2 | 8 GB | — | us-east-1c | **$0.096** |
-| ip-172-31-92-17.ec2.internal | `m5.large` | 2 | 8 GB | — | us-east-1f | **$0.096** |
+| ip-172-31-56-49.ec2.internal | `t3.medium` | 2 | 4 GB | — | us-east-1c | **$0.0416** |
+| ip-172-31-92-17.ec2.internal | `t3.medium` | 2 | 4 GB | — | us-east-1f | **$0.0416** |
 
 **Storage (Queried January 30, 2026):**
 
@@ -571,7 +571,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 |---------------|-------------|--------------|
 | **Compute** | | |
 | GPU Node (1x g6.xlarge) | $0.80 × 730 hrs | $584.00 |
-| CPU Nodes (2x m5.large) | $0.096 × 730 hrs × 2 | $140.16 |
+| CPU Nodes (2x t3.medium) | $0.0416 × 730 hrs × 2 | $60.74 |
 | **Management** | | |
 | EKS Control Plane (Standard) | $0.10 × 730 hrs | $73.00 |
 | **Storage** | | |
@@ -581,10 +581,10 @@ This section documents the **actual deployed infrastructure** queried directly f
 | NAT Data Processing (~100GB) | 100 GB × $0.045 | $4.50 |
 | Data Transfer Out (~100GB) | 100 GB × $0.09 | $9.00 |
 | Cross-AZ Traffic (multi-AZ) | ~50 GB × $0.01 × 2 | $1.00 |
-| **Total (with networking)** | | **$845.51** |
-| **Total (compute only)** | | **$798.16** |
+| **Total (with networking)** | | **$766.09** |
+| **Total (compute only)** | | **$718.74** |
 
-**Hourly Run Rate:** $1.16/hr (with networking) | $1.09/hr (compute only)
+**Hourly Run Rate:** $1.05/hr (with networking) | $0.98/hr (compute only)
 
 **Networking Notes:**
 - Nodes span 3 AZs (us-east-1c, us-east-1d, us-east-1f) - cross-AZ traffic is charged
@@ -617,7 +617,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Provider | Status | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
 |----------|--------|----------|----------|-----------|-----------------|---------------|--------------|
 | **Akamai LKE** | ✅ Running | $0.52 | $0.036 | $0.00 | $0.10 | **$433.16** | $0.59 |
-| **AWS EKS** | ✅ Running | $0.80 | $0.096 | $0.10 | $0.10 | **$798.16** | $1.09 |
+| **AWS EKS** | ✅ Running | $0.80 | $0.0416 | $0.10 | $0.10 | **$718.74** | $0.98 |
 | **GCP GKE** | ✅ Running | $0.8536 | $0.134 | $0.10 | $0.17 | **$893.47** | $1.22 |
 
 **Including Estimated Networking (~100GB egress/month):**
@@ -625,7 +625,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Provider | Compute + Mgmt + Storage | Networking | Total w/ Network | Hourly Total |
 |----------|--------------------------|------------|------------------|--------------|
 | **Akamai LKE** | $433.16 | ~$2.00 (overage if exceeds 9TB pool) | **$435.16** | $0.60 |
-| **AWS EKS** | $798.16 | ~$47.35 (NAT + egress + cross-AZ) | **$845.51** | $1.16 |
+| **AWS EKS** | $718.74 | ~$47.35 (NAT + egress + cross-AZ) | **$766.09** | $1.05 |
 | **GCP GKE** | $893.47 | ~$12.00 (egress only) | **$905.47** | $1.24 |
 
 **Key Findings:**

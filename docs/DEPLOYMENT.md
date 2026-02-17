@@ -121,7 +121,7 @@ terraform apply
 |---------|---------|-------|
 | Region | us-east-1 | |
 | Cluster | rag-ray-haystack | |
-| CPU Nodes | 2x m5.large | Override with `cpu_instance_type` (e.g. t3.medium for dev) |
+| CPU Nodes | 2x t3.medium (2 vCPU, 4 GB) | Override with `cpu_instance_type` ($0.0416/hr) |
 | GPU Nodes | 1x g6.xlarge (L4 GPU, 24 GB) | Override with `gpu_instance_type` |
 | K8s Version | 1.34 | Set via `k8s_version` |
 
