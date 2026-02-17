@@ -116,14 +116,14 @@ terraform plan
 terraform apply
 ```
 
-**Default Configuration:**
-| Setting | Value |
-|---------|-------|
-| Region | us-east-1 |
-| Cluster | rag-ray-haystack |
-| CPU Nodes | 2x m5.large |
-| GPU Nodes | 1x g4dn.xlarge (T4 GPU) |
-| K8s Version | 1.29 |
+**Default Configuration** (override via `terraform.tfvars`):
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Region | us-east-1 | |
+| Cluster | rag-ray-haystack | |
+| CPU Nodes | 2x m5.large | Override with `cpu_instance_type` (e.g. t3.medium for dev) |
+| GPU Nodes | 1x g6.xlarge (L4 GPU, 24 GB) | Override with `gpu_instance_type` |
+| K8s Version | 1.34 | Set via `k8s_version` |
 
 ### Step 2: Configure kubectl
 
@@ -250,10 +250,10 @@ helm repo update
 
 # Install KubeRay operator
 helm install kuberay-operator kuberay/kuberay-operator \
-  --namespace ray-system --create-namespace
+  --namespace kuberay-system --create-namespace
 
 # Wait for operator to be ready
-kubectl get pods -n ray-system
+kubectl get pods -n kuberay-system
 ```
 
 ### Step 8: Deploy RAG Application
@@ -261,6 +261,7 @@ kubectl get pods -n ray-system
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
 export IMAGE_TAG=0.3.9
+export FRONTEND_TAG=0.3.5  # 0.3.7 has Rolling metrics regression
 
 helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --create-namespace \
@@ -269,7 +270,7 @@ helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --set backend.image.repository=${IMAGE_REGISTRY}/rag-ray-backend \
   --set frontend.image.repository=${IMAGE_REGISTRY}/rag-ray-frontend \
   --set backend.image.tag=${IMAGE_TAG} \
-  --set frontend.image.tag=${IMAGE_TAG}
+  --set frontend.image.tag=${FRONTEND_TAG}
 ```
 
 **Note:** The Helm chart automatically deploys a ServiceMonitor for Prometheus scraping. Verify it's working:
@@ -284,6 +285,21 @@ helm uninstall rag-app -n rag-app
 kubectl delete pvc -n rag-app --all
 # Then run the install command above
 ```
+
+### Step 8b: Fix Qdrant Collection Dimension (first deploy only)
+
+The `qdrant-haystack` library auto-creates the collection with dim=768, but `all-MiniLM-L6-v2`
+produces 384-dim vectors. After the first deploy, recreate the collection:
+
+```bash
+kubectl run -n rag-app fix-dim --rm -i --restart=Never --image=curlimages/curl -- \
+  sh -c 'curl -X DELETE http://rag-app-rag-app-qdrant:6333/collections/rag-documents && \
+  curl -X PUT http://rag-app-rag-app-qdrant:6333/collections/rag-documents \
+  -H "Content-Type: application/json" \
+  -d '"'"'{"vectors":{"size":384,"distance":"Cosine"}}'"'"''
+```
+
+**Verify:** `curl http://<FRONTEND_IP>/api/healthz` should return `{"status":"ok"}`.
 
 ### Step 9: Get External IPs
 
@@ -359,8 +375,8 @@ kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.1
 helm repo add kuberay https://ray-project.github.io/kuberay-helm/
 helm repo update
 helm install kuberay-operator kuberay/kuberay-operator \
-  --namespace ray-system --create-namespace
-kubectl get pods -n ray-system
+  --namespace kuberay-system --create-namespace
+kubectl get pods -n kuberay-system
 ```
 
 ### Step 7: Deploy RAG Application
@@ -467,8 +483,8 @@ kubectl get pods -n monitoring | grep dcgm
 helm repo add kuberay https://ray-project.github.io/kuberay-helm/
 helm repo update
 helm install kuberay-operator kuberay/kuberay-operator \
-  --namespace ray-system --create-namespace
-kubectl get pods -n ray-system
+  --namespace kuberay-system --create-namespace
+kubectl get pods -n kuberay-system
 ```
 
 ### Step 8: Deploy RAG Application
@@ -530,6 +546,9 @@ export IMAGE_TAG=0.3.9
 
 ```bash
 cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lke/terraform.tfvars
+export IMAGE_REGISTRY=ghcr.io/jgdynamite10
+export IMAGE_TAG=0.3.9
+export FRONTEND_TAG=0.3.5  # Frontend pinned separately (0.3.7 has regression)
 ./scripts/deploy.sh --provider akamai-lke --env dev --action apply
 ```
 
@@ -855,7 +874,8 @@ The app is functional despite the probe restarts. To fix permanently, the backen
 | Component | Version | Notes |
 |-----------|---------|-------|
 | **Frontend** | `0.3.5` | **Use this version.** Version 0.3.7 has a regression where Rolling metrics don't populate and status stays "Streaming..." |
-| **Backend** | `0.3.9` | Latest stable (fixes benchmark_logs KeyError from 0.3.8) |
+| **Backend** | `0.3.9` | Latest stable (fixes benchmark_logs KeyError from 0.3.8). Includes `qdrant-client==1.16.2` |
+| **Qdrant** | `v1.12.6` | **Must be >= v1.10.0.** Backend 0.3.9 uses `/points/query` API (added in 1.10.0). Using v1.8.4 causes query 404 errors |
 | **vLLM** | `v0.6.2` | Works with RTX 4000 Ada and NVIDIA L4 GPUs |
 
 ### Frontend Version 0.3.7 Regression
@@ -878,6 +898,44 @@ helm upgrade rag-app deploy/helm/rag-app \
   --set frontend.image.tag=0.3.5 \
   --reuse-values
 ```
+
+### Qdrant Server/Client Version Compatibility
+
+The backend image (0.3.9) includes `qdrant-client==1.16.2`, which uses the `/points/query`
+REST API introduced in **Qdrant server v1.10.0**. If the Qdrant server is older than v1.10.0
+(e.g. v1.8.4), document **ingestion will succeed** but **queries will fail with a 404** because
+the endpoint doesn't exist.
+
+**Fix:** Ensure the Qdrant image tag in `values.yaml` is `v1.12.6` or later:
+
+```yaml
+qdrant:
+  image:
+    tag: "v1.12.6"   # Must be >= v1.10.0 for qdrant-client 1.16.x
+```
+
+### Qdrant Embedding Dimension Mismatch
+
+The `qdrant-haystack` integration creates the Qdrant collection on startup with a default
+dimension of **768**. However, the default embedding model (`all-MiniLM-L6-v2`) produces
+**384**-dimensional vectors. This causes `write_documents` to fail with:
+
+```
+Vector dimension error: expected dim: 768, got 384
+```
+
+**Fix:** After the first deployment (or if the collection has the wrong dimension), recreate it:
+
+```bash
+# Delete the auto-created collection
+kubectl run -n rag-app fix-dim --rm -i --restart=Never --image=curlimages/curl -- \
+  sh -c 'curl -X DELETE http://rag-app-rag-app-qdrant:6333/collections/rag-documents && \
+  curl -X PUT http://rag-app-rag-app-qdrant:6333/collections/rag-documents \
+  -H "Content-Type: application/json" \
+  -d '"'"'{"vectors":{"size":384,"distance":"Cosine"}}'"'"''
+```
+
+**Permanent fix:** The backend code should pass `embedding_dim=384` to `QdrantDocumentStore`.
 
 ### Backend QDRANT_URL Requirement
 

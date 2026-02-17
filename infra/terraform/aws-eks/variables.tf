@@ -38,7 +38,7 @@ variable "subnet_ids" {
 variable "cpu_instance_type" {
   description = "Instance type for CPU node group."
   type        = string
-  default     = "m5.large"
+  default     = "t3.medium"
 }
 
 variable "cpu_node_count" {
@@ -68,7 +68,7 @@ variable "cpu_autoscaler_max" {
 variable "gpu_instance_type" {
   description = "Instance type for GPU node group."
   type        = string
-  default     = "g4dn.xlarge"
+  default     = "g6.xlarge"
 }
 
 variable "gpu_node_count" {

@@ -41,12 +41,28 @@ spec:
                 limits:
                   cpu: {{ .Values.kuberay.head.cpu | quote }}
                   memory: {{ .Values.kuberay.head.memory | quote }}
+              livenessProbe:
+                tcpSocket:
+                  port: 6379
+                initialDelaySeconds: 30
+                periodSeconds: 10
+                failureThreshold: 12
+              readinessProbe:
+                tcpSocket:
+                  port: 6379
+                initialDelaySeconds: 30
+                periodSeconds: 10
+                failureThreshold: 6
     workerGroupSpecs:
       - groupName: workers
         replicas: {{ .Values.kuberay.worker.replicas }}
         rayStartParams: {}
         template:
           spec:
+            {{- with .Values.kuberay.worker.tolerations }}
+            tolerations:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
             {{- with .Values.global.imagePullSecrets }}
             imagePullSecrets:
               {{- toYaml . | nindent 14 }}
@@ -70,3 +86,17 @@ spec:
                   limits:
                     cpu: {{ .Values.kuberay.worker.cpu | quote }}
                     memory: {{ .Values.kuberay.worker.memory | quote }}
+                livenessProbe:
+                  exec:
+                    command: ["python3", "-c", "import ray; ray.init(address='auto', ignore_reinit_error=True); assert ray.is_initialized()"]
+                  initialDelaySeconds: 60
+                  periodSeconds: 30
+                  failureThreshold: 6
+                  timeoutSeconds: 10
+                readinessProbe:
+                  exec:
+                    command: ["python3", "-c", "import ray; ray.init(address='auto', ignore_reinit_error=True); assert ray.is_initialized()"]
+                  initialDelaySeconds: 60
+                  periodSeconds: 15
+                  failureThreshold: 6
+                  timeoutSeconds: 10

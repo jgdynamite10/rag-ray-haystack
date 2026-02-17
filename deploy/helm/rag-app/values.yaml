@@ -83,7 +83,7 @@ frontend:
 qdrant:
   image:
     repository: qdrant/qdrant
-    tag: "v1.8.4"
+    tag: "v1.12.6"
   service:
     port: 6333
   persistence:
@@ -100,6 +100,7 @@ kuberay:
     replicas: 1
     cpu: "1"
     memory: "2Gi"
+    tolerations: []
 
 vllm:
   image:

@@ -32,6 +32,7 @@ BASE_VALUES="deploy/helm/rag-app/values.yaml"
 OVERLAY_VALUES="deploy/overlays/${PROVIDER}/${ENVIRONMENT}/values.yaml"
 IMAGE_REGISTRY="${IMAGE_REGISTRY:-}"
 IMAGE_TAG="${IMAGE_TAG:-}"
+FRONTEND_TAG="${FRONTEND_TAG:-${IMAGE_TAG}}"  # Default to IMAGE_TAG; set separately for version mismatch (e.g. 0.3.5)
 KUBECONFIG_PATH="${KUBECONFIG_PATH:-${HOME}/.kube/${PROVIDER}-${ENVIRONMENT}-config.yaml}"
 
 IMAGE_OVERRIDES=()
@@ -41,7 +42,7 @@ if [[ -n "${IMAGE_REGISTRY}" ]]; then
 fi
 if [[ -n "${IMAGE_TAG}" ]]; then
   IMAGE_OVERRIDES+=("--set" "backend.image.tag=${IMAGE_TAG}")
-  IMAGE_OVERRIDES+=("--set" "frontend.image.tag=${IMAGE_TAG}")
+  IMAGE_OVERRIDES+=("--set" "frontend.image.tag=${FRONTEND_TAG}")
 fi
 
 case "${ACTION}" in

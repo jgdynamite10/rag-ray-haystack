@@ -6,6 +6,7 @@ RELEASE ?= rag-app
 NAMESPACE ?= rag-app
 IMAGE_REGISTRY ?=
 IMAGE_TAG ?=
+FRONTEND_TAG ?= $(IMAGE_TAG)
 
 TERRAFORM_DIR := infra/terraform/$(PROVIDER)
 BASE_VALUES := deploy/helm/rag-app/values.yaml
@@ -16,7 +17,7 @@ define IMAGE_OVERRIDES
 $(if $(IMAGE_REGISTRY),--set backend.image.repository=$(IMAGE_REGISTRY)/rag-ray-backend,) \
 $(if $(IMAGE_REGISTRY),--set frontend.image.repository=$(IMAGE_REGISTRY)/rag-ray-frontend,) \
 $(if $(IMAGE_TAG),--set backend.image.tag=$(IMAGE_TAG),) \
-$(if $(IMAGE_TAG),--set frontend.image.tag=$(IMAGE_TAG),)
+$(if $(FRONTEND_TAG),--set frontend.image.tag=$(FRONTEND_TAG),)
 endef
 
 terraform-apply:

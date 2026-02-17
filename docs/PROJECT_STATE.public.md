@@ -23,8 +23,9 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 
 | Image | Tag | Notes |
 |-------|-----|-------|
-| Backend | 0.3.9 | Fixes benchmark_logs KeyError from 0.3.8, K8s token rotation fix, TPOT metrics, max_output_tokens, k_retrieved histogram |
+| Backend | 0.3.9 | Fixes benchmark_logs KeyError from 0.3.8, K8s token rotation fix, TPOT metrics, max_output_tokens, k_retrieved histogram. Includes `qdrant-client==1.16.2` |
 | Frontend | 0.3.5 | SSE streaming with metrics (0.3.7 has regression) |
+| Qdrant | v1.12.6 | **Must be >= v1.10.0** for backend 0.3.9 (`/points/query` API). v1.8.4 causes query 404 |
 
 ### Provider Deployment Status
 
@@ -238,7 +239,9 @@ rag-ray-haystack/
 1. **East-West probe**: May need network policy adjustments per cluster (iperf3 connections can be reset)
 2. **Prompt tokens**: Deferred - not critical for cross-provider comparison
 3. **Workload manifests**: CLI args work; formal schema is nice-to-have
-4. **Ray pod probes**: Default KubeRay probes use `wget` which isn't in our backend image. Pods restart periodically but recover quickly. App remains functional.
+4. **Ray pod probes**: Default KubeRay probes use `wget` which isn't in our backend image. Custom tcpSocket/exec probes configured in rayservice template.
+5. **Qdrant embedding dimension**: `qdrant-haystack` auto-creates collection with dim=768, but `all-MiniLM-L6-v2` produces dim=384. After first deploy, recreate the collection with correct dimension (see DEPLOYMENT.md).
+6. **Qdrant server version**: Must be >= v1.10.0 (currently v1.12.6). Backend 0.3.9 uses `qdrant-client==1.16.2` which requires the `/points/query` API.
 
 ---
 
@@ -256,6 +259,8 @@ rag-ray-haystack/
 ## Environment (Sanitized)
 
 - Provider: `<provider>`
-- Namespace: `rag`
+- Namespace: `rag-app`
 - Image registry: `ghcr.io/<owner>`
-- Image tag: `0.3.6`
+- Backend tag: `0.3.9`
+- Frontend tag: `0.3.5`
+- Qdrant tag: `v1.12.6`
