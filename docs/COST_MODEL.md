@@ -614,11 +614,11 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 **Compute + Management + Storage (excluding network):**
 
-| Provider | Status | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
-|----------|--------|----------|----------|-----------|-----------------|---------------|--------------|
-| **Akamai LKE** | ✅ Running | $0.52 | $0.036 | $0.00 | $0.10 | **$433.16** | $0.59 |
-| **AWS EKS** | ✅ Running | $0.8048 | $0.0416 | $0.10 | $0.10 | **$722.24** | $0.99 |
-| **GCP GKE** | ✅ Running | $0.8536 | $0.067 | $0.10 | $0.10 | **$794.95** | $1.09 |
+| Provider | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
+|----------|----------|----------|-----------|-----------------|---------------|--------------|
+| **Akamai LKE** | $0.52 | $0.036 | $0.00 | $0.10 | **$433.16** | $0.59 |
+| **AWS EKS** | $0.8048 | $0.0416 | $0.10 | $0.10 | **$722.24** | $0.99 |
+| **GCP GKE** | $0.8536 | $0.067 | $0.10 | $0.10 | **$794.95** | $1.09 |
 
 **Including Estimated Networking (~100GB egress/month):**
 
