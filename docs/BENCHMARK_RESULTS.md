@@ -6,7 +6,7 @@ This document tracks benchmark results across all three cloud providers over tim
 
 ## Benchmark Results (February 18, 2026)
 
-**Timestamp:** 2026-02-17T22:26:40 CST (2026-02-18T04:26:40 UTC)  
+**Timestamp:** 2026-02-18T04:26:40 UTC  
 **Backend Version:** 0.3.9  
 **Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
 **Note:** All prices verified against public pricing pages. LKE GPU corrected from $1.50 to $0.52. GKE GPU corrected from $0.94 to $0.8536.
