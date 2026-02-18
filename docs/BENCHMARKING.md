@@ -719,8 +719,8 @@ Results from same-node tests don't reflect real cross-node performance.
   "test_type": "east-west",
   "provider": "gcp-gke",
   "cluster": "gke_rag-ray-haystack_us-central1-a_rag-ray-haystack",
-  "server_node": "gke-rag-ray-haystack-...-h5jk",
-  "client_node": "gke-rag-ray-haystack-...-21wq",
+  "server_node": "gke-rag-ray-haystack-*-gpu-node",
+  "client_node": "gke-rag-ray-haystack-*-cpu-node",
   "same_node": false,
   "tcp_throughput": {
     "gbps": 6.97,

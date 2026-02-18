@@ -13,6 +13,9 @@ terraform.tfvars
 /docs/CONTEXT.local.md
 /docs/ENDPOINTS.local.md
 
+# --- Cost config with environment-specific values (use .example as template) ---
+/cost/cost-config.yaml
+
 # --- Scripts with environment-specific IPs (use .example as template) ---
 /scripts/run_all_benchmarks.sh
 

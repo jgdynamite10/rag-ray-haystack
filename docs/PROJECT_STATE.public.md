@@ -72,8 +72,8 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 | TCP Throughput | ~1.0 Gbps |
 | TCP Retransmits | ~1500-2000 |
 | Cross-node confirmed | Yes |
-| Server Node | lke561078-818958-* |
-| Client Node | lke561078-818957-* |
+| Server Node | lke*-*-gpu-node |
+| Client Node | lke*-*-cpu-node |
 
 ### Cost Computation
 

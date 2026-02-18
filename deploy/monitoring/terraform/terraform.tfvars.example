@@ -27,6 +27,6 @@ grafana_admin_password = "your-grafana-password"
 
 # Prometheus URLs for each cluster
 # Get these by running: kubectl -n monitoring get svc prometheus-kube-prometheus-prometheus
-prometheus_lke_url = "http://172.238.165.45:9090"
+prometheus_lke_url = "http://<PROMETHEUS-LKE-IP>:9090"
 prometheus_eks_url = ""  # Fill in when EKS is deployed
 prometheus_gke_url = ""  # Fill in when GKE is deployed

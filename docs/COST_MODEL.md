@@ -382,16 +382,16 @@ This section documents the **actual deployed infrastructure** queried directly f
 **Cluster Info:**
 - Region: `us-central1` / Zone: `us-central1-a`
 - Kubernetes Control Plane: `https://<GKE-CONTROL-PLANE-IP>`
-- Kubeconfig: `~/.kube/gke-kubeconfig.yaml`
+- Kubeconfig: `~/.kube/<gke-kubeconfig>.yaml`
 - Deployment: Single-zone (all nodes in us-central1-a)
 
 **Compute Nodes (Queried January 30, 2026):**
 
 | Node Name | Instance Type | vCPU | Memory | GPU | Zone | On-Demand $/hr |
 |-----------|---------------|------|--------|-----|------|----------------|
-| gke-rag-ray-haystack-...-2279193b-b4gd | `g2-standard-8` | 8 | 32 GB | 1x NVIDIA L4 (24GB) | us-central1-a | **$0.8536** |
-| gke-rag-ray-haystack-...-c0133a71-21wq | `e2-standard-2` | 2 | 8 GB | — | us-central1-a | **$0.067** |
-| gke-rag-ray-haystack-...-c0133a71-h5jk | `e2-standard-2` | 2 | 8 GB | — | us-central1-a | **$0.067** |
+| gke-rag-ray-haystack-*-gpu-node | `g2-standard-8` | 8 | 32 GB | 1x NVIDIA L4 (24GB) | us-central1-a | **$0.8536** |
+| gke-rag-ray-haystack-*-cpu-node-1 | `e2-standard-2` | 2 | 8 GB | — | us-central1-a | **$0.067** |
+| gke-rag-ray-haystack-*-cpu-node-2 | `e2-standard-2` | 2 | 8 GB | — | us-central1-a | **$0.067** |
 
 **Storage (Queried January 30, 2026):**
 
@@ -400,9 +400,9 @@ This section documents the **actual deployed infrastructure** queried directly f
 | qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `standard-rwo` (pd-ssd) | 10 Gi | **40 KB (0.0004%)** | $0.17 |
 
 **Pod Placement:**
-- vLLM → GPU node (2279193b-b4gd)
-- Backend, Ray worker → CPU node (c0133a71-21wq)
-- Frontend, Qdrant, Ray head → CPU node (c0133a71-h5jk)
+- vLLM → GPU node
+- Backend, Ray worker → CPU node 1
+- Frontend, Qdrant, Ray head → CPU node 2
 
 **Monthly Cost Breakdown (On-Demand):**
 
@@ -464,17 +464,17 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 **Cluster Info:**
 - Region: `us-ord` (Chicago)
-- Control Plane: `https://06d998c7-a2de-4b55-a7c6-8b20c0d47a81.us-ord-2-gw.linodelke.net:443`
-- Kubeconfig: `~/.kube/rag-ray-haystack-kubeconfig.yaml`
+- Control Plane: `https://<LKE-CLUSTER-UUID>.us-ord-2-gw.linodelke.net:443`
+- Kubeconfig: `~/.kube/<lke-kubeconfig>.yaml`
 - Zone: Single region (no multi-AZ like AWS)
 
 **Compute Nodes (Queried January 30, 2026):**
 
 | Node Name | Instance Type | vCPU | Memory | GPU | On-Demand $/hr |
 |-----------|---------------|------|--------|-----|----------------|
-| lke561078-818958-4d4783670000 | `g2-gpu-rtx4000a1-s` | 4 | 16 GB | 1x RTX 4000 Ada (20GB) | **$0.52** |
-| lke561078-818957-4ab4a6130000 | `g6-standard-2` | 2 | 4 GB | — | **$0.036** |
-| lke561078-818957-50ad39bd0000 | `g6-standard-2` | 2 | 4 GB | — | **$0.036** |
+| lke*-*-gpu-node | `g2-gpu-rtx4000a1-s` | 4 | 16 GB | 1x RTX 4000 Ada (20GB) | **$0.52** |
+| lke*-*-cpu-node-1 | `g6-standard-2` | 2 | 4 GB | — | **$0.036** |
+| lke*-*-cpu-node-2 | `g6-standard-2` | 2 | 4 GB | — | **$0.036** |
 
 **Storage (Queried January 30, 2026):**
 
@@ -483,8 +483,8 @@ This section documents the **actual deployed infrastructure** queried directly f
 | qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `linode-block-storage` | 10 Gi | **2.1 MB (0.02%)** | $0.10 |
 
 **Pod Placement:**
-- Backend, Qdrant, vLLM → GPU node (lke561078-818958)
-- Frontend → CPU node (lke561078-818957-50ad39bd0000)
+- Backend, Qdrant, vLLM → GPU node
+- Frontend → CPU node
 
 **Monthly Cost Breakdown (On-Demand):**
 
@@ -543,16 +543,16 @@ This section documents the **actual deployed infrastructure** queried directly f
 **Cluster Info:**
 - Region: `us-east-1`
 - Zones: `us-east-1c`, `us-east-1d`, `us-east-1f` (multi-AZ)
-- Kubernetes Control Plane: `https://B698E4381E416AB41D3F0F6ABB030D84.gr7.us-east-1.eks.amazonaws.com`
-- Kubeconfig: `~/.kube/eks-kubeconfig-fresh.yaml`
+- Kubernetes Control Plane: `https://<EKS-CLUSTER-ID>.gr7.us-east-1.eks.amazonaws.com`
+- Kubeconfig: `~/.kube/<eks-kubeconfig>.yaml`
 
 **Compute Nodes (Queried January 30, 2026):**
 
 | Node Name | Instance Type | vCPU | Memory | GPU | Zone | On-Demand $/hr |
 |-----------|---------------|------|--------|-----|------|----------------|
-| ip-172-31-43-85.ec2.internal | `g6.xlarge` | 4 | 16 GB | 1x NVIDIA L4 (24GB) | us-east-1d | **$0.80** |
-| ip-172-31-56-49.ec2.internal | `t3.medium` | 2 | 4 GB | — | us-east-1c | **$0.0416** |
-| ip-172-31-92-17.ec2.internal | `t3.medium` | 2 | 4 GB | — | us-east-1f | **$0.0416** |
+| ip-*-*-*-*.ec2.internal | `g6.xlarge` | 4 | 16 GB | 1x NVIDIA L4 (24GB) | us-east-1d | **$0.80** |
+| ip-*-*-*-*.ec2.internal | `t3.medium` | 2 | 4 GB | — | us-east-1c | **$0.0416** |
+| ip-*-*-*-*.ec2.internal | `t3.medium` | 2 | 4 GB | — | us-east-1f | **$0.0416** |
 
 **Storage (Queried January 30, 2026):**
 
