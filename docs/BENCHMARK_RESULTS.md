@@ -20,6 +20,7 @@ This document tracks benchmark results across all three cloud providers over tim
 | **Latency p50** | **14,240 ms** 🏆 | 20,088 ms | 20,050 ms |
 | **Latency p95** | **16,219 ms** 🏆 | 23,590 ms | 22,880 ms |
 | **TPOT p50** | **42.6 ms** 🏆 | 57.6 ms | 61.6 ms |
+| **TPOT p95** | **49.2 ms** 🏆 | 66.2 ms | 68.2 ms |
 | **Tokens/sec** | **18.06** 🏆 | 13.17 | 12.87 |
 | **Duration** | **151s** 🏆 | 215s | 217s |
 
