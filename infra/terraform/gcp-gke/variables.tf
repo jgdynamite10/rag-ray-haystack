@@ -42,7 +42,7 @@ variable "subnetwork" {
 variable "cpu_machine_type" {
   description = "Machine type for CPU node pool."
   type        = string
-  default     = "e2-standard-4"
+  default     = "e2-standard-2"
 }
 
 variable "cpu_node_count" {

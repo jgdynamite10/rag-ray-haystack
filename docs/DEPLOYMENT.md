@@ -409,6 +409,16 @@ terraform plan
 terraform apply
 ```
 
+**Default Configuration** (override via `terraform.tfvars`):
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Region | us-central1 | |
+| Zone | us-central1-a | Zonal cluster (single-zone) |
+| Cluster | rag-ray-haystack | |
+| CPU Nodes | 2x e2-standard-2 (2 vCPU, 8 GB) | $0.067/hr. **Do not use `e2-medium`** — see [GCP Shared-Core vCPU Caveat](#gcp-shared-core-vcpu-caveat) |
+| GPU Nodes | 1x g2-standard-8 (NVIDIA L4, 24 GB) | $0.8536/hr |
+| K8s Version | 1.34 | Set via `k8s_version` |
+
 ### Step 2: Configure kubectl
 
 ```bash
@@ -492,6 +502,7 @@ kubectl get pods -n kuberay-system
 ```bash
 export IMAGE_REGISTRY=ghcr.io/jgdynamite10
 export IMAGE_TAG=0.3.9
+export FRONTEND_TAG=0.3.5  # 0.3.7 has Rolling metrics regression
 
 helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --create-namespace \
@@ -500,7 +511,34 @@ helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --set backend.image.repository=${IMAGE_REGISTRY}/rag-ray-backend \
   --set frontend.image.repository=${IMAGE_REGISTRY}/rag-ray-frontend \
   --set backend.image.tag=${IMAGE_TAG} \
-  --set frontend.image.tag=${IMAGE_TAG}
+  --set frontend.image.tag=${FRONTEND_TAG}
+```
+
+### Step 8b: Fix Qdrant Collection Dimension (first deploy only)
+
+See [Qdrant Embedding Dimension Mismatch (768 vs 384)](#qdrant-embedding-dimension-mismatch-768-vs-384) for the full explanation. The short version:
+
+```bash
+# 1. Wait for all pods to be Running
+kubectl get pods -n rag-app
+
+# 2. Trigger backend initialization (this creates the collection with dim=768)
+curl -s -X POST http://<FRONTEND_IP>/api/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"texts":["initialization trigger"]}'
+# This will fail with "Vector dimension error: expected dim: 768, got 384" — that's expected
+
+# 3. Delete and recreate with the correct dimension (384)
+kubectl run -n rag-app fix-dim --rm -i --restart=Never --image=curlimages/curl -- \
+  sh -c 'curl -X DELETE http://rag-app-rag-app-qdrant:6333/collections/rag-documents && \
+  curl -X PUT http://rag-app-rag-app-qdrant:6333/collections/rag-documents \
+  -H "Content-Type: application/json" \
+  -d '"'"'{"vectors":{"size":384,"distance":"Cosine"}}'"'"''
+
+# 4. Now ingest and query will work
+curl -s -X POST http://<FRONTEND_IP>/api/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"texts":["Your document text here..."]}'
 ```
 
 ---
@@ -864,6 +902,117 @@ curl -s http://<FRONTEND_IP>/api/healthz
 ```
 
 The app is functional despite the probe restarts. To fix permanently, the backend Docker image needs `wget` installed or the rayservice template needs custom probes using `curl`.
+
+---
+
+## Platform-Specific Caveats
+
+### GCP Shared-Core vCPU Caveat
+
+**TL;DR:** Do not use `e2-medium` for CPU nodes on GKE. Use `e2-standard-2` instead.
+
+GCP's `e2-medium` is marketed as "2 vCPU, 4 GB" which looks equivalent to AWS `t3.medium` (2 vCPU, 4 GB) and Akamai `g6-standard-2` (2 vCPU, 4 GB). It is not.
+
+**The problem:** GCP E2 shared-core instances (`e2-micro`, `e2-small`, `e2-medium`) use **time-shared vCPUs**. The "2 vCPU" label means you have access to 2 physical cores, but only for a fraction of the time. Kubernetes sees this as ~940 millicores of allocatable CPU — roughly **half** of what a true 2-vCPU instance provides.
+
+| Instance | Provider | vCPU | Core Type | K8s Allocatable CPU | $/hr |
+|----------|----------|------|-----------|---------------------|------|
+| `t3.medium` | AWS | 2 | Burstable (full baseline) | ~1,930m | $0.0416 |
+| `g6-standard-2` | Akamai | 2 | Dedicated | ~1,900m | $0.036 |
+| `e2-medium` | GCP | 2 | **Shared (50% time)** | **~940m** | $0.0335 |
+| `e2-standard-2` | GCP | 2 | Dedicated | ~1,930m | $0.067 |
+
+**What happens in practice:**
+
+With `e2-medium`, the Prometheus monitoring stack (kube-prometheus-stack, Grafana, Alertmanager) consumes ~800m per node, leaving only ~140m free. The RAG application needs:
+- Backend (Ray Serve): 500m request
+- Ray Head: 1,000m request
+- Ray Worker: 1,000m request
+
+With only ~280m total free across two `e2-medium` nodes, **none of the Ray pods can schedule**. They remain Pending indefinitely with `Insufficient cpu` errors:
+
+```
+0/3 nodes are available: 1 node(s) had untolerated taint (GPU), 2 Insufficient cpu.
+```
+
+Even scaling to 3 or 4 `e2-medium` nodes doesn't fully solve it — a single Ray Head pod requesting 1,000m **exceeds the 940m allocatable on any individual node**.
+
+**Why AWS `t3.medium` doesn't have this problem:**
+
+AWS burstable instances (`t3` family) use a credit-based system, but Kubernetes sees the **full 2 vCPU** as allocatable (~1,930m). The burst mechanism only throttles sustained CPU above baseline — it doesn't reduce the Kubernetes scheduler's view of available capacity. AWS baseline for `t3.medium` is 20% of 2 vCPU = 400m sustained, but the scheduler sees 2,000m.
+
+**The fix:** Use `e2-standard-2` (2 dedicated vCPU, 8 GB, $0.067/hr). The extra 4 GB of RAM over `e2-medium` is unused but harmless. The dedicated cores provide the same ~1,930m allocatable CPU as `t3.medium`.
+
+**Cost impact:** GCP CPU nodes cost $0.067/hr vs $0.0416/hr (AWS) and $0.036/hr (Akamai). This adds ~$49/month over the cheapest option but is required for the pods to schedule.
+
+### Qdrant Embedding Dimension Mismatch (768 vs 384)
+
+**TL;DR:** The backend defaults to 768-dimensional vectors, but the embedding model produces 384. You must manually fix the Qdrant collection after first deploy.
+
+This is a configuration mismatch between three components:
+
+| Component | Expects | Why |
+|-----------|---------|-----|
+| `sentence-transformers/all-MiniLM-L6-v2` (embedding model) | — | **Produces 384-dimensional** vectors |
+| `qdrant-haystack` (Haystack integration) | `embedding_dim=768` | Default value; not overridden in backend code |
+| Qdrant server (collection config) | Matches collection's `vectors.size` | Rejects vectors that don't match |
+
+**What happens on first deploy:**
+
+1. The backend starts and creates a `QdrantDocumentStore` **without** specifying `embedding_dim`:
+   ```python
+   # apps/backend/app/main.py line 584
+   QdrantDocumentStore(url=self.qdrant_url, index=self.qdrant_collection)
+   # embedding_dim defaults to 768
+   ```
+
+2. On the first ingest/query, `qdrant-haystack` calls `_initialize_client()` which auto-creates the `rag-documents` collection with `vectors.size = 768`.
+
+3. The embedding model (`all-MiniLM-L6-v2`) produces 384-dimensional vectors. Qdrant rejects them:
+   ```
+   Vector dimension error: expected dim: 768, got 384
+   ```
+
+**The fix (required after every fresh deploy):**
+
+The trick is that `qdrant-haystack` only validates the collection **once** during `_initialize_client()`. After that, the client is cached and never re-checks. So:
+
+1. **Let the backend initialize** — trigger any ingest or query request. It will fail, but that's fine. The important thing is that `_initialize_client()` runs and caches the client.
+
+2. **Delete and recreate the collection** with the correct dimension:
+   ```bash
+   kubectl run -n rag-app fix-dim --rm -i --restart=Never --image=curlimages/curl -- \
+     sh -c 'curl -X DELETE http://rag-app-rag-app-qdrant:6333/collections/rag-documents && \
+     curl -X PUT http://rag-app-rag-app-qdrant:6333/collections/rag-documents \
+     -H "Content-Type: application/json" \
+     -d '"'"'{"vectors":{"size":384,"distance":"Cosine"}}'"'"''
+   ```
+
+3. **Now ingest and query work** — the cached client doesn't re-validate, and Qdrant accepts the 384-dimensional vectors because the collection is now configured for 384.
+
+**Why this ordering matters:**
+
+If you create the 384-dim collection **before** the backend initializes, `_initialize_client()` will find a collection whose dimension (384) doesn't match the expected default (768) and raise:
+
+```
+ValueError: Collection 'rag-documents' already exists in Qdrant, but it is
+configured with a vector size '384'. If you want to use that collection, but
+with a different vector size, please set `recreate_collection=True` argument.
+```
+
+This is a hard error — the backend won't serve any requests until you fix it (either restart the pod after deleting the collection, or set the correct `embedding_dim`).
+
+**Permanent fix (code change):** Pass `embedding_dim=384` to `QdrantDocumentStore` in `apps/backend/app/main.py`:
+
+```python
+# Current (broken default):
+QdrantDocumentStore(url=self.qdrant_url, index=self.qdrant_collection)
+
+# Fixed:
+QdrantDocumentStore(url=self.qdrant_url, index=self.qdrant_collection, embedding_dim=384)
+```
+
+This would be included in a future backend image (0.3.10+). Until then, the manual fix is required after every fresh deploy.
 
 ---
 

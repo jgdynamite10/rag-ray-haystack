@@ -132,7 +132,7 @@ providers:
     
     # Compute (USD per hour)
     gpu_node_usd_per_hr: 0.8536            # g2-standard-8 (NVIDIA L4 24GB)
-    cpu_node_usd_per_hr: 0.134             # e2-standard-4 (4 vCPU, 16GB)
+    cpu_node_usd_per_hr: 0.067             # e2-standard-2 (2 vCPU, 8GB)
     
     # Management
     cluster_mgmt_usd_per_hr: 0.10          # GKE management fee
@@ -156,7 +156,7 @@ benchmark_context:
 |----------|--------------|----------|--------------|----------|-----------|
 | Akamai LKE | g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB) | **$0.52** | g6-standard-2 (2 vCPU, 4GB) | $0.036 | $0.00 |
 | AWS EKS | g6.xlarge (NVIDIA L4 24GB) | **$0.80** | t3.medium (2 vCPU, 4GB) | $0.0416 | $0.10 |
-| GCP GKE | g2-standard-8 (NVIDIA L4 24GB) | **$0.8536** | e2-standard-4 (4 vCPU, 16GB) | $0.134 | $0.10 |
+| GCP GKE | g2-standard-8 (NVIDIA L4 24GB) | **$0.8536** | e2-standard-2 (2 vCPU, 8GB) | $0.067 | $0.10 |
 
 **Pricing Sources:**
 - [Linode Pricing](https://www.linode.com/pricing/) | [GPU Plans](https://www.linode.com/docs/products/compute/compute-instances/plans/gpu/)
@@ -390,8 +390,8 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Node Name | Instance Type | vCPU | Memory | GPU | Zone | On-Demand $/hr |
 |-----------|---------------|------|--------|-----|------|----------------|
 | gke-rag-ray-haystack-...-2279193b-b4gd | `g2-standard-8` | 8 | 32 GB | 1x NVIDIA L4 (24GB) | us-central1-a | **$0.8536** |
-| gke-rag-ray-haystack-...-c0133a71-21wq | `e2-standard-4` | 4 | 16 GB | — | us-central1-a | **$0.134** |
-| gke-rag-ray-haystack-...-c0133a71-h5jk | `e2-standard-4` | 4 | 16 GB | — | us-central1-a | **$0.134** |
+| gke-rag-ray-haystack-...-c0133a71-21wq | `e2-standard-2` | 2 | 8 GB | — | us-central1-a | **$0.067** |
+| gke-rag-ray-haystack-...-c0133a71-h5jk | `e2-standard-2` | 2 | 8 GB | — | us-central1-a | **$0.067** |
 
 **Storage (Queried January 30, 2026):**
 
@@ -410,7 +410,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 |---------------|-------------|--------------|
 | **Compute** | | |
 | GPU Node (1x g2-standard-8) | $0.8536 × 730 hrs | $623.13 |
-| CPU Nodes (2x e2-standard-4) | $0.134 × 730 hrs × 2 | $195.64 |
+| CPU Nodes (2x e2-standard-2) | $0.067 × 730 hrs × 2 | $97.82 |
 | **Management** | | |
 | GKE Control Plane (Standard) | $0.10 × 730 hrs | $73.00 |
 | GKE Free Tier Credit | -$74.40 (1 zonal cluster free) | ($0.00 net) |
@@ -420,10 +420,10 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Internet Egress (~100GB, Premium) | 100 GB × $0.12 | $12.00 |
 | Inter-zone Traffic | $0.00 (single-zone deployment) | $0.00 |
 | Intra-zone Traffic | Free (internal) | $0.00 |
-| **Total (with networking)** | | **$905.47** |
-| **Total (compute only)** | | **$893.47** |
+| **Total (with networking)** | | **$807.65** |
+| **Total (compute only)** | | **$795.65** |
 
-**Hourly Run Rate:** $1.24/hr (with networking) | $1.22/hr (compute only)
+**Hourly Run Rate:** $1.11/hr (with networking) | $1.09/hr (compute only)
 
 **Networking Details:**
 - **Internet Egress (Premium Tier)**: $0.12/GB for first 1 TB/month
@@ -618,7 +618,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 |----------|--------|----------|----------|-----------|-----------------|---------------|--------------|
 | **Akamai LKE** | ✅ Running | $0.52 | $0.036 | $0.00 | $0.10 | **$433.16** | $0.59 |
 | **AWS EKS** | ✅ Running | $0.80 | $0.0416 | $0.10 | $0.10 | **$718.74** | $0.98 |
-| **GCP GKE** | ✅ Running | $0.8536 | $0.134 | $0.10 | $0.17 | **$893.47** | $1.22 |
+| **GCP GKE** | ✅ Running | $0.8536 | $0.067 | $0.10 | $0.17 | **$795.65** | $1.09 |
 
 **Including Estimated Networking (~100GB egress/month):**
 
@@ -626,16 +626,16 @@ This section documents the **actual deployed infrastructure** queried directly f
 |----------|--------------------------|------------|------------------|--------------|
 | **Akamai LKE** | $433.16 | ~$2.00 (overage if exceeds 9TB pool) | **$435.16** | $0.60 |
 | **AWS EKS** | $718.74 | ~$47.35 (NAT + egress + cross-AZ) | **$766.09** | $1.05 |
-| **GCP GKE** | $893.47 | ~$12.00 (egress only) | **$905.47** | $1.24 |
+| **GCP GKE** | $795.65 | ~$12.00 (egress only) | **$807.65** | $1.11 |
 
 **Key Findings:**
-1. **Akamai LKE is 49% cheaper than AWS EKS** and **52% cheaper than GCP GKE**
+1. **Akamai LKE is 43% cheaper than AWS EKS** and **43% cheaper than GCP GKE**
 2. **No management fee** on LKE saves $73/month vs AWS/GCP (GKE free tier may offset)
 3. **LKE includes 9TB network transfer** in plan (vs paid egress on AWS/GCP)
 4. **AWS networking adds significant cost**: NAT Gateway ($32.85/mo) + data processing + cross-AZ traffic
 5. **GCP networking is moderate**: $12/mo for 100GB egress, no NAT required, single-zone avoids inter-zone charges
 6. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
-7. **GCP has most powerful CPU nodes** (4 vCPU/16GB vs AWS 2 vCPU/8GB vs LKE 2 vCPU/4GB)
+7. **All providers use 2 dedicated vCPU**: LKE g6-standard-2 (4GB), AWS t3.medium (4GB), GCP e2-standard-2 (8GB). GCP's `e2-medium` (shared-core) was unusable — see DEPLOYMENT.md for details
 8. **AWS multi-AZ deployment** spans 3 zones (highest availability but higher network cost)
 9. **GCP/LKE single-zone** deployments have no inter-zone charges but lower fault tolerance
 

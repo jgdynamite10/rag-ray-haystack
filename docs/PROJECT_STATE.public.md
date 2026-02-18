@@ -33,7 +33,7 @@ This file is safe to publish. Keep it sanitized and avoid sensitive details.
 |----------|--------|----------|-------|
 | Akamai LKE | ✅ Deployed | http://<LKE-FRONTEND-IP> | Load tested |
 | AWS EKS | ✅ Deployed | ELB endpoint | Ready for benchmarks |
-| GCP GKE | ⏳ Pending | - | Next up |
+| GCP GKE | ✅ Deployed | http://<GKE-FRONTEND-IP> | `e2-standard-2` CPU + `g2-standard-8` GPU. See DEPLOYMENT.md for shared-core caveat |
 
 ---
 
@@ -242,6 +242,7 @@ rag-ray-haystack/
 4. **Ray pod probes**: Default KubeRay probes use `wget` which isn't in our backend image. Custom tcpSocket/exec probes configured in rayservice template.
 5. **Qdrant embedding dimension**: `qdrant-haystack` auto-creates collection with dim=768, but `all-MiniLM-L6-v2` produces dim=384. After first deploy, recreate the collection with correct dimension (see DEPLOYMENT.md).
 6. **Qdrant server version**: Must be >= v1.10.0 (currently v1.12.6). Backend 0.3.9 uses `qdrant-client==1.16.2` which requires the `/points/query` API.
+7. **GCP shared-core instances**: Do **not** use `e2-medium` for CPU nodes on GKE. Shared-core instances provide only ~940m allocatable CPU (vs ~1,930m on dedicated). Ray pods (1,000m request) cannot schedule. Use `e2-standard-2` instead. See DEPLOYMENT.md for full analysis.
 
 ---
 
@@ -251,7 +252,8 @@ rag-ray-haystack/
 - [x] Run benchmarks on AWS EKS (Load test: 500 requests, 50 concurrency)
 - [x] Verify dashboards with live EKS data
 - [x] Test East-West probe on EKS (4.96 Gbps)
-- [ ] Deploy to GCP GKE
+- [x] Deploy to GCP GKE (e2-standard-2 CPU, g2-standard-8 GPU)
+- [ ] Run benchmarks on GCP GKE
 - [ ] Compare benchmark results across all 3 providers
 
 ---

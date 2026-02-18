@@ -1,6 +1,13 @@
 global:
   provider: "gcp-gke"
 
+kuberay:
+  worker:
+    tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+
 frontend:
   service:
     type: LoadBalancer
