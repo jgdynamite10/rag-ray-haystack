@@ -4,6 +4,44 @@ This document tracks benchmark results across all three cloud providers over tim
 
 ---
 
+## Benchmark Results (February 18, 2026)
+
+**Timestamp:** 2026-02-17T22:26:40 CST (2026-02-18T04:26:40 UTC)  
+**Backend Version:** 0.3.9  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Note:** All prices verified against public pricing pages. LKE GPU corrected from $1.50 to $0.52. GKE GPU corrected from $0.94 to $0.8536.
+
+### North-South (500 requests, 50 concurrency)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 500/500 ✅ | 500/500 ✅ | 500/500 ✅ |
+| **TTFT p50** | **3,124 ms** 🏆 | 5,669 ms | 4,617 ms |
+| **TTFT p95** | **5,980 ms** 🏆 | 9,082 ms | 8,413 ms |
+| **Latency p50** | **14,240 ms** 🏆 | 20,088 ms | 20,050 ms |
+| **Latency p95** | **16,219 ms** 🏆 | 23,590 ms | 22,880 ms |
+| **TPOT p50** | **42.6 ms** 🏆 | 57.6 ms | 61.6 ms |
+| **TPOT p95** | **49.2 ms** 🏆 | 66.2 ms | 68.2 ms |
+| **Tokens/sec** | **18.06** 🏆 | 13.17 | 12.87 |
+| **Duration** | **151s** 🏆 | 215s | 217s |
+
+### East-West Network
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 1.02 Gbps | **4.65 Gbps** 🏆 | 3.82 Gbps |
+| **Retransmits** | 3,949 | **2,212** 🏆 | 25,489 |
+
+### Verified Costs (from public pricing, Feb 18 2026):
+
+| Provider | Hourly | Monthly (compute only) |
+|----------|--------|------------------------|
+| **Akamai LKE** | $0.59 | $432 |
+| **AWS EKS** | $0.98 | $718 |
+| **GCP GKE** | $1.09 | $794 |
+
+---
+
 ## Benchmark Results (February 17, 2026)
 
 **Timestamp:** 2026-02-17T19:35:07 CST (2026-02-18T01:35:07 UTC)  
@@ -246,6 +284,7 @@ This document tracks benchmark results across all three cloud providers over tim
 
 | Date | LKE TTFT p50 | EKS TTFT p50 | GKE TTFT p50 | Winner |
 |------|--------------|--------------|--------------|--------|
+| 2026-02-18 | 3,124 ms | 5,669 ms | 4,617 ms | LKE 🏆 |
 | 2026-02-17 | 2,324 ms | 6,230 ms | 8,044 ms | LKE 🏆 |
 | 2026-02-04 | 1,442 ms | 3,884 ms | 2,540 ms | LKE 🏆 |
 | 2026-02-03 | 2,902 ms | 3,072 ms | 3,468 ms | LKE 🏆 |
@@ -256,6 +295,7 @@ This document tracks benchmark results across all three cloud providers over tim
 
 | Date | LKE Tokens/sec | EKS Tokens/sec | GKE Tokens/sec | Winner |
 |------|----------------|----------------|----------------|--------|
+| 2026-02-18 | 18.06 | 13.17 | 12.87 | LKE 🏆 |
 | 2026-02-17 | 20.75 | 11.42 | 10.99 | LKE 🏆 |
 | 2026-02-04 | 27.07 | 13.87 | 15.55 | LKE 🏆 |
 | 2026-02-03 | 18.38 | 13.98 | 13.30 | LKE 🏆 |
