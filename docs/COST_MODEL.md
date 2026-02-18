@@ -15,7 +15,7 @@ The cost model is **inputs-driven** for reproducibility:
 │  (JSON)             │     │   (YAML)            │
 │                     │     │                     │
 │  - requests: 100    │     │  akamai-lke:        │
-│  - total_tokens     │     │    gpu: $1.50/hr    │
+│  - total_tokens     │     │    gpu: $0.52/hr    │
 │  - duration_seconds │     │    cpu: $0.036/hr   │
 └─────────┬───────────┘     └─────────┬───────────┘
           │                           │

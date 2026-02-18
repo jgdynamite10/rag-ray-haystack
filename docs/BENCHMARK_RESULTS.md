@@ -36,9 +36,9 @@ This document tracks benchmark results across all three cloud providers over tim
 
 | Provider | Hourly | Monthly (compute only) |
 |----------|--------|------------------------|
-| **Akamai LKE** | $1.57 | $1,148 |
-| **AWS EKS** | $0.99 | $721 |
-| **GCP GKE** | $1.18 | $858 |
+| **Akamai LKE** | $0.59 | $432 |
+| **AWS EKS** | $0.98 | $718 |
+| **GKE** | $1.17 | $857 |
 
 ---
 

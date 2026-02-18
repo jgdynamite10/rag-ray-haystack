@@ -17,7 +17,7 @@ providers:
     notes: "Linode list prices as of Jan 2026. GPU: g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB)"
     
     # Node costs (USD per hour)
-    gpu_node_usd_per_hr: 1.50      # g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB)
+    gpu_node_usd_per_hr: 0.52      # g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB)
     cpu_node_usd_per_hr: 0.036     # g6-standard-2 (2 vCPU, 4GB)
     
     # Network costs (USD per GB)
