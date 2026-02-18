@@ -262,7 +262,7 @@ All providers use comparable Ada Lovelace architecture GPUs:
 | Provider | Instance | GPU | Architecture | vRAM | GPU $/hr |
 |----------|----------|-----|--------------|------|----------|
 | Akamai LKE | g2-gpu-rtx4000a1-s | RTX 4000 Ada | Ada Lovelace | 20 GB | $0.52/hr |
-| AWS EKS | g6.xlarge | NVIDIA L4 | Ada Lovelace | 24 GB | $0.80/hr |
+| AWS EKS | g6.xlarge | NVIDIA L4 | Ada Lovelace | 24 GB | $0.8048/hr |
 | GCP GKE | g2-standard-8 | NVIDIA L4 | Ada Lovelace | 24 GB | $0.85/hr |
 
 → See [docs/COST_MODEL.md](docs/COST_MODEL.md) for full cost breakdown including CPU, storage, and networking.

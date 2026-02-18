@@ -103,7 +103,7 @@ providers:
     storage_usd_per_gb_month: 0.10         # linode-block-storage
     
     # Network
-    egress_usd_per_gb: 0.02                # Overage rate (9TB pooled included)
+    egress_usd_per_gb: 0.005               # Overage rate ($5/TB)
     ingress_usd_per_gb: 0.0                # Free
 
   aws-eks:
@@ -111,7 +111,7 @@ providers:
     notes: "Queried from live cluster - us-east-1 region (multi-AZ)"
     
     # Compute (USD per hour)
-    gpu_node_usd_per_hr: 0.80              # g6.xlarge (NVIDIA L4 24GB)
+    gpu_node_usd_per_hr: 0.8048            # g6.xlarge (NVIDIA L4 24GB)
     cpu_node_usd_per_hr: 0.0416            # t3.medium (2 vCPU, 4GB)
     
     # Management
@@ -138,7 +138,7 @@ providers:
     cluster_mgmt_usd_per_hr: 0.10          # GKE management fee
     
     # Storage
-    storage_usd_per_gb_month: 0.17         # pd-ssd (standard-rwo)
+    storage_usd_per_gb_month: 0.10         # pd-balanced (standard-rwo)
     
     # Network
     egress_usd_per_gb: 0.12                # Internet egress (Premium tier)
@@ -155,7 +155,7 @@ benchmark_context:
 | Provider | GPU Instance | GPU $/hr | CPU Instance | CPU $/hr | Mgmt $/hr |
 |----------|--------------|----------|--------------|----------|-----------|
 | Akamai LKE | g2-gpu-rtx4000a1-s (RTX 4000 Ada 20GB) | **$0.52** | g6-standard-2 (2 vCPU, 4GB) | $0.036 | $0.00 |
-| AWS EKS | g6.xlarge (NVIDIA L4 24GB) | **$0.80** | t3.medium (2 vCPU, 4GB) | $0.0416 | $0.10 |
+| AWS EKS | g6.xlarge (NVIDIA L4 24GB) | **$0.8048** | t3.medium (2 vCPU, 4GB) | $0.0416 | $0.10 |
 | GCP GKE | g2-standard-8 (NVIDIA L4 24GB) | **$0.8536** | e2-standard-2 (2 vCPU, 8GB) | $0.067 | $0.10 |
 
 **Pricing Sources:**
@@ -397,7 +397,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 | PVC | Namespace | Storage Class | Provisioned | Actual Used | $/GB/month |
 |-----|-----------|---------------|-------------|-------------|------------|
-| qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `standard-rwo` (pd-ssd) | 10 Gi | **40 KB (0.0004%)** | $0.17 |
+| qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `standard-rwo` (pd-balanced) | 10 Gi | **40 KB (0.0004%)** | $0.10 |
 
 **Pod Placement:**
 - vLLM → GPU node
@@ -415,13 +415,13 @@ This section documents the **actual deployed infrastructure** queried directly f
 | GKE Control Plane (Standard) | $0.10 × 730 hrs | $73.00 |
 | GKE Free Tier Credit | -$74.40 (1 zonal cluster free) | ($0.00 net) |
 | **Storage** | | |
-| Persistent Disk SSD (10 GB) | 10 GB × $0.17 | $1.70 |
+| Persistent Disk (10 GB, pd-balanced) | 10 GB × $0.10 | $1.00 |
 | **Networking (Estimated)** | | |
 | Internet Egress (~100GB, Premium) | 100 GB × $0.12 | $12.00 |
 | Inter-zone Traffic | $0.00 (single-zone deployment) | $0.00 |
 | Intra-zone Traffic | Free (internal) | $0.00 |
-| **Total (with networking)** | | **$807.65** |
-| **Total (compute only)** | | **$795.65** |
+| **Total (with networking)** | | **$806.95** |
+| **Total (compute only)** | | **$794.95** |
 
 **Hourly Run Rate:** $1.11/hr (with networking) | $1.09/hr (compute only)
 
@@ -441,7 +441,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 - **Autopilot Mode**: $0.10/hr included in pod pricing
 - **Regional Cluster**: Same $0.10/hr (high availability included)
 
-**Storage Optimization Note:** Only 40 KB of 10 GB is used (0.0004%). Could reduce to 1 GB minimum and save $1.53/month.
+**Storage Optimization Note:** Only 40 KB of 10 GB is used (0.0004%). Could reduce to 1 GB minimum and save $0.90/month.
 
 **Cost Optimization Options:**
 - **Committed Use Discounts (CUD)**:
@@ -500,19 +500,19 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Block Storage (10 GB) | 10 GB × $0.10 | $1.00 |
 | **Networking** | | |
 | Network Transfer (pooled) | Included in plan | $0.00 |
-| Overage (~100GB excess) | $0.02/GB (if over pool) | ~$2.00 |
+| Overage (if exceeding 4TB pool) | $0.005/GB | ~$0.00 |
 | NodeBalancer (if used) | $10/mo (optional) | ($10.00) |
-| **Total (without HA/NodeBalancer)** | | **$433.16** |
-| **Total (with networking overage)** | | **$435.16** |
+| **Total (with networking)** | | **$433.16** |
+| **Total (compute only)** | | **$433.16** |
 
 **Hourly Run Rate:** $0.59/hr
 
 **Networking Details:**
 - **Network Transfer Pool**: Each Linode contributes transfer allowance to a shared pool
-  - GPU node (g2-gpu-rtx4000a1-s): 5 TB/month included
+  - GPU node (g2-gpu-rtx4000a1-s): **0 TB** (RTX 4000 plans do not include transfer)
   - CPU nodes (g6-standard-2): 2 TB/month each = 4 TB
-  - **Total Pool: ~9 TB/month** (shared across all nodes)
-- **Overage Rate**: $0.02/GB for traffic exceeding pool
+  - **Total Pool: ~4 TB/month** (shared across CPU nodes only)
+- **Overage Rate**: $0.005/GB ($5/TB) for traffic exceeding pool
 - **Inbound Traffic**: Free (does not count against pool)
 - **Private Network**: Free (internal cluster traffic)
 - **No NAT Gateway Fees**: Unlike AWS, no separate NAT charges
@@ -550,7 +550,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 | Node Name | Instance Type | vCPU | Memory | GPU | Zone | On-Demand $/hr |
 |-----------|---------------|------|--------|-----|------|----------------|
-| ip-*-*-*-*.ec2.internal | `g6.xlarge` | 4 | 16 GB | 1x NVIDIA L4 (24GB) | us-east-1d | **$0.80** |
+| ip-*-*-*-*.ec2.internal | `g6.xlarge` | 4 | 16 GB | 1x NVIDIA L4 (24GB) | us-east-1d | **$0.8048** |
 | ip-*-*-*-*.ec2.internal | `t3.medium` | 2 | 4 GB | — | us-east-1c | **$0.0416** |
 | ip-*-*-*-*.ec2.internal | `t3.medium` | 2 | 4 GB | — | us-east-1f | **$0.0416** |
 
@@ -570,7 +570,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Cost Category | Calculation | Monthly Cost |
 |---------------|-------------|--------------|
 | **Compute** | | |
-| GPU Node (1x g6.xlarge) | $0.80 × 730 hrs | $584.00 |
+| GPU Node (1x g6.xlarge) | $0.8048 × 730 hrs | $587.50 |
 | CPU Nodes (2x t3.medium) | $0.0416 × 730 hrs × 2 | $60.74 |
 | **Management** | | |
 | EKS Control Plane (Standard) | $0.10 × 730 hrs | $73.00 |
@@ -581,10 +581,10 @@ This section documents the **actual deployed infrastructure** queried directly f
 | NAT Data Processing (~100GB) | 100 GB × $0.045 | $4.50 |
 | Data Transfer Out (~100GB) | 100 GB × $0.09 | $9.00 |
 | Cross-AZ Traffic (multi-AZ) | ~50 GB × $0.01 × 2 | $1.00 |
-| **Total (with networking)** | | **$766.09** |
-| **Total (compute only)** | | **$718.74** |
+| **Total (with networking)** | | **$769.59** |
+| **Total (compute only)** | | **$722.24** |
 
-**Hourly Run Rate:** $1.05/hr (with networking) | $0.98/hr (compute only)
+**Hourly Run Rate:** $1.05/hr (with networking) | $0.99/hr (compute only)
 
 **Networking Notes:**
 - Nodes span 3 AZs (us-east-1c, us-east-1d, us-east-1f) - cross-AZ traffic is charged
@@ -617,21 +617,21 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Provider | Status | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
 |----------|--------|----------|----------|-----------|-----------------|---------------|--------------|
 | **Akamai LKE** | ✅ Running | $0.52 | $0.036 | $0.00 | $0.10 | **$433.16** | $0.59 |
-| **AWS EKS** | ✅ Running | $0.80 | $0.0416 | $0.10 | $0.10 | **$718.74** | $0.98 |
-| **GCP GKE** | ✅ Running | $0.8536 | $0.067 | $0.10 | $0.17 | **$795.65** | $1.09 |
+| **AWS EKS** | ✅ Running | $0.8048 | $0.0416 | $0.10 | $0.10 | **$722.24** | $0.99 |
+| **GCP GKE** | ✅ Running | $0.8536 | $0.067 | $0.10 | $0.10 | **$794.95** | $1.09 |
 
 **Including Estimated Networking (~100GB egress/month):**
 
 | Provider | Compute + Mgmt + Storage | Networking | Total w/ Network | Hourly Total |
 |----------|--------------------------|------------|------------------|--------------|
-| **Akamai LKE** | $433.16 | ~$2.00 (overage if exceeds 9TB pool) | **$435.16** | $0.60 |
-| **AWS EKS** | $718.74 | ~$47.35 (NAT + egress + cross-AZ) | **$766.09** | $1.05 |
-| **GCP GKE** | $795.65 | ~$12.00 (egress only) | **$807.65** | $1.11 |
+| **Akamai LKE** | $433.16 | ~$0 (100GB within 4TB pool) | **$433.16** | $0.59 |
+| **AWS EKS** | $722.24 | ~$47.35 (NAT + egress + cross-AZ) | **$769.59** | $1.05 |
+| **GCP GKE** | $794.95 | ~$12.00 (egress only) | **$806.95** | $1.11 |
 
 **Key Findings:**
-1. **Akamai LKE is 43% cheaper than AWS EKS** and **43% cheaper than GCP GKE**
+1. **Akamai LKE is ~44% cheaper than AWS EKS** and **~46% cheaper than GCP GKE**
 2. **No management fee** on LKE saves $73/month vs AWS/GCP (GKE free tier may offset)
-3. **LKE includes 9TB network transfer** in plan (vs paid egress on AWS/GCP)
+3. **LKE includes 4TB network transfer** from CPU nodes (GPU plans don't include transfer)
 4. **AWS networking adds significant cost**: NAT Gateway ($32.85/mo) + data processing + cross-AZ traffic
 5. **GCP networking is moderate**: $12/mo for 100GB egress, no NAT required, single-zone avoids inter-zone charges
 6. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
@@ -643,7 +643,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 | Provider | NAT/Gateway | Egress (100GB) | Cross-Zone | Total Network |
 |----------|-------------|----------------|------------|---------------|
-| **Akamai LKE** | $0 | $0-2 (pooled) | N/A | **~$2** |
+| **Akamai LKE** | $0 | $0 (within 4TB pool) | N/A | **~$0** |
 | **AWS EKS** | $32.85 + $4.50 | $9.00 | ~$1.00 | **~$47** |
 | **GCP GKE** | $0 (public IPs) | $12.00 | $0 (single-zone) | **~$12** |
 
