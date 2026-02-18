@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gke-dcgm-exporter
+  namespace: gke-managed-system
+  labels:
+    app: dcgm-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: gke-managed-dcgm-exporter
+  ports:
+    - name: metrics
+      port: 9400
+      targetPort: 9400
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: dcgm-exporter
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  namespaceSelector:
+    matchNames:
+      - gke-managed-system
+  selector:
+    matchLabels:
+      app: dcgm-exporter
+  endpoints:
+    - port: metrics
+      interval: 15s

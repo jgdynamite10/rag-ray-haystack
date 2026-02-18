@@ -1,4 +1,4 @@
-.PHONY: terraform-apply terraform-destroy tf-apply tf-destroy kubeconfig helm-apply helm-destroy deploy destroy verify bench label-gpu install-kuberay fix-gpu
+.PHONY: terraform-apply terraform-destroy tf-apply tf-destroy kubeconfig helm-apply helm-destroy deploy destroy verify bench label-gpu install-kuberay fix-gpu install-monitoring install-dcgm
 
 PROVIDER ?= akamai-lke
 ENV ?= dev
@@ -86,3 +86,30 @@ install-kuberay:
 
 fix-gpu:
 	KUBECONFIG_PATH=$(KUBECONFIG_PATH) ./scripts/fix_gpu.sh
+
+install-monitoring:
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
+	helm repo update
+	KUBECONFIG=$(KUBECONFIG_PATH) helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+		--namespace monitoring --create-namespace \
+		--set prometheus.prometheusSpec.externalLabels.provider=$(PROVIDER) \
+		--set prometheus.service.type=LoadBalancer
+	KUBECONFIG=$(KUBECONFIG_PATH) kubectl apply -f deploy/monitoring/pushgateway.yaml
+
+install-dcgm:
+	@echo "Installing DCGM exporter for $(PROVIDER)"
+	@if [ "$(PROVIDER)" = "gcp-gke" ]; then \
+		echo "GKE: Using managed DCGM exporter — applying bridge Service + ServiceMonitor"; \
+		KUBECONFIG=$(KUBECONFIG_PATH) kubectl apply -f deploy/monitoring/gke-dcgm-bridge.yaml; \
+	else \
+		echo "Installing DCGM exporter via Helm"; \
+		helm repo add gpu-helm-charts https://nvidia.github.io/dcgm-exporter/helm-charts || true; \
+		helm repo update; \
+		KUBECONFIG=$(KUBECONFIG_PATH) helm upgrade --install dcgm-exporter gpu-helm-charts/dcgm-exporter \
+			--namespace monitoring \
+			-f deploy/helm/dcgm-values.yaml; \
+	fi
+	@echo "Verifying DCGM exporter..."
+	@sleep 10
+	KUBECONFIG=$(KUBECONFIG_PATH) kubectl get pods -n monitoring -l app.kubernetes.io/name=dcgm-exporter 2>/dev/null || \
+		KUBECONFIG=$(KUBECONFIG_PATH) kubectl get pods -n gke-managed-system 2>/dev/null | grep dcgm

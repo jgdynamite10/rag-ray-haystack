@@ -1,0 +1,29 @@
+# DCGM Exporter Helm values for AWS EKS (and non-GKE providers)
+#
+# For GKE: Do NOT use this file. GKE has a managed DCGM exporter.
+#           Use deploy/monitoring/gke-dcgm-bridge.yaml instead.
+#
+# Usage:
+#   helm install dcgm-exporter gpu-helm-charts/dcgm-exporter \
+#     --namespace monitoring -f deploy/helm/dcgm-values.yaml
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: prometheus
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 512Mi

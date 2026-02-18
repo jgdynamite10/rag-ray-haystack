@@ -181,6 +181,27 @@ kubectl get pods -n kube-system | grep nvidia
 kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
 ```
 
+### Step 5b: Install DCGM Exporter (GPU metrics)
+
+DCGM exporter exposes GPU utilization, memory, temperature, and power metrics to Prometheus.
+
+```bash
+helm repo add gpu-helm-charts https://nvidia.github.io/dcgm-exporter/helm-charts
+helm repo update
+
+helm install dcgm-exporter gpu-helm-charts/dcgm-exporter \
+  --namespace monitoring \
+  -f deploy/helm/dcgm-values.yaml
+
+# Verify running on GPU node only
+kubectl get pods -n monitoring -l app.kubernetes.io/name=dcgm-exporter
+```
+
+Or use the Makefile:
+```bash
+make install-dcgm PROVIDER=aws-eks KUBECONFIG_PATH=~/.kube/eks-kubeconfig.yaml
+```
+
 ### Step 6: Install EBS CSI Driver (required for persistent storage)
 
 EKS requires the EBS CSI driver addon for PersistentVolumeClaims (Qdrant storage):
@@ -316,10 +337,17 @@ kubectl get pods -n rag-app -w
 
 ### Step 10: Add to Central Grafana
 
-Add a new Prometheus datasource:
-- **Name**: `Prometheus-EKS`
-- **URL**: `http://<EKS-PROMETHEUS-ELB>:9090`
-- **Variable**: `ds_eks`
+The ITDM Unified Dashboard uses three Prometheus datasources — one per provider.
+Add a Prometheus datasource for EKS:
+
+1. Open Grafana (runs on LKE at `http://<GRAFANA-IP>:3000`)
+2. Go to **Connections > Data sources > Add data source > Prometheus**
+3. Configure:
+   - **Name**: `Prometheus-EKS`
+   - **URL**: `http://<EKS-PROMETHEUS-ELB>:9090` (from `kubectl get svc -n monitoring prometheus-kube-prometheus-prometheus`)
+4. Click **Save & Test** — confirm "Successfully queried the Prometheus API"
+5. Go to the ITDM dashboard and set the **EKS (AWS)** dropdown to `Prometheus-EKS`
+6. Click **Save dashboard** to persist the selection
 
 ---
 
@@ -361,12 +389,25 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 kubectl apply -f deploy/monitoring/pushgateway.yaml
 ```
 
-### Step 5: Install NVIDIA Device Plugin (if needed)
+### Step 5: Install NVIDIA GPU Operator (includes DCGM)
+
+LKE uses the full NVIDIA GPU Operator, which includes the device plugin, DCGM exporter, and driver management.
 
 ```bash
-kubectl get pods -n kube-system | grep nvidia
-# If not present:
-kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
+helm repo add nvidia-gpu https://nvidia.github.io/gpu-operator
+helm repo update
+
+helm install gpu-operator nvidia-gpu/gpu-operator \
+  --namespace gpu-operator --create-namespace
+```
+
+**Note:** The GPU Operator deploys DCGM exporter automatically. GPU metrics
+(utilization, memory, temperature, power) are available to Prometheus out of the box
+via a ServiceMonitor in the `gpu-operator` namespace. No separate DCGM installation needed.
+
+```bash
+# Verify GPU operator and DCGM exporter are running
+kubectl get pods -n gpu-operator | grep dcgm
 ```
 
 ### Step 6: Install KubeRay Operator
@@ -394,6 +435,20 @@ helm -n rag-app upgrade --install rag-app deploy/helm/rag-app \
   --set backend.image.tag=${IMAGE_TAG} \
   --set frontend.image.tag=${IMAGE_TAG}
 ```
+
+### Step 8: Grafana Setup
+
+LKE hosts the central Grafana instance. Grafana is included in the `kube-prometheus-stack`.
+The ITDM Unified Dashboard (`grafana/dashboards/itdm-unified.json`) requires 3 Prometheus datasources:
+
+1. **Prometheus-LKE** — auto-configured (the local Prometheus)
+2. **Prometheus-EKS** — add after deploying EKS (see [EKS Step 10](#step-10-add-to-central-grafana))
+3. **Prometheus-GKE** — add after deploying GKE (see [GKE Step 10](#step-10-add-to-central-grafana-1))
+
+To import the dashboard:
+1. Open Grafana at `http://<LKE-NODE-IP>:3000`
+2. Go to **Dashboards > Import** and upload `grafana/dashboards/itdm-unified.json`
+3. Select the appropriate datasources for each provider dropdown
 
 ---
 
@@ -455,36 +510,29 @@ kubectl get pods -n kube-system | grep nvidia
 kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
 ```
 
-### Step 6: Install DCGM Exporter (for GPU metrics)
+### Step 6: Enable GPU Metrics (DCGM Exporter)
 
-GKE has the device plugin pre-installed but NOT DCGM exporter. Install it for GPU metrics:
+GKE GPU node pools include a **managed DCGM exporter** in the `gke-managed-system` namespace.
+However, Prometheus cannot scrape it without a Service and ServiceMonitor bridge.
+
+> **Do NOT install the DCGM Helm chart on GKE.** The chart sets
+> `priorityClassName: system-node-critical` which GKE blocks with a resource quota.
+> Use the managed exporter instead.
 
 ```bash
-helm repo add gpu-helm-charts https://nvidia.github.io/dcgm-exporter/helm-charts
-helm repo update
+# Apply the bridge Service + ServiceMonitor
+kubectl apply -f deploy/monitoring/gke-dcgm-bridge.yaml
 
-# Create values file (avoids shell escaping issues)
-cat > /tmp/dcgm-gke-values.yaml << 'EOF'
-serviceMonitor:
-  enabled: true
-  additionalLabels:
-    release: prometheus
+# Verify the managed DCGM pod is running
+kubectl get pods -n gke-managed-system | grep dcgm
 
-nodeSelector:
-  nvidia.com/gpu.present: "true"
+# Verify Prometheus is scraping it (after ~30s)
+kubectl get endpoints gke-dcgm-exporter -n gke-managed-system
+```
 
-tolerations:
-  - key: nvidia.com/gpu
-    operator: Exists
-    effect: NoSchedule
-EOF
-
-helm install dcgm-exporter gpu-helm-charts/dcgm-exporter \
-  --namespace monitoring \
-  -f /tmp/dcgm-gke-values.yaml
-
-# Verify running on GPU node
-kubectl get pods -n monitoring | grep dcgm
+Or use the Makefile:
+```bash
+make install-dcgm PROVIDER=gcp-gke KUBECONFIG_PATH=~/.kube/gke-kubeconfig.yaml
 ```
 
 ### Step 7: Install KubeRay Operator
@@ -539,6 +587,88 @@ kubectl run -n rag-app fix-dim --rm -i --restart=Never --image=curlimages/curl -
 curl -s -X POST http://<FRONTEND_IP>/api/ingest \
   -H "Content-Type: application/json" \
   -d '{"texts":["Your document text here..."]}'
+```
+
+### Step 9: Get External IPs
+
+```bash
+# Prometheus (for Central Grafana datasource)
+kubectl get svc -n monitoring prometheus-kube-prometheus-prometheus
+
+# RAG App (for benchmarking)
+kubectl get svc -n rag-app rag-app-rag-app-frontend
+```
+
+### Step 10: Add to Central Grafana
+
+Add a Prometheus datasource for GKE:
+
+1. Open Grafana (runs on LKE at `http://<GRAFANA-IP>:3000`)
+2. Go to **Connections > Data sources > Add data source > Prometheus**
+3. Configure:
+   - **Name**: `Prometheus-GKE`
+   - **URL**: `http://<GKE-PROMETHEUS-LB>:9090` (from Step 9)
+4. Click **Save & Test** — confirm "Successfully queried the Prometheus API"
+5. Go to the ITDM dashboard and set the **GKE (GCP)** dropdown to `Prometheus-GKE`
+6. Click **Save dashboard** to persist the selection
+
+---
+
+## Monitoring & Observability
+
+### Architecture
+
+Each provider runs its own Prometheus instance (exposed via LoadBalancer). A central Grafana
+instance runs on LKE and queries all three Prometheus datasources for unified dashboards.
+
+```
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│  Akamai LKE │  │   AWS EKS   │  │   GCP GKE   │
+│             │  │             │  │             │
+│ Prometheus  │  │ Prometheus  │  │ Prometheus  │
+│ DCGM (GPU Op)│ │ DCGM (Helm) │  │ DCGM (managed)│
+│ Pushgateway │  │ Pushgateway │  │ Pushgateway │
+│ Grafana ◄───┼──┼─────────────┼──┼─────────────│
+└─────────────┘  └─────────────┘  └─────────────┘
+```
+
+### GPU Metrics (DCGM Exporter)
+
+GPU metrics (utilization, memory, temperature, power, CUDA cores) are exposed by DCGM exporter.
+Each provider uses a different deployment strategy:
+
+| Provider | DCGM Source | Deployment Method | Values/Manifest |
+|----------|-------------|-------------------|-----------------|
+| Akamai LKE | NVIDIA GPU Operator | Automatic (included in GPU Operator) | N/A |
+| AWS EKS | Helm chart | `helm install dcgm-exporter` | `deploy/helm/dcgm-values.yaml` |
+| GCP GKE | GKE managed | Bridge manifest (Service + ServiceMonitor) | `deploy/monitoring/gke-dcgm-bridge.yaml` |
+
+**GKE caveat:** The Helm chart sets `priorityClassName: system-node-critical` which GKE blocks
+with a resource quota. The workaround is to use GKE's pre-installed managed DCGM exporter
+in `gke-managed-system` and bridge it to Prometheus with a Service + ServiceMonitor.
+
+### Grafana Datasources
+
+The ITDM Unified Dashboard (`grafana/dashboards/itdm-unified.json`) uses three template
+variables for Prometheus datasources:
+
+| Variable | Name | Provider |
+|----------|------|----------|
+| `ds_lke` | `Prometheus-LKE` | Akamai LKE |
+| `ds_eks` | `Prometheus-EKS` | AWS EKS |
+| `ds_gke` | `Prometheus-GKE` | GCP GKE |
+
+After configuring datasources in Grafana, **save the dashboard** so selections persist.
+To persist in git, export the dashboard JSON and overwrite `grafana/dashboards/itdm-unified.json`.
+
+### Makefile Targets
+
+```bash
+# Install Prometheus + Pushgateway
+make install-monitoring PROVIDER=<provider> KUBECONFIG_PATH=<path>
+
+# Install DCGM exporter (auto-selects strategy per provider)
+make install-dcgm PROVIDER=<provider> KUBECONFIG_PATH=<path>
 ```
 
 ---

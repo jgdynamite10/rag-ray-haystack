@@ -162,18 +162,27 @@ python scripts/cost/compute_cost.py \
 
 ### Central Grafana
 
-Deployed via Terraform to a dedicated VM. Aggregates metrics from all clusters.
+Runs on LKE (included in `kube-prometheus-stack`). Queries all 3 Prometheus datasources.
 
-**Setup:** See `docs/OBSERVABILITY.md`
+**Datasources:** `Prometheus-LKE`, `Prometheus-EKS`, `Prometheus-GKE`
+**Setup:** See `docs/DEPLOYMENT.md` → "Monitoring & Observability" section
+
+### GPU Metrics (DCGM)
+
+| Provider | DCGM Source | Status |
+|----------|-------------|--------|
+| LKE | GPU Operator (automatic) | ✅ |
+| EKS | Helm chart (`deploy/helm/dcgm-values.yaml`) | ✅ |
+| GKE | Managed + bridge (`deploy/monitoring/gke-dcgm-bridge.yaml`) | ✅ |
 
 ### Dashboards
 
 | Dashboard | Purpose |
 |-----------|---------|
-| ITDM - Unified | 3-provider comparison (LKE/EKS/GKE) with costs |
+| ITDM - Unified | 3-provider comparison (LKE/EKS/GKE) with costs + GPU metrics |
 | RAG Overview | Per-cluster ITDMs |
 | vLLM Metrics | Inference server stats |
-| GPU Utilization | DCGM metrics |
+| GPU Utilization | DCGM metrics (util, memory, temp, power) |
 
 ### Prometheus Metrics (Backend)
 
@@ -243,6 +252,7 @@ rag-ray-haystack/
 5. **Qdrant embedding dimension**: `qdrant-haystack` auto-creates collection with dim=768, but `all-MiniLM-L6-v2` produces dim=384. After first deploy, recreate the collection with correct dimension (see DEPLOYMENT.md).
 6. **Qdrant server version**: Must be >= v1.10.0 (currently v1.12.6). Backend 0.3.9 uses `qdrant-client==1.16.2` which requires the `/points/query` API.
 7. **GCP shared-core instances**: Do **not** use `e2-medium` for CPU nodes on GKE. Shared-core instances provide only ~940m allocatable CPU (vs ~1,930m on dedicated). Ray pods (1,000m request) cannot schedule. Use `e2-standard-2` instead. See DEPLOYMENT.md for full analysis.
+8. **GKE DCGM exporter**: The DCGM Helm chart sets `priorityClassName: system-node-critical` which GKE blocks. Use GKE's managed DCGM exporter via `deploy/monitoring/gke-dcgm-bridge.yaml` instead. See DEPLOYMENT.md "Monitoring & Observability" section.
 
 ---
 
