@@ -510,7 +510,7 @@ The **ITDM - Unified Dashboard** (`grafana/dashboards/itdm-unified.json`) provid
 |----------|----------|----------|-----------|
 | Akamai LKE | $0.52 (RTX 4000 Ada) | $0.036 | $0 |
 | AWS EKS | $0.80 (g6.xlarge) | $0.042 | $0.10 |
-| GCP GKE | $0.94 (L4) | $0.067 | $0.10 |
+| GCP GKE | $0.8536 (L4) | $0.067 | $0.10 |
 
 ---
 

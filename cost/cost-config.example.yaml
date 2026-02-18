@@ -48,7 +48,7 @@ providers:
     as_of: "2026-01-27"
     notes: "GCP us-central1 on-demand prices. GPU: g2-standard-8 (NVIDIA L4 24GB)"
     
-    gpu_node_usd_per_hr: 0.942     # g2-standard-8 (includes L4 GPU)
+    gpu_node_usd_per_hr: 0.8536    # g2-standard-8 (includes L4 GPU, us-central1)
     cpu_node_usd_per_hr: 0.067     # e2-standard-2 (2 vCPU, 8GB)
     
     egress_usd_per_gb: 0.12        # Premium tier, first 1TB
