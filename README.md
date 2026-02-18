@@ -45,27 +45,29 @@ A Grafana dashboard intended to summarize:
 
 ---
 
-## Benchmark Results (February 4, 2026)
+## Benchmark Results (February 17, 2026)
 
 ### North-South (500 requests, 50 concurrency)
 
 | Metric | Akamai LKE | AWS EKS | GCP GKE |
 |--------|------------|---------|---------|
-| **Success** | 499/500 ✅ | 500/500 ✅ | 480/500 ⚠️ |
-| **TTFT p50** | **1,442 ms** 🏆 | 3,884 ms | 2,540 ms |
-| **TTFT p95** | **6,010 ms** 🏆 | 6,753 ms | 7,124 ms |
-| **Latency p50** | **9,009 ms** 🏆 | 18,784 ms | 15,737 ms |
-| **Latency p95** | **11,841 ms** 🏆 | 19,715 ms | 21,486 ms |
-| **TPOT p50** | **29.0 ms** 🏆 | 58.3 ms | 52.8 ms |
-| **Tokens/sec** | **27.07** 🏆 | 13.87 | 15.55 |
-| **Duration** | **107s** 🏆 | 199s | 282s |
+| **Success** | 450/500 ⚠️ | 500/500 ✅ | 500/500 ✅ |
+| **TTFT p50** | **2,324 ms** 🏆 | 6,230 ms | 8,044 ms |
+| **TTFT p95** | **8,472 ms** 🏆 | 36,380 ms | 14,230 ms |
+| **Latency p50** | **13,282 ms** 🏆 | 21,331 ms | 21,979 ms |
+| **Latency p95** | **24,618 ms** 🏆 | 70,956 ms | 60,221 ms |
+| **TPOT p50** | **30.6 ms** 🏆 | 56.4 ms | 60.7 ms |
+| **Tokens/sec** | **20.75** 🏆 | 11.42 | 10.99 |
+| **Duration** | **143s** 🏆 | 296s | 286s |
 
 ### East-West Network
 
 | Metric | Akamai LKE | AWS EKS | GCP GKE |
 |--------|------------|---------|---------|
-| **TCP Throughput** | 1.06 Gbps | 4.92 Gbps | **6.65 Gbps** 🏆 |
-| **Retransmits** | 2,416 | **194** 🏆 | 110,884 |
+| **TCP Throughput** | 0.97 Gbps | **4.65 Gbps** 🏆 | 3.92 Gbps |
+| **Retransmits** | 8,751 | 2,250 | **1,218** 🏆 |
+
+See [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md) for historical results.
 
 ---
 
@@ -94,7 +96,7 @@ The chat interface with PDF upload, streaming responses, and real-time metrics.
 flowchart TB
   subgraph External
     User[User Browser]
-    Grafana[Grafana<br/>Akamai VM]
+    Grafana[Grafana<br/>LKE Cluster]
   end
 
   subgraph K8s Cluster
@@ -139,25 +141,29 @@ flowchart TB
 
 ### Multi-Cluster Monitoring
 
+Grafana runs on LKE and queries all three Prometheus instances via LoadBalancer.
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│              Akamai VM (External)                       │
-│                   Grafana                               │
-│           (Unified dashboards)                          │
-└─────────┬─────────────┬─────────────┬───────────────────┘
-          │             │             │
-          ▼             ▼             ▼
-   ┌────────────┐ ┌────────────┐ ┌────────────┐
-   │ LKE Prom LB│ │ EKS Prom LB│ │ GKE Prom LB│
-   └──────┬─────┘ └──────┬─────┘ └──────┬─────┘
-          ▼              ▼              ▼
-   ┌────────────┐ ┌────────────┐ ┌────────────┐
-   │  LKE       │ │  EKS       │ │  GKE       │
-   │ Prometheus │ │ Prometheus │ │ Prometheus │
-   │ Pushgateway│ │ Pushgateway│ │ Pushgateway│
-   │ DCGM       │ │ DCGM       │ │ DCGM       │
-   └────────────┘ └────────────┘ └────────────┘
+┌───────────────────────────────────────────────────────────┐
+│                  LKE Cluster (Central)                    │
+│    Grafana ──► Prometheus-LKE (local)                     │
+│       │                                                   │
+│       ├──► Prometheus-EKS (remote, via LB)                │
+│       └──► Prometheus-GKE (remote, via LB)                │
+└───────────────────────────────────────────────────────────┘
+
+   ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
+   │  Akamai LKE    │  │  AWS EKS       │  │  GCP GKE       │
+   │ Prometheus     │  │ Prometheus     │  │ Prometheus     │
+   │ Pushgateway    │  │ Pushgateway    │  │ Pushgateway    │
+   │ DCGM (GPU Op.) │  │ DCGM (Helm)   │  │ DCGM (managed) │
+   └────────────────┘  └────────────────┘  └────────────────┘
 ```
+
+Each provider uses a different DCGM exporter strategy:
+- **LKE**: Included in NVIDIA GPU Operator (automatic)
+- **EKS**: Deployed via Helm chart (`deploy/helm/dcgm-values.yaml`)
+- **GKE**: Uses GKE's managed exporter + bridge manifest (`deploy/monitoring/gke-dcgm-bridge.yaml`)
 
 ### High-level components
 - **Frontend (UI)** — Collects user prompts, streams tokens, and records client-side TTFT/total latency.
@@ -165,7 +171,7 @@ flowchart TB
 - **Ray Serve on Kubernetes (KubeRay)** — Runs the serving layer and scales inference workers across GPU nodes.
 - **vLLM (GPU inference)** — Performs token streaming generation and returns tokens back through the backend streaming pipeline.
 - **Vector store / Retriever (via Haystack)** — Handles document ingestion and retrieval during RAG.
-- **Observability (Prometheus + Grafana)** — Scrapes backend (and optionally Ray/vLLM/K8s) metrics and renders the scorecard dashboard.
+- **Observability (Prometheus + Grafana + DCGM)** — Each cluster runs Prometheus + DCGM exporter for GPU metrics. Central Grafana on LKE queries all three for the unified ITDM dashboard.
 
 ### Data flow (request lifecycle)
 1. User uploads docs (UI → backend ingestion)
@@ -200,7 +206,12 @@ High-signal directories/files you will use when replicating deployments and benc
 | `scripts/netprobe/` | East-West network benchmarks (iperf3-based) |
 | `benchmarks/` | Benchmark results (JSON) by provider and type |
 | `deploy/helm/rag-app/` | Helm chart for the application |
+| `deploy/helm/dcgm-values.yaml` | DCGM exporter Helm values (EKS / non-GKE providers) |
+| `deploy/monitoring/` | Prometheus, Pushgateway, and DCGM bridge manifests |
 | `deploy/overlays/` | Kustomize overlays for provider-specific configuration |
+| `grafana/dashboards/` | Grafana dashboard JSON exports (ITDM, GPU, cost, vLLM) |
+| `docs/DEPLOYMENT.md` | Step-by-step deployment guide for all providers |
+| `docs/BENCHMARK_RESULTS.md` | Historical benchmark results across all providers |
 | `docs/ARCHITECTURE.md` | Detailed architecture diagrams |
 | `docs/COST_MODEL.md` | Cost analysis across providers |
 | `docs/PROJECT_STATE.public.md` | Project state / scope / progress notes |
@@ -248,11 +259,11 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
 
 All providers use comparable Ada Lovelace architecture GPUs:
 
-| Provider | Instance | GPU | vRAM | Hourly Cost |
-|----------|----------|-----|------|-------------|
-| Akamai LKE | g2-gpu-rtx4000a1-s | RTX 4000 Ada | 20 GB | $1.10/hr |
-| AWS EKS | g6.xlarge | NVIDIA L4 | 24 GB | $0.8049/hr |
-| GCP GKE | g2-standard-8 | NVIDIA L4 | 24 GB | $0.8369/hr |
+| Provider | Instance | GPU | Architecture | vRAM | GPU $/hr |
+|----------|----------|-----|--------------|------|----------|
+| Akamai LKE | g2-gpu-rtx4000a1-s | RTX 4000 Ada | Ada Lovelace | 20 GB | $1.50/hr |
+| AWS EKS | g6.xlarge | NVIDIA L4 | Ada Lovelace | 24 GB | $0.80/hr |
+| GCP GKE | g2-standard-8 | NVIDIA L4 | Ada Lovelace | 24 GB | $0.94/hr |
 
 → See [docs/COST_MODEL.md](docs/COST_MODEL.md) for full cost breakdown including CPU, storage, and networking.
 
