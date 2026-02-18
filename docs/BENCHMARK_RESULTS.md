@@ -6,10 +6,9 @@ This document tracks benchmark results across all three cloud providers over tim
 
 ## Benchmark Results (February 18, 2026)
 
-**Timestamp:** 2026-02-18T04:26:40 UTC  
+**Timestamp:** 2026-02-17T22:26:40 CST (2026-02-18T04:26:40 UTC)  
 **Backend Version:** 0.3.9  
-**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
-**Note:** All prices verified against public pricing pages. LKE GPU corrected from $1.50 to $0.52. GKE GPU corrected from $0.94 to $0.8536.
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens
 
 ### North-South (500 requests, 50 concurrency)
 
@@ -21,7 +20,6 @@ This document tracks benchmark results across all three cloud providers over tim
 | **Latency p50** | **14,240 ms** 🏆 | 20,088 ms | 20,050 ms |
 | **Latency p95** | **16,219 ms** 🏆 | 23,590 ms | 22,880 ms |
 | **TPOT p50** | **42.6 ms** 🏆 | 57.6 ms | 61.6 ms |
-| **TPOT p95** | **49.2 ms** 🏆 | 66.2 ms | 68.2 ms |
 | **Tokens/sec** | **18.06** 🏆 | 13.17 | 12.87 |
 | **Duration** | **151s** 🏆 | 215s | 217s |
 
@@ -32,13 +30,13 @@ This document tracks benchmark results across all three cloud providers over tim
 | **TCP Throughput** | 1.02 Gbps | **4.65 Gbps** 🏆 | 3.82 Gbps |
 | **Retransmits** | 3,949 | **2,212** 🏆 | 25,489 |
 
-### Verified Costs (from public pricing, Feb 18 2026):
+### Current Accurate Costs (from live queries):
 
-| Provider | Hourly | Monthly (compute only) |
-|----------|--------|------------------------|
-| **Akamai LKE** | $0.59 | $432 |
-| **AWS EKS** | $0.98 | $718 |
-| **GCP GKE** | $1.09 | $794 |
+| Provider | Monthly (w/ network) | Hourly |
+|----------|---------------------|--------|
+| **Akamai LKE** | $432 | $0.59 |
+| **AWS EKS** | $718 | $0.98 |
+| **GCP GKE** | $794 | $1.09 |
 
 ---
 
