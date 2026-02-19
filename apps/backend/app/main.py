@@ -497,6 +497,7 @@ class RagApp:
             "EMBEDDING_MODEL_ID",
             "sentence-transformers/all-MiniLM-L6-v2",
         )
+        self.embedding_dim = int(os.getenv("EMBEDDING_DIM", "384"))
         self.vllm_base_url = os.getenv("VLLM_BASE_URL", "http://vllm:8000")
         self.vllm_model = os.getenv("VLLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
         self.vllm_max_tokens = int(os.getenv("VLLM_MAX_TOKENS", "512"))
@@ -584,6 +585,7 @@ class RagApp:
             return QdrantDocumentStore(
                 url=self.qdrant_url,
                 index=self.qdrant_collection,
+                embedding_dim=self.embedding_dim,
             )
         return InMemoryDocumentStore()
 

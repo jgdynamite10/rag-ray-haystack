@@ -28,10 +28,17 @@ locals {
     for s in data.aws_subnet.all : s.id if contains(local.eks_supported_azs, s.availability_zone)
   ] : var.subnet_ids
   subnet_ids = local.filtered_subnets
-  cpu_min    = var.cpu_autoscaler_enabled ? var.cpu_autoscaler_min : var.cpu_node_count
-  cpu_max    = var.cpu_autoscaler_enabled ? var.cpu_autoscaler_max : var.cpu_node_count
-  gpu_min    = var.gpu_autoscaler_enabled ? var.gpu_autoscaler_min : var.gpu_node_count
-  gpu_max    = var.gpu_autoscaler_enabled ? var.gpu_autoscaler_max : var.gpu_node_count
+
+  # Pin node groups to a single AZ for consistent benchmarking latency.
+  # Control plane still uses multi-AZ subnets for HA.
+  node_subnets = var.node_availability_zone != "" ? [
+    for s in data.aws_subnet.all : s.id if s.availability_zone == var.node_availability_zone
+  ] : local.subnet_ids
+
+  cpu_min = var.cpu_autoscaler_enabled ? var.cpu_autoscaler_min : var.cpu_node_count
+  cpu_max = var.cpu_autoscaler_enabled ? var.cpu_autoscaler_max : var.cpu_node_count
+  gpu_min = var.gpu_autoscaler_enabled ? var.gpu_autoscaler_min : var.gpu_node_count
+  gpu_max = var.gpu_autoscaler_enabled ? var.gpu_autoscaler_max : var.gpu_node_count
 }
 
 module "eks" {
@@ -52,6 +59,7 @@ module "eks" {
   eks_managed_node_groups = {
     cpu = {
       instance_types = [var.cpu_instance_type]
+      subnet_ids     = local.node_subnets
       min_size       = local.cpu_min
       max_size       = local.cpu_max
       desired_size   = var.cpu_node_count
@@ -62,6 +70,7 @@ module "eks" {
 
     gpu = {
       instance_types = [var.gpu_instance_type]
+      subnet_ids     = local.node_subnets
       min_size       = local.gpu_min
       max_size       = local.gpu_max
       desired_size   = var.gpu_node_count

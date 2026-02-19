@@ -32,6 +32,8 @@ backend:
       value: "true"
     - name: EMBEDDING_MODEL_ID
       value: "sentence-transformers/all-MiniLM-L6-v2"
+    - name: EMBEDDING_DIM
+      value: "384"
     - name: RAG_TOP_K
       value: "4"
     - name: RAG_MAX_HISTORY
@@ -92,6 +94,7 @@ qdrant:
     storageClassName: ""
 
 kuberay:
+  enabled: true
   rayVersion: "2.9.3"
   head:
     cpu: "1"

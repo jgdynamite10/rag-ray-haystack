@@ -1,3 +1,4 @@
+{{- if .Values.kuberay.enabled }}
 apiVersion: ray.io/v1
 kind: RayService
 metadata:
@@ -100,3 +101,4 @@ spec:
                   periodSeconds: 15
                   failureThreshold: 6
                   timeoutSeconds: 10
+{{- end }}

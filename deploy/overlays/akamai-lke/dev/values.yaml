@@ -3,6 +3,9 @@ global:
     - name: ghcr-cred
   provider: "akamai-lke"
 
+kuberay:
+  enabled: false
+
 backend:
   image:
     repository: ghcr.io/jgdynamite10/rag-ray-backend

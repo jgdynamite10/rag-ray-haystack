@@ -2,6 +2,7 @@ global:
   provider: "gcp-gke"
 
 kuberay:
+  enabled: false
   worker:
     tolerations:
       - key: "nvidia.com/gpu"

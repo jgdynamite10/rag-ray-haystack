@@ -95,6 +95,12 @@ variable "gpu_autoscaler_max" {
   default     = 2
 }
 
+variable "node_availability_zone" {
+  description = "Pin all node groups to a single AZ for consistent intra-zone latency. Set to empty string to allow multi-AZ spread."
+  type        = string
+  default     = "us-east-1d"
+}
+
 variable "tags" {
   description = "Optional tags applied to AWS resources."
   type        = map(string)

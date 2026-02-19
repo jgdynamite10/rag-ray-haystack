@@ -9,6 +9,10 @@ k8s_version  = "1.29"
 # Optional: set if you want a specific AWS CLI profile.
 # aws_profile = "default"
 
+# Pin all nodes to one AZ to eliminate cross-AZ latency in benchmarks.
+# Set to "" to allow multi-AZ spread (default HA behavior).
+node_availability_zone = "us-east-1d"
+
 cpu_instance_type       = "t3.medium"
 cpu_node_count          = 2
 cpu_autoscaler_enabled  = false
