@@ -1,5 +1,17 @@
 global:
+  imagePullSecrets:
+    - name: ghcr-cred
   provider: "aws-eks"
+
+backend:
+  image:
+    repository: ghcr.io/jgdynamite10/rag-ray-backend
+    tag: "0.3.10"
+
+frontend:
+  image:
+    repository: ghcr.io/jgdynamite10/rag-ray-frontend
+    tag: "0.3.5"
 
 kuberay:
   enabled: false
