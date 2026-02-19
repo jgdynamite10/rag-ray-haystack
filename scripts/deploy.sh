@@ -52,7 +52,7 @@ case "${ACTION}" in
       --create-namespace \
       -f "${BASE_VALUES}" \
       -f "${OVERLAY_VALUES}" \
-      "${IMAGE_OVERRIDES[@]}"
+      ${IMAGE_OVERRIDES[@]+"${IMAGE_OVERRIDES[@]}"}
     ;;
   destroy)
     echo "Uninstalling ${RELEASE} from ${NAMESPACE}"

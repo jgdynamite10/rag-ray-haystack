@@ -1,6 +1,4 @@
 global:
-  imagePullSecrets:
-    - name: ghcr-cred
   provider: "gcp-gke"
 
 backend:
@@ -12,6 +10,8 @@ frontend:
   image:
     repository: ghcr.io/jgdynamite10/rag-ray-frontend
     tag: "0.3.5"
+  service:
+    type: LoadBalancer
 
 kuberay:
   enabled: false
@@ -20,10 +20,6 @@ kuberay:
       - key: "nvidia.com/gpu"
         operator: "Exists"
         effect: "NoSchedule"
-
-frontend:
-  service:
-    type: LoadBalancer
 
 qdrant:
   persistence:
