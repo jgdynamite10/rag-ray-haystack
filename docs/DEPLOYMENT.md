@@ -682,7 +682,7 @@ Each provider uses a different storage class for PersistentVolumeClaims (Qdrant 
 | Provider | Storage Class | Description |
 |----------|---------------|-------------|
 | Akamai LKE | `linode-block-storage` | Linode Block Storage (NVMe SSD) |
-| AWS EKS | `gp2` | EBS General Purpose SSD (requires EBS CSI driver) |
+| AWS EKS | `gp3` | EBS General Purpose SSD (requires EBS CSI driver) |
 | GCP GKE | `standard-rwo` | Persistent Disk (SSD, ReadWriteOnce) |
 
 These are configured in each provider's overlay values file:

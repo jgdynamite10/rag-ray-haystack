@@ -118,7 +118,7 @@ providers:
     cluster_mgmt_usd_per_hr: 0.10          # EKS control plane
     
     # Storage
-    storage_usd_per_gb_month: 0.10         # EBS gp2
+    storage_usd_per_gb_month: 0.08         # EBS gp3
     
     # Network
     nat_gateway_usd_per_hr: 0.045          # NAT Gateway provisioning
@@ -558,7 +558,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 | PVC | Namespace | Storage Class | Provisioned | Actual Used | $/GB/month |
 |-----|-----------|---------------|-------------|-------------|------------|
-| qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `gp2` (EBS) | 10 Gi | **40 KB (0.0004%)** | $0.10 |
+| qdrant-storage-rag-app-rag-app-qdrant-0 | rag-app | `gp3` (EBS) | 10 Gi | **40 KB (0.0004%)** | $0.08 |
 
 **Pod Placement:**
 - vLLM → GPU node (us-east-1d)
@@ -575,16 +575,17 @@ This section documents the **actual deployed infrastructure** queried directly f
 | **Management** | | |
 | EKS Control Plane (Standard) | $0.10 × 730 hrs | $73.00 |
 | **Storage** | | |
-| EBS gp2 (10 GB) | 10 GB × $0.10 | $1.00 |
+| EBS gp3 (10 GB) | 10 GB × $0.08 | $0.80 |
 | **Networking (Estimated)** | | |
 | NAT Gateway (if used) | $0.045 × 730 hrs | $32.85 |
 | NAT Data Processing (~100GB) | 100 GB × $0.045 | $4.50 |
 | Data Transfer Out (~100GB) | 100 GB × $0.09 | $9.00 |
 | Cross-AZ Traffic (multi-AZ) | ~50 GB × $0.01 × 2 | $1.00 |
-| **Total (with networking)** | | **$769.59** |
-| **Total (compute only)** | | **$722.24** |
+| **Total (with networking)** | | **$769.39** |
+| **Total (compute only)** | | **$722.04** |
 
 **Hourly Run Rate:** $1.05/hr (with networking) | $0.99/hr (compute only)
+
 
 **Networking Notes:**
 - Nodes span 3 AZs (us-east-1c, us-east-1d, us-east-1f) - cross-AZ traffic is charged
@@ -592,7 +593,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 - Data transfer to internet: First 100 GB/month is $0.09/GB, then tiered down
 - Cross-AZ traffic: $0.01/GB in each direction
 
-**Storage Optimization Note:** Only 40 KB of 10 GB is used (0.0004%). Could reduce to 1 GB minimum and save $0.90/month.
+**Storage Optimization Note:** Only 40 KB of 10 GB is used (0.0004%). Could reduce to 1 GB minimum and save $0.72/month.
 
 **Cost Optimization Options:**
 - **Spot Instances**: Save ~60-70% on GPU nodes (but can be interrupted)
@@ -617,7 +618,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Provider | GPU $/hr | CPU $/hr | Mgmt $/hr | Storage $/GB/mo | Monthly Total | Hourly Total |
 |----------|----------|----------|-----------|-----------------|---------------|--------------|
 | **Akamai LKE** | $0.52 | $0.036 | $0.00 | $0.10 | **$433.16** | $0.59 |
-| **AWS EKS** | $0.8048 | $0.0416 | $0.10 | $0.10 | **$722.24** | $0.99 |
+| **AWS EKS** | $0.8048 | $0.0416 | $0.10 | $0.08 | **$722.04** | $0.99 |
 | **GCP GKE** | $0.8536 | $0.067 | $0.10 | $0.10 | **$794.95** | $1.09 |
 
 **Including Estimated Networking (~100GB egress/month):**
@@ -625,7 +626,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 | Provider | Compute + Mgmt + Storage | Networking | Total w/ Network | Hourly Total |
 |----------|--------------------------|------------|------------------|--------------|
 | **Akamai LKE** | $433.16 | ~$0 (100GB within 4TB pool) | **$433.16** | $0.59 |
-| **AWS EKS** | $722.24 | ~$47.35 (NAT + egress + cross-AZ) | **$769.59** | $1.05 |
+| **AWS EKS** | $722.04 | ~$47.35 (NAT + egress + cross-AZ) | **$769.39** | $1.05 |
 | **GCP GKE** | $794.95 | ~$12.00 (egress only) | **$806.95** | $1.11 |
 
 **Key Findings:**

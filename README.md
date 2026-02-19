@@ -45,27 +45,27 @@ A Grafana dashboard intended to summarize:
 
 ---
 
-## Benchmark Results (February 18, 2026)
+## Benchmark Results (February 19, 2026)
 
 ### North-South (500 requests, 50 concurrency)
 
 | Metric | Akamai LKE | AWS EKS | GCP GKE |
 |--------|------------|---------|---------|
 | **Success** | 500/500 ✅ | 500/500 ✅ | 500/500 ✅ |
-| **TTFT p50** | **3,124 ms** 🏆 | 5,669 ms | 4,617 ms |
-| **TTFT p95** | **5,980 ms** 🏆 | 9,082 ms | 8,413 ms |
-| **Latency p50** | **14,240 ms** 🏆 | 20,088 ms | 20,050 ms |
-| **Latency p95** | **16,219 ms** 🏆 | 23,590 ms | 22,880 ms |
-| **TPOT p50** | **42.6 ms** 🏆 | 57.6 ms | 61.6 ms |
-| **Tokens/sec** | **18.06** 🏆 | 13.17 | 12.87 |
-| **Duration** | **151s** 🏆 | 215s | 217s |
+| **TTFT p50** | **3,933 ms** 🏆 | 4,382 ms | 5,028 ms |
+| **TTFT p95** | **7,175 ms** 🏆 | 8,724 ms | 11,942 ms |
+| **Latency p50** | 14,779 ms | **13,882 ms** 🏆 | 20,926 ms |
+| **Latency p95** | **17,866 ms** 🏆 | 19,200 ms | 28,255 ms |
+| **TPOT p50** | 44.3 ms | **39.8 ms** 🏆 | 61.8 ms |
+| **Tokens/sec** | 16.92 | **18.21** 🏆 | 12.78 |
+| **Duration** | 164s | **155s** 🏆 | 225s |
 
 ### East-West Network
 
 | Metric | Akamai LKE | AWS EKS | GCP GKE |
 |--------|------------|---------|---------|
-| **TCP Throughput** | 1.02 Gbps | **4.65 Gbps** 🏆 | 3.82 Gbps |
-| **Retransmits** | 3,949 | **2,212** 🏆 | 25,489 |
+| **TCP Throughput** | 1.00 Gbps | 3.77 Gbps | **3.96 Gbps** 🏆 |
+| **Retransmits** | 2,341 | 1,442 | **1** 🏆 |
 
 See [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md) for historical results.
 

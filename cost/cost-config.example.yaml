@@ -40,7 +40,7 @@ providers:
     egress_usd_per_gb: 0.09        # First 10TB/month
     ingress_usd_per_gb: 0.0
     
-    storage_usd_per_gb_month: 0.10 # gp2 EBS
+    storage_usd_per_gb_month: 0.08 # gp3 EBS
     
     cluster_mgmt_usd_per_hr: 0.10  # EKS control plane
 

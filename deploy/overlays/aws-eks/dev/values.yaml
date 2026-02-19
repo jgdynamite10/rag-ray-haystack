@@ -23,7 +23,7 @@ kuberay:
 
 qdrant:
   persistence:
-    storageClassName: gp2
+    storageClassName: gp3
 
 vllm:
   model: "Qwen/Qwen2.5-3B-Instruct"
