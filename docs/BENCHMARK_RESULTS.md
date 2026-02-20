@@ -4,6 +4,53 @@ This document tracks benchmark results across all three cloud providers over tim
 
 ---
 
+## 5-Run Average (February 19, 2026)
+
+**Runs:** 5 consecutive benchmarks (Runs 1–5)  
+**Backend Version:** 0.3.10  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Environment:** All providers single-zone, identical images (backend 0.3.10, frontend 0.3.5, vLLM v0.6.2, Qdrant v1.12.6), consistent pod-to-node placement (1 GPU + 2 CPU nodes each).
+
+### North-South Average (5 runs × 500 requests = 2,500 requests per provider)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 2,500/2,500 ✅ | 2,500/2,500 ✅ | 2,481/2,500 ⚠️ |
+| **TTFT p50** | 4,574 ms | 5,080 ms | **4,312 ms** 🏆 |
+| **TTFT p95** | **7,403 ms** 🏆 | 12,729 ms | 8,854 ms |
+| **Latency p50** | **15,672 ms** 🏆 | 18,905 ms | 19,679 ms |
+| **Latency p95** | **18,166 ms** 🏆 | 26,856 ms | 23,664 ms |
+| **TPOT p50** | **44.0 ms** 🏆 | 53.9 ms | 60.0 ms |
+| **TPOT p95** | **50.6 ms** 🏆 | 61.6 ms | 69.3 ms |
+| **Tokens/sec** | **16.46** 🏆 | 14.22 | 13.36 |
+| **Duration** | **167s** 🏆 | 206s | 225s |
+
+### East-West Network Average (5 runs)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 1.04 Gbps | **4.31 Gbps** 🏆 | 3.85 Gbps |
+| **Retransmits** | 3,347 | **2,210** 🏆 | 2,288 |
+
+### Cost Comparison
+
+| Provider | Monthly (w/ network) | Hourly | Cost vs LKE |
+|----------|---------------------|--------|-------------|
+| **Akamai LKE** | **$433** 🏆 | **$0.59** | — |
+| **AWS EKS** | $769 | $1.05 | +78% |
+| **GCP GKE** | $807 | $1.11 | +86% |
+
+### Key Findings
+
+1. **LKE wins 7 of 8 NS metrics** on average — TTFT p95, both latency percentiles, both TPOT percentiles, tokens/sec, and duration
+2. **GKE wins TTFT p50** — faster initial response but higher tail latency and slower token generation
+3. **EKS had one high-tail outlier** (Run 3: TTFT p95 27.3s, Latency p95 43.2s) that inflated its averages
+4. **EKS wins east-west throughput** at 4.31 Gbps avg (4x LKE, 12% over GKE)
+5. **LKE is 44% cheaper than EKS and 46% cheaper than GKE** while delivering better NS performance
+6. **GKE retransmits are bimodal**: 0–1 in 3 runs, 5,000–6,000 in 2 runs
+
+---
+
 ## Benchmark Results (February 19, 2026 – Run 5)
 
 **Timestamp:** 2026-02-19T18:59:36 CST (2026-02-20T00:59:36 UTC)  
