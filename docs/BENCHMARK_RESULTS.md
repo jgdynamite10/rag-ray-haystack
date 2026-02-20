@@ -4,6 +4,44 @@ This document tracks benchmark results across all three cloud providers over tim
 
 ---
 
+## Benchmark Results (February 19, 2026 – Run 4)
+
+**Timestamp:** 2026-02-19T18:42:43 CST (2026-02-20T00:42:43 UTC)  
+**Backend Version:** 0.3.10  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Note:** Fourth run. All providers single-zone, identical images, consistent pod-to-node placement.
+
+### North-South (500 requests, 50 concurrency)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 500/500 ✅ | 500/500 ✅ | 500/500 ✅ |
+| **TTFT p50** | 4,923 ms | 5,290 ms | **4,294 ms** 🏆 |
+| **TTFT p95** | **7,398 ms** 🏆 | 8,837 ms | 8,688 ms |
+| **Latency p50** | **16,056 ms** 🏆 | 19,872 ms | 20,350 ms |
+| **Latency p95** | **18,347 ms** 🏆 | 23,005 ms | 24,061 ms |
+| **TPOT p50** | **43.4 ms** 🏆 | 56.3 ms | 62.9 ms |
+| **TPOT p95** | **50.6 ms** 🏆 | 64.8 ms | 70.3 ms |
+| **Tokens/sec** | **16.25** 🏆 | 13.33 | 12.78 |
+| **Duration** | **168s** 🏆 | 212s | 216s |
+
+### East-West Network
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 1.09 Gbps | **4.83 Gbps** 🏆 | 3.75 Gbps |
+| **Retransmits** | 3,028 | **2,606** 🏆 | 5,154 |
+
+### Current Accurate Costs (from cost-config.yaml):
+
+| Provider | Monthly (w/ network) | Hourly |
+|----------|---------------------|--------|
+| **Akamai LKE** | $433 | $0.59 |
+| **AWS EKS** | $769 | $1.05 |
+| **GCP GKE** | $807 | $1.11 |
+
+---
+
 ## Benchmark Results (February 19, 2026 – Run 3)
 
 **Timestamp:** 2026-02-19T14:35:00 CST (2026-02-19T20:35:00 UTC)  
