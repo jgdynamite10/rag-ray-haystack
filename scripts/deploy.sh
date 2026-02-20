@@ -45,9 +45,42 @@ if [[ -n "${IMAGE_TAG}" ]]; then
   IMAGE_OVERRIDES+=("--set" "frontend.image.tag=${FRONTEND_TAG}")
 fi
 
+ensure_monitoring() {
+  local kc="$1"
+  echo "Ensuring monitoring stack is installed..."
+
+  if ! KUBECONFIG="$kc" helm -n monitoring status kube-prometheus-stack >/dev/null 2>&1; then
+    echo "Installing kube-prometheus-stack..."
+    KUBECONFIG="$kc" helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
+    KUBECONFIG="$kc" helm repo update >/dev/null 2>&1
+    KUBECONFIG="$kc" helm -n monitoring upgrade --install kube-prometheus-stack \
+      prometheus-community/kube-prometheus-stack \
+      --create-namespace \
+      --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+      --set prometheus.service.type=LoadBalancer \
+      --set grafana.enabled=false \
+      --wait --timeout 5m
+    echo "kube-prometheus-stack installed."
+  else
+    echo "kube-prometheus-stack already installed."
+  fi
+
+  if ! KUBECONFIG="$kc" helm -n monitoring status prometheus-pushgateway >/dev/null 2>&1; then
+    echo "Installing prometheus-pushgateway..."
+    KUBECONFIG="$kc" helm -n monitoring upgrade --install prometheus-pushgateway \
+      prometheus-community/prometheus-pushgateway \
+      --set serviceMonitor.enabled=true \
+      --set serviceMonitor.additionalLabels.release=kube-prometheus-stack
+    echo "prometheus-pushgateway installed."
+  else
+    echo "prometheus-pushgateway already installed."
+  fi
+}
+
 case "${ACTION}" in
   apply)
     echo "Deploying ${RELEASE} to ${NAMESPACE} using ${PROVIDER}/${ENVIRONMENT}"
+    ensure_monitoring "${KUBECONFIG_PATH}"
     KUBECONFIG="${KUBECONFIG_PATH}" helm -n "${NAMESPACE}" upgrade --install "${RELEASE}" deploy/helm/rag-app \
       --create-namespace \
       -f "${BASE_VALUES}" \

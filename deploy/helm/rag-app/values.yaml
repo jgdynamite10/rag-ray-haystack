@@ -105,6 +105,19 @@ kuberay:
     memory: "2Gi"
     tolerations: []
 
+dcgm:
+  service:
+    enabled: false
+  serviceMonitor:
+    enabled: false
+    namespace: monitoring
+    release: kube-prometheus-stack
+    portName: metrics
+    interval: "15s"
+    targetNamespace: gpu-operator
+    selector:
+      app: nvidia-dcgm-exporter
+
 vllm:
   image:
     repository: vllm/vllm-openai

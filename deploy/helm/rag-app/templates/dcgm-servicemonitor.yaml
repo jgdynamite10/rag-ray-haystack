@@ -1,20 +1,24 @@
-{{- if and .Values.monitoring .Values.monitoring.enabled }}
+{{- if .Values.dcgm }}
+{{- if .Values.dcgm.serviceMonitor }}
+{{- if .Values.dcgm.serviceMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: nvidia-dcgm-exporter
-  namespace: {{ .Values.monitoring.namespace | default "monitoring" }}
+  name: {{ include "rag-app.fullname" . }}-dcgm
+  namespace: {{ .Values.dcgm.serviceMonitor.namespace | default "monitoring" }}
   labels:
-    release: prometheus
+    release: {{ .Values.dcgm.serviceMonitor.release | default "kube-prometheus-stack" }}
 spec:
   endpoints:
-  - port: gpu-metrics
+  - port: {{ .Values.dcgm.serviceMonitor.portName | default "metrics" }}
     path: /metrics
-    interval: 15s
+    interval: {{ .Values.dcgm.serviceMonitor.interval | default "15s" }}
   namespaceSelector:
     matchNames:
-    - gpu-operator
+    - {{ .Values.dcgm.serviceMonitor.targetNamespace | default "gpu-operator" }}
   selector:
     matchLabels:
-      app: nvidia-dcgm-exporter
+      {{- toYaml .Values.dcgm.serviceMonitor.selector | nindent 6 }}
+{{- end }}
+{{- end }}
 {{- end }}

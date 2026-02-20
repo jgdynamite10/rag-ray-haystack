@@ -25,6 +25,16 @@ qdrant:
   persistence:
     storageClassName: gp3
 
+dcgm:
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    release: kube-prometheus-stack
+    portName: gpu-metrics
+    targetNamespace: gpu-operator
+    selector:
+      app: nvidia-dcgm-exporter
+
 vllm:
   model: "Qwen/Qwen2.5-3B-Instruct"
   servedModelName: "rag-default"

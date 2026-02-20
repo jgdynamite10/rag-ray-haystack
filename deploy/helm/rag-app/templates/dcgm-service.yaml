@@ -1,0 +1,21 @@
+{{- if .Values.dcgm }}
+{{- if .Values.dcgm.service }}
+{{- if .Values.dcgm.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: dcgm-exporter
+  namespace: {{ .Values.dcgm.service.namespace | default "gpu-operator" }}
+  labels:
+    {{- toYaml .Values.dcgm.serviceMonitor.selector | nindent 4 }}
+spec:
+  selector:
+    {{- toYaml .Values.dcgm.service.podSelector | nindent 4 }}
+  ports:
+    - name: {{ .Values.dcgm.serviceMonitor.portName | default "metrics" }}
+      port: {{ .Values.dcgm.service.port | default 9400 }}
+      targetPort: {{ .Values.dcgm.service.port | default 9400 }}
+      protocol: TCP
+{{- end }}
+{{- end }}
+{{- end }}

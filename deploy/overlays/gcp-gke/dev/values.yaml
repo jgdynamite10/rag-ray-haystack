@@ -25,6 +25,23 @@ qdrant:
   persistence:
     storageClassName: standard-rwo
 
+dcgm:
+  service:
+    enabled: true
+    namespace: gke-managed-system
+    port: 9400
+    podSelector:
+      app.kubernetes.io/name: gke-managed-dcgm-exporter
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    release: kube-prometheus-stack
+    portName: metrics
+    interval: "15s"
+    targetNamespace: gke-managed-system
+    selector:
+      app: dcgm-exporter
+
 vllm:
   model: "Qwen/Qwen2.5-3B-Instruct"
   servedModelName: "rag-default"

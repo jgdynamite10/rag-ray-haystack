@@ -1,7 +1,7 @@
 variable "region" {
   description = "AWS region to deploy into."
   type        = string
-  default     = "us-east-1"
+  default     = "us-east-2"
 }
 
 variable "aws_profile" {
@@ -98,7 +98,7 @@ variable "gpu_autoscaler_max" {
 variable "node_availability_zone" {
   description = "Pin all node groups to a single AZ for consistent intra-zone latency. Set to empty string to allow multi-AZ spread."
   type        = string
-  default     = "us-east-1d"
+  default     = "us-east-2a"
 }
 
 variable "tags" {

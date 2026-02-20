@@ -15,17 +15,16 @@ data "aws_subnets" "selected" {
   }
 }
 
-# Filter out subnets in AZs not supported by EKS (e.g. us-east-1e)
+# Look up all subnets in the VPC
 data "aws_subnet" "all" {
   for_each = length(var.subnet_ids) == 0 ? toset(data.aws_subnets.selected[0].ids) : toset([])
   id       = each.value
 }
 
 locals {
-  # EKS-supported AZs (excludes us-east-1e)
-  eks_supported_azs = ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"]
+  # Use all discovered subnets (region-agnostic)
   filtered_subnets = length(var.subnet_ids) == 0 ? [
-    for s in data.aws_subnet.all : s.id if contains(local.eks_supported_azs, s.availability_zone)
+    for s in data.aws_subnet.all : s.id
   ] : var.subnet_ids
   subnet_ids = local.filtered_subnets
 
