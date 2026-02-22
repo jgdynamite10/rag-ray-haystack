@@ -843,7 +843,32 @@ done
 # 4. Verify documents are ingested (k_retrieved > 0)
 for KC in ~/.kube/rag-ray-haystack-kubeconfig.yaml ~/.kube/aws-eks-dev-config.yaml ~/.kube/gcp-gke-dev-config.yaml; do
   echo "--- $KC ---"
-  BACKEND=$(KUBECONFIG="$KC" kubectl -n rag-app get pod -l app.kubernetes.io/component=backend -o name | head -1)
-  KUBECONFIG="$KC" kubectl -n rag-app exec "$BACKEND" -- curl -s localhost:8000/healthz | python3 -m json.tool
+  BACKEND=$(KUBECONFIG="$KC" kubectl -n rag-app get pod -l app=rag-app-rag-app-backend -o jsonpath='{.items[0].metadata.name}')
+  KUBECONFIG="$KC" kubectl -n rag-app exec "$BACKEND" -- python -c "import urllib.request,json;r=urllib.request.urlopen('http://rag-app-rag-app-qdrant:6333/collections/rag-documents');d=json.loads(r.read());print(f'Points: {d[\"result\"][\"points_count\"]}')"
 done
 ```
+
+### Pre-Flight Verification (February 22, 2026)
+
+Verified before the 5-run benchmark session. All providers confirmed identical.
+
+| Check | Akamai LKE | AWS EKS | GCP GKE |
+|-------|------------|---------|---------|
+| **Nodes** | 3 (1 GPU + 2 CPU) | 3 (1 GPU + 2 CPU) | 3 (1 GPU + 2 CPU) |
+| **GPU Instance** | g2-gpu-rtx4000a1-s | g6.xlarge | g2-standard-8 |
+| **CPU Instance** | g6-standard-2 | t3.medium | e2-standard-2 |
+| **Region** | us-ord (Chicago) | us-east-2 (Ohio) | us-central1 (Iowa) |
+| **AZ** | Single DC | us-east-2a | us-central1-a |
+| **Node Roles** | gpu/cpu labels set | gpu/cpu labels set | gpu/cpu labels set |
+| **All Pods Running** | 4/4 | 4/4 | 4/4 |
+| **vLLM → GPU node** | Yes | Yes | Yes |
+| **Backend → CPU node** | Yes | Yes | Yes |
+| **Frontend → CPU node** | Yes | Yes | Yes |
+| **Qdrant → CPU node** | Yes | Yes | Yes |
+| **Backend Image** | 0.3.10 | 0.3.10 | 0.3.10 |
+| **Frontend Image** | 0.3.5 | 0.3.5 | 0.3.5 |
+| **vLLM Image** | v0.6.2 | v0.6.2 | v0.6.2 |
+| **Qdrant Image** | v1.12.6 | v1.12.6 | v1.12.6 |
+| **Healthz** | OK | OK | OK |
+| **Qdrant Points** | **5** | **5** | **5** |
+| **Streaming (k=4)** | Working | Working | Working |

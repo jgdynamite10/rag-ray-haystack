@@ -650,6 +650,69 @@ This section documents the **actual deployed infrastructure** queried directly f
 
 ---
 
+## Region Change: AWS EKS us-east-1 → us-east-2 (February 22, 2026)
+
+On February 22, 2026, the AWS EKS cluster was re-provisioned in **us-east-2 (Ohio)** replacing the original **us-east-1 (N. Virginia)** deployment. This aligns all three providers in the Central US corridor for fairer benchmark comparisons.
+
+### What Changed
+
+| Attribute | Before (Jan 27 – Feb 19) | After (Feb 22+) |
+|-----------|--------------------------|-----------------|
+| **Region** | us-east-1 (N. Virginia) | us-east-2 (Ohio) |
+| **AZ Layout** | Multi-AZ (us-east-1c, 1d, 1f) | Single-AZ (us-east-2a) |
+| **Cross-AZ Traffic** | ~$1.00/month | $0.00 |
+| **Pod Placement** | Pods spread across 3 AZs | All pods in us-east-2a, CPU pods pinned via `nodeSelector` |
+
+### Pricing Impact
+
+**All per-hour instance rates are identical between us-east-1 and us-east-2:**
+
+| Resource | us-east-1 $/hr | us-east-2 $/hr | Change |
+|----------|----------------|----------------|--------|
+| g6.xlarge (GPU) | $0.8048 | $0.8048 | None |
+| t3.medium (CPU) | $0.0416 | $0.0416 | None |
+| EKS Control Plane | $0.10 | $0.10 | None |
+| EBS gp3 ($/GB/mo) | $0.08 | $0.08 | None |
+| NAT Gateway ($/hr) | $0.045 | $0.045 | None |
+| Egress ($/GB) | $0.09 | $0.09 | None |
+
+The only cost difference is the elimination of **cross-AZ traffic** (~$1.00/month) due to the single-AZ deployment.
+
+### Updated Monthly Total
+
+| | Before (multi-AZ, us-east-1) | After (single-AZ, us-east-2) |
+|--|------------------------------|-------------------------------|
+| **Compute** | $648.24 | $648.24 |
+| **Management** | $73.00 | $73.00 |
+| **Storage** | $0.80 | $0.80 |
+| **Networking** | ~$47.35 | ~$46.35 |
+| **Total** | **$769.39** | **$768.39** |
+| **Hourly** | $1.05 | $1.05 |
+
+**Net impact: -$1.00/month.** Effectively no change in cost.
+
+### Provider Region Alignment (Feb 22, 2026)
+
+All providers are now in the Central US corridor:
+
+| Provider | Region | City | Approx. Distance from Benchmark Client (Dallas, TX) |
+|----------|--------|------|------------------------------------------------------|
+| **Akamai LKE** | us-ord | Chicago, IL | ~800 mi |
+| **AWS EKS** | us-east-2 | Columbus, OH | ~900 mi |
+| **GCP GKE** | us-central1 | Council Bluffs, IA | ~600 mi |
+
+Previously, EKS was in us-east-1 (N. Virginia), ~1,300 mi from the benchmark client. The move to Ohio reduces geographic disparity across providers for North-South latency comparisons.
+
+### Updated Cost Summary (February 22, 2026)
+
+| Provider | Monthly (w/ network) | Hourly | Cost vs LKE |
+|----------|---------------------|--------|-------------|
+| **Akamai LKE** | **$433** | **$0.59** | — |
+| **AWS EKS** | $768 | $1.05 | +77% |
+| **GCP GKE** | $807 | $1.11 | +86% |
+
+---
+
 ## Related Documentation
 
 - [Benchmarking Guide](BENCHMARKING.md) - How to run benchmarks
