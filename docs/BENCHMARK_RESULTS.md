@@ -4,50 +4,323 @@ This document tracks benchmark results across all three cloud providers over tim
 
 ---
 
-## 5-Run Average (February 19, 2026)
+## Median of 7 Runs (February 22, 2026)
 
-**Runs:** 5 consecutive benchmarks (Runs 1–5)  
+**Method:** 7 runs, report **median** per metric per provider (MLPerf/SPEC-aligned)  
 **Backend Version:** 0.3.10  
 **Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
-**Environment:** All providers single-zone, identical images (backend 0.3.10, frontend 0.3.5, vLLM v0.6.2, Qdrant v1.12.6), consistent pod-to-node placement (1 GPU + 2 CPU nodes each).
+**Environment:** All providers single-zone Central US corridor, identical images (backend 0.3.10, frontend 0.3.5, vLLM v0.6.2, Qdrant v1.12.6), consistent pod-to-node placement (1 GPU + 2 CPU nodes each), 5 Qdrant points each. EKS in us-east-2 (Ohio). All benchmarks ran simultaneously per run.
 
-### North-South Average (5 runs × 500 requests = 2,500 requests per provider)
-
-| Metric | Akamai LKE | AWS EKS | GCP GKE |
-|--------|------------|---------|---------|
-| **Success** | 2,500/2,500 ✅ | 2,500/2,500 ✅ | 2,481/2,500 ⚠️ |
-| **TTFT p50** | 4,574 ms | 5,080 ms | **4,312 ms** 🏆 |
-| **TTFT p95** | **7,403 ms** 🏆 | 12,729 ms | 8,854 ms |
-| **Latency p50** | **15,672 ms** 🏆 | 18,905 ms | 19,679 ms |
-| **Latency p95** | **18,166 ms** 🏆 | 26,856 ms | 23,664 ms |
-| **TPOT p50** | **44.0 ms** 🏆 | 53.9 ms | 60.0 ms |
-| **TPOT p95** | **50.6 ms** 🏆 | 61.6 ms | 69.3 ms |
-| **Tokens/sec** | **16.46** 🏆 | 14.22 | 13.36 |
-| **Duration** | **167s** 🏆 | 206s | 225s |
-
-### East-West Network Average (5 runs)
+### North-South Median (7 runs × 500 requests = 3,500 requests per provider)
 
 | Metric | Akamai LKE | AWS EKS | GCP GKE |
 |--------|------------|---------|---------|
-| **TCP Throughput** | 1.04 Gbps | **4.31 Gbps** 🏆 | 3.85 Gbps |
-| **Retransmits** | 3,347 | **2,210** 🏆 | 2,288 |
+| **Success (total)** | 3,498/3,500 ✅ | 3,475/3,500 ⚠️ | 3,495/3,500 ✅ |
+| **TTFT p50** | 4,556 ms | **1,518 ms** 🏆 | 2,325 ms |
+| **TTFT p95** | 9,410 ms | 6,989 ms | **6,391 ms** 🏆 |
+| **Latency p50** | **14,245 ms** 🏆 | 15,023 ms | 15,968 ms |
+| **Latency p95** | 22,201 ms | **19,983 ms** 🏆 | 20,119 ms |
+| **TPOT p50** | **37.9 ms** 🏆 | 54.2 ms | 56.6 ms |
+| **TPOT p95** | **45.3 ms** 🏆 | 58.3 ms | 60.8 ms |
+| **Tokens/sec** | **17.70** 🏆 | 16.22 | 15.30 |
+| **Duration** | **155s** 🏆 | 172s | 181s |
+
+### East-West Network Median (7 runs)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 0.93 Gbps | **4.87 Gbps** 🏆 | 3.96 Gbps |
+| **Retransmits** | 3,663 | 3,234 | **0** 🏆 |
 
 ### Cost Comparison
 
 | Provider | Monthly (w/ network) | Hourly | Cost vs LKE |
 |----------|---------------------|--------|-------------|
 | **Akamai LKE** | **$433** 🏆 | **$0.59** | — |
-| **AWS EKS** | $769 | $1.05 | +78% |
+| **AWS EKS** | $768 | $1.05 | +77% |
 | **GCP GKE** | $807 | $1.11 | +86% |
 
 ### Key Findings
 
-1. **LKE wins 7 of 8 NS metrics** on average — TTFT p95, both latency percentiles, both TPOT percentiles, tokens/sec, and duration
-2. **GKE wins TTFT p50** — faster initial response but higher tail latency and slower token generation
-3. **EKS had one high-tail outlier** (Run 3: TTFT p95 27.3s, Latency p95 43.2s) that inflated its averages
-4. **EKS wins east-west throughput** at 4.31 Gbps avg (4x LKE, 12% over GKE)
-5. **LKE is 44% cheaper than EKS and 46% cheaper than GKE** while delivering better NS performance
-6. **GKE retransmits are bimodal**: 0–1 in 3 runs, 5,000–6,000 in 2 runs
+1. **LKE wins 5 of 8 NS metrics** — Latency p50, both TPOT percentiles, tokens/sec, and duration
+2. **EKS wins 2 of 8 NS metrics** — TTFT p50 (1,518 ms) and Latency p95 (19,983 ms)
+3. **GKE wins TTFT p95** (6,391 ms) — most consistent tail latency for time-to-first-token
+4. **LKE token generation is 32% faster** than EKS and 48% faster than GKE (TPOT p50: 37.9 vs 54.2 vs 56.6 ms)
+5. **EKS wins east-west throughput** at 4.87 Gbps median (5.2x LKE, 23% over GKE)
+6. **GKE median EW retransmits is 0** — 5 of 7 runs had zero retransmits (bimodal: 0 or 5,000+)
+7. **LKE is 44% cheaper than EKS and 46% cheaper than GKE** while winning the majority of NS metrics
+
+### Previous 5-Run Average (February 19, 2026)
+
+> Prior to the EKS region change (us-east-1 → us-east-2). See individual run results below for details.
+> LKE won 7/8 NS metrics. GKE won TTFT p50. EKS won EW throughput (4.31 Gbps).
+> Full results preserved in the run-by-run sections below.
+
+---
+
+## Benchmark Results (February 22, 2026 – Run 1)
+
+**Timestamp:** 2026-02-21T20:45:36 CST (2026-02-22T02:45:36 UTC)  
+**Backend Version:** 0.3.10  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Note:** First run (post-region-change). All providers single-zone, Central US corridor, identical images (backend 0.3.10, frontend 0.3.5, vLLM v0.6.2, Qdrant v1.12.6), consistent pod-to-node placement, 5 Qdrant points each. EKS moved to us-east-2 (Ohio). GKE LB IP updated to 34.69.214.163.
+
+### North-South (500 requests, 50 concurrency)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 500/500 ✅ | 488/500 ⚠️ | 500/500 ✅ |
+| **TTFT p50** | **3,510 ms** 🏆 | 4,145 ms | 4,089 ms |
+| **TTFT p95** | 7,650 ms | 35,157 ms | **6,391 ms** 🏆 |
+| **Latency p50** | **13,123 ms** 🏆 | 17,060 ms | 17,447 ms |
+| **Latency p95** | **22,201 ms** 🏆 | 47,641 ms | 22,937 ms |
+| **TPOT p50** | **39.0 ms** 🏆 | 54.2 ms | 56.6 ms |
+| **TPOT p95** | **67.7 ms** 🏆 | 67.9 ms | 72.2 ms |
+| **Tokens/sec** | **18.10** 🏆 | 14.47 | 14.21 |
+| **Duration** | **155s** 🏆 | 210s | 193s |
+
+### East-West Network
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 0.93 Gbps | **4.91 Gbps** 🏆 | 3.99 Gbps |
+| **Retransmits** | 2,091 | 3,398 | **0** 🏆 |
+
+### Current Accurate Costs (from cost-config.yaml):
+
+| Provider | Monthly (w/ network) | Hourly |
+|----------|---------------------|--------|
+| **Akamai LKE** | $433 | $0.59 |
+| **AWS EKS** | $768 | $1.05 |
+| **GCP GKE** | $807 | $1.11 |
+
+---
+
+## Benchmark Results (February 22, 2026 – Run 7)
+
+**Timestamp:** 2026-02-21T21:53:15 CST (2026-02-22T03:53:15 UTC)  
+**Backend Version:** 0.3.10  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Note:** Seventh and final run. LKE had largest outlier of all runs (TTFT p50 15.8s, Lat p50 23.6s, 254s duration, 2 errors). EKS had 13 errors. GKE had 5 errors.
+
+### North-South (500 requests, 50 concurrency)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 498/500 ⚠️ | 487/500 ⚠️ | 495/500 ⚠️ |
+| **TTFT p50** | 15,777 ms | **729 ms** 🏆 | 1,434 ms |
+| **TTFT p95** | 24,915 ms | 5,851 ms | **4,913 ms** 🏆 |
+| **Latency p50** | 23,648 ms | **14,848 ms** 🏆 | 15,734 ms |
+| **Latency p95** | 32,756 ms | **18,885 ms** | **19,468 ms** |
+| **TPOT p50** | **35.7 ms** 🏆 | 55.8 ms | 57.6 ms |
+| **TPOT p95** | **48.3 ms** 🏆 | 58.5 ms | 61.3 ms |
+| **Tokens/sec** | 11.35 | **16.95** 🏆 | 15.71 |
+| **Duration** | 254s | 222s | **176s** 🏆 |
+
+### East-West Network
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 0.97 Gbps | **4.87 Gbps** 🏆 | 3.85 Gbps |
+| **Retransmits** | **2,774** 🏆 | 3,234 | 6,417 |
+
+### Current Accurate Costs (from cost-config.yaml):
+
+| Provider | Monthly (w/ network) | Hourly |
+|----------|---------------------|--------|
+| **Akamai LKE** | $433 | $0.59 |
+| **AWS EKS** | $768 | $1.05 |
+| **GCP GKE** | $807 | $1.11 |
+
+---
+
+## Benchmark Results (February 22, 2026 – Run 6)
+
+**Timestamp:** 2026-02-21T21:48:42 CST (2026-02-22T03:48:42 UTC)  
+**Backend Version:** 0.3.10  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Note:** Sixth run. All providers single-zone, Central US corridor, identical images, 5 Qdrant points each. 500/500 success on all three. LKE had elevated TTFT again (p50 8.2s, p95 17.0s).
+
+### North-South (500 requests, 50 concurrency)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 500/500 ✅ | 500/500 ✅ | 500/500 ✅ |
+| **TTFT p50** | 8,201 ms | **1,505 ms** 🏆 | 2,300 ms |
+| **TTFT p95** | 16,997 ms | **6,497 ms** | **6,989 ms** |
+| **Latency p50** | 17,805 ms | **15,023 ms** 🏆 | 15,931 ms |
+| **Latency p95** | 25,631 ms | **19,983 ms** 🏆 | 20,311 ms |
+| **TPOT p50** | **37.9 ms** 🏆 | 53.7 ms | 56.6 ms |
+| **TPOT p95** | **43.5 ms** 🏆 | 57.7 ms | 60.8 ms |
+| **Tokens/sec** | 14.66 | **16.22** 🏆 | 15.30 |
+| **Duration** | 199s | **169s** 🏆 | 181s |
+
+### East-West Network
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 0.93 Gbps | **4.90 Gbps** 🏆 | 3.96 Gbps |
+| **Retransmits** | 3,663 | 3,156 | **0** 🏆 |
+
+### Current Accurate Costs (from cost-config.yaml):
+
+| Provider | Monthly (w/ network) | Hourly |
+|----------|---------------------|--------|
+| **Akamai LKE** | $433 | $0.59 |
+| **AWS EKS** | $768 | $1.05 |
+| **GCP GKE** | $807 | $1.11 |
+
+---
+
+## Benchmark Results (February 22, 2026 – Run 5)
+
+**Timestamp:** 2026-02-21T21:34:39 CST (2026-02-22T03:34:39 UTC)  
+**Backend Version:** 0.3.10  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Note:** Fifth and final run. All providers single-zone, Central US corridor, identical images, 5 Qdrant points each. All 6 benchmarks ran simultaneously. 500/500 success on all three providers. GKE EW retransmits spiked (5,146) after four consecutive 0-retransmit runs.
+
+### North-South (500 requests, 50 concurrency)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 500/500 ✅ | 500/500 ✅ | 500/500 ✅ |
+| **TTFT p50** | 4,267 ms | **1,115 ms** 🏆 | 1,953 ms |
+| **TTFT p95** | 9,410 ms | 7,285 ms | **6,028 ms** 🏆 |
+| **Latency p50** | **14,017 ms** 🏆 | 14,905 ms | 15,927 ms |
+| **Latency p95** | **19,303 ms** 🏆 | 20,459 ms | 19,680 ms |
+| **TPOT p50** | **37.1 ms** 🏆 | 54.9 ms | 56.7 ms |
+| **TPOT p95** | **43.4 ms** 🏆 | 58.3 ms | 60.5 ms |
+| **Tokens/sec** | **18.10** 🏆 | 16.49 | 15.46 |
+| **Duration** | **153s** 🏆 | 168s | 176s |
+
+### East-West Network
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 0.97 Gbps | **4.66 Gbps** 🏆 | 3.90 Gbps |
+| **Retransmits** | 5,033 | **3,169** 🏆 | 5,146 |
+
+### Current Accurate Costs (from cost-config.yaml):
+
+| Provider | Monthly (w/ network) | Hourly |
+|----------|---------------------|--------|
+| **Akamai LKE** | $433 | $0.59 |
+| **AWS EKS** | $768 | $1.05 |
+| **GCP GKE** | $807 | $1.11 |
+
+---
+
+## Benchmark Results (February 22, 2026 – Run 4)
+
+**Timestamp:** 2026-02-21T21:22:43 CST (2026-02-22T03:22:43 UTC)  
+**Backend Version:** 0.3.10  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Note:** Fourth run. All providers single-zone, Central US corridor, identical images, 5 Qdrant points each. All 6 benchmarks ran simultaneously. 500/500 success on all three providers. LKE had an outlier run with elevated TTFT (p50 9.6s, p95 16.4s).
+
+### North-South (500 requests, 50 concurrency)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 500/500 ✅ | 500/500 ✅ | 500/500 ✅ |
+| **TTFT p50** | 9,612 ms | **1,518 ms** 🏆 | 2,325 ms |
+| **TTFT p95** | 16,383 ms | **5,743 ms** | **5,921 ms** |
+| **Latency p50** | 19,067 ms | **14,804 ms** 🏆 | 15,968 ms |
+| **Latency p95** | 25,654 ms | **19,137 ms** | **19,927 ms** |
+| **TPOT p50** | **38.2 ms** 🏆 | 54.2 ms | 56.8 ms |
+| **TPOT p95** | **46.6 ms** 🏆 | 58.4 ms | 60.8 ms |
+| **Tokens/sec** | 14.61 | **16.40** 🏆 | 15.41 |
+| **Duration** | 202s | **172s** 🏆 | 180s |
+
+### East-West Network
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 0.95 Gbps | **4.87 Gbps** 🏆 | 3.97 Gbps |
+| **Retransmits** | 5,013 | 3,042 | **0** 🏆 |
+
+### Current Accurate Costs (from cost-config.yaml):
+
+| Provider | Monthly (w/ network) | Hourly |
+|----------|---------------------|--------|
+| **Akamai LKE** | $433 | $0.59 |
+| **AWS EKS** | $768 | $1.05 |
+| **GCP GKE** | $807 | $1.11 |
+
+---
+
+## Benchmark Results (February 22, 2026 – Run 3)
+
+**Timestamp:** 2026-02-21T21:12:48 CST (2026-02-22T03:12:48 UTC)  
+**Backend Version:** 0.3.10  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Note:** Third run. All providers single-zone, Central US corridor, identical images, 5 Qdrant points each. All 6 benchmarks ran simultaneously. 500/500 success on all three providers.
+
+### North-South (500 requests, 50 concurrency)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 500/500 ✅ | 500/500 ✅ | 500/500 ✅ |
+| **TTFT p50** | 4,556 ms | **3,229 ms** 🏆 | 3,939 ms |
+| **TTFT p95** | 9,236 ms | **6,780 ms** | **6,780 ms** 🏆 |
+| **Latency p50** | **14,245 ms** 🏆 | 16,151 ms | 16,924 ms |
+| **Latency p95** | **18,759 ms** 🏆 | 20,027 ms | 20,119 ms |
+| **TPOT p50** | **37.9 ms** 🏆 | 52.0 ms | 53.8 ms |
+| **TPOT p95** | **44.7 ms** 🏆 | 57.4 ms | 60.2 ms |
+| **Tokens/sec** | **17.70** 🏆 | 15.79 | 14.91 |
+| **Duration** | **155s** 🏆 | 174s | 182s |
+
+### East-West Network
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 0.91 Gbps | **4.86 Gbps** 🏆 | 3.96 Gbps |
+| **Retransmits** | 4,258 | 3,537 | **65** 🏆 |
+
+### Current Accurate Costs (from cost-config.yaml):
+
+| Provider | Monthly (w/ network) | Hourly |
+|----------|---------------------|--------|
+| **Akamai LKE** | $433 | $0.59 |
+| **AWS EKS** | $768 | $1.05 |
+| **GCP GKE** | $807 | $1.11 |
+
+---
+
+## Benchmark Results (February 22, 2026 – Run 2)
+
+**Timestamp:** 2026-02-21T20:54:51 CST (2026-02-22T02:54:51 UTC)  
+**Backend Version:** 0.3.10  
+**Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
+**Note:** Second run. All providers single-zone, Central US corridor, identical images, 5 Qdrant points each. All 6 benchmarks ran simultaneously. 500/500 success on all three providers.
+
+### North-South (500 requests, 50 concurrency)
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **Success** | 500/500 ✅ | 500/500 ✅ | 500/500 ✅ |
+| **TTFT p50** | 3,652 ms | **3,157 ms** 🏆 | 3,541 ms |
+| **TTFT p95** | **5,774 ms** 🏆 | 6,120 ms | 7,403 ms |
+| **Latency p50** | **12,978 ms** 🏆 | 15,313 ms | 16,950 ms |
+| **Latency p95** | **16,812 ms** 🏆 | 19,333 ms | 21,599 ms |
+| **TPOT p50** | **38.5 ms** 🏆 | 51.7 ms | 54.8 ms |
+| **TPOT p95** | **45.3 ms** 🏆 | 56.8 ms | 61.0 ms |
+| **Tokens/sec** | **19.60** 🏆 | 15.83 | 14.94 |
+| **Duration** | **143s** 🏆 | 170s | 185s |
+
+### East-West Network
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 0.90 Gbps | **4.89 Gbps** 🏆 | 3.73 Gbps |
+| **Retransmits** | 2,165 | 3,418 | **0** 🏆 |
+
+### Current Accurate Costs (from cost-config.yaml):
+
+| Provider | Monthly (w/ network) | Hourly |
+|----------|---------------------|--------|
+| **Akamai LKE** | $433 | $0.59 |
+| **AWS EKS** | $768 | $1.05 |
+| **GCP GKE** | $807 | $1.11 |
 
 ---
 
