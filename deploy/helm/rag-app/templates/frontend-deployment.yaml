@@ -30,3 +30,7 @@ spec:
             limits:
               cpu: {{ .Values.frontend.resources.limits.cpu | quote }}
               memory: {{ .Values.frontend.resources.limits.memory | quote }}
+      {{- with .Values.frontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

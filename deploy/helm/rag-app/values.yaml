@@ -65,6 +65,7 @@ backend:
     limits:
       cpu: "2"
       memory: "3Gi"
+  nodeSelector: {}
 
 frontend:
   image:
@@ -81,6 +82,7 @@ frontend:
     limits:
       cpu: "500m"
       memory: "512Mi"
+  nodeSelector: {}
 
 qdrant:
   image:
@@ -92,6 +94,7 @@ qdrant:
     enabled: true
     size: 10Gi
     storageClassName: ""
+  nodeSelector: {}
 
 kuberay:
   enabled: true

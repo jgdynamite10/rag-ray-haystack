@@ -65,3 +65,7 @@ spec:
             periodSeconds: {{ .Values.backend.health.readinessPeriodSeconds }}
             timeoutSeconds: {{ .Values.backend.health.readinessTimeoutSeconds }}
             failureThreshold: {{ .Values.backend.health.readinessFailureThreshold }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

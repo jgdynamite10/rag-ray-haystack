@@ -5,6 +5,8 @@ backend:
   image:
     repository: ghcr.io/jgdynamite10/rag-ray-backend
     tag: "0.3.10"
+  nodeSelector:
+    node.kubernetes.io/role: cpu
 
 frontend:
   image:
@@ -12,6 +14,8 @@ frontend:
     tag: "0.3.5"
   service:
     type: LoadBalancer
+  nodeSelector:
+    node.kubernetes.io/role: cpu
 
 kuberay:
   enabled: false
@@ -24,6 +28,8 @@ kuberay:
 qdrant:
   persistence:
     storageClassName: standard-rwo
+  nodeSelector:
+    node.kubernetes.io/role: cpu
 
 dcgm:
   service:

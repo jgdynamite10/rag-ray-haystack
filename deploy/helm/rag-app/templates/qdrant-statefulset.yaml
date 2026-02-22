@@ -23,6 +23,10 @@ spec:
           volumeMounts:
             - name: qdrant-storage
               mountPath: /qdrant/storage
+      {{- with .Values.qdrant.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: qdrant-storage

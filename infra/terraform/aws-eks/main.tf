@@ -69,6 +69,7 @@ module "eks" {
 
     gpu = {
       instance_types = [var.gpu_instance_type]
+      subnet_ids     = local.node_subnets
       min_size       = local.gpu_min
       max_size       = local.gpu_max
       desired_size   = var.gpu_node_count

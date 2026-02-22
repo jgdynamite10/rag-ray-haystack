@@ -10,6 +10,8 @@ backend:
   image:
     repository: ghcr.io/jgdynamite10/rag-ray-backend
     tag: "0.3.10"
+  nodeSelector:
+    node.kubernetes.io/role: cpu
 
 frontend:
   image:
@@ -17,10 +19,14 @@ frontend:
     tag: "0.3.5"
   service:
     type: LoadBalancer
+  nodeSelector:
+    node.kubernetes.io/role: cpu
 
 qdrant:
   persistence:
     storageClassName: linode-block-storage
+  nodeSelector:
+    node.kubernetes.io/role: cpu
 
 dcgm:
   serviceMonitor:

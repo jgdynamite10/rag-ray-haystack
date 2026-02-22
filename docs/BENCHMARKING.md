@@ -659,11 +659,13 @@ source .venv/bin/activate
 
 ### How It Works
 
-1. Deploys an iperf3 server pod on one node
-2. Deploys an iperf3 client job on a **different** node (enforced via pod anti-affinity)
+1. Deploys an iperf3 server pod on a **CPU node** (GPU nodes excluded via `nvidia.com/gpu.present: DoesNotExist` node affinity)
+2. Deploys an iperf3 client job on a **different CPU node** (enforced via `requiredDuringSchedulingIgnoredDuringExecution` pod anti-affinity + same GPU exclusion)
 3. Runs TCP throughput, UDP jitter, and latency tests
 4. Collects results and optionally pushes to Prometheus Pushgateway
 5. Cleans up resources
+
+This guarantees a **CPU-to-CPU cross-node** measurement on every provider, every run.
 
 ### Reference Results (January 2026)
 
@@ -756,3 +758,92 @@ When `--pushgateway-url` is provided (or Pushgateway exists in-cluster):
 | `ew_latency_avg_ms` | Average latency in milliseconds |
 | `ew_latency_min_ms` | Minimum latency in milliseconds |
 | `ew_latency_max_ms` | Maximum latency in milliseconds |
+
+---
+
+## Benchmark Environment Controls
+
+Fair cross-provider comparison requires strict environment parity. This section documents every control enforced by the deployment manifests and benchmark scripts.
+
+### Node Placement
+
+All workload pods are pinned to specific node types via explicit `nodeSelector`:
+
+| Pod | Node Type | Scheduling Mechanism |
+|-----|-----------|---------------------|
+| **vLLM** | GPU node | `nodeSelector: nvidia.com/gpu.present: "true"` + GPU toleration |
+| **Backend** | CPU node | `nodeSelector: node.kubernetes.io/role: cpu` |
+| **Frontend** | CPU node | `nodeSelector: node.kubernetes.io/role: cpu` |
+| **Qdrant** | CPU node | `nodeSelector: node.kubernetes.io/role: cpu` |
+| **iperf3-server** (EW) | CPU node | `nodeAffinity: nvidia.com/gpu.present DoesNotExist` |
+| **iperf3-client** (EW) | CPU node (different from server) | Same GPU exclusion + `requiredDuringScheduling` pod anti-affinity |
+
+**How labels are set:**
+- **EKS:** `node.kubernetes.io/role` is set via Terraform node group labels.
+- **LKE / GKE:** Labels are applied automatically by `deploy.sh` → `ensure_node_labels()`, which detects GPU nodes by the `nvidia.com/gpu.present` label (set by the GPU operator) and assigns `role=gpu` or `role=cpu` accordingly.
+
+The EW benchmark uses `nvidia.com/gpu.present: DoesNotExist` instead of a role label because this label is universally present on GPU nodes across all providers without requiring any custom labeling.
+
+### NS Benchmark Client Placement
+
+The North-South benchmark client (`stream_bench.py`) runs from the **operator's workstation**, not from inside the cluster. This means:
+
+- Client location is fixed (e.g., Dallas, TX) across all provider runs
+- Network path includes public internet + provider load balancer
+- The `run_all_benchmarks.sh` script runs all three providers in parallel from the same machine
+
+### Single Availability Zone
+
+All providers deploy every node into a **single AZ** to eliminate inter-AZ latency variance:
+
+| Provider | Region | AZ | Mechanism |
+|----------|--------|----|-----------|
+| **Akamai LKE** | us-ord (Chicago) | Single DC | LKE is single-DC by default |
+| **AWS EKS** | us-east-2 (Ohio) | us-east-2a | Terraform `node_availability_zone` variable filters subnets to one AZ; all node groups use `subnet_ids = local.node_subnets` |
+| **GCP GKE** | us-central1 (Iowa) | us-central1-a | Terraform `zone` variable pins the zonal cluster to one zone |
+
+### Application Parity
+
+| Control | Value | Where Enforced |
+|---------|-------|----------------|
+| LLM model | `Qwen/Qwen2.5-3B-Instruct` | Helm values (`vllm.model`) |
+| Embedding model | `all-MiniLM-L6-v2` | Backend code (`app/main.py`) |
+| Backend image | Same tag across all providers | Helm values (`backend.image.tag`) |
+| Frontend image | Same tag across all providers | Helm values (`frontend.image.tag`) |
+| vLLM image | Same tag across all providers | Helm values (`vllm.image.tag`) |
+| Qdrant image | Same version across all providers | Helm values (`qdrant.image.tag`) |
+| Max output tokens | 256 | `run_all_benchmarks.sh` `--max-output-tokens` flag |
+| Requests per run | 500 | `run_all_benchmarks.sh` `--requests` flag |
+| Concurrency | 50 | `run_all_benchmarks.sh` `--concurrency` flag |
+| Warmup requests | 20 | `run_all_benchmarks.sh` `--warmup` flag |
+
+### Pre-Flight Checklist
+
+Run this before any benchmark session to confirm parity:
+
+```bash
+# 1. Verify all providers are reachable
+for KC in ~/.kube/rag-ray-haystack-kubeconfig.yaml ~/.kube/aws-eks-dev-config.yaml ~/.kube/gcp-gke-dev-config.yaml; do
+  echo "--- $KC ---"
+  KUBECONFIG="$KC" kubectl get nodes -o custom-columns='NODE:.metadata.name,TYPE:.metadata.labels.node\.kubernetes\.io/instance-type,AZ:.metadata.labels.topology\.kubernetes\.io/zone'
+done
+
+# 2. Verify pod placement (vLLM on GPU, everything else on CPU)
+for KC in ~/.kube/rag-ray-haystack-kubeconfig.yaml ~/.kube/aws-eks-dev-config.yaml ~/.kube/gcp-gke-dev-config.yaml; do
+  echo "--- $KC ---"
+  KUBECONFIG="$KC" kubectl -n rag-app get pods -o custom-columns='POD:.metadata.name,NODE:.spec.nodeName'
+done
+
+# 3. Verify image versions match
+for KC in ~/.kube/rag-ray-haystack-kubeconfig.yaml ~/.kube/aws-eks-dev-config.yaml ~/.kube/gcp-gke-dev-config.yaml; do
+  echo "--- $KC ---"
+  KUBECONFIG="$KC" kubectl -n rag-app get pods -o custom-columns='POD:.metadata.name,IMAGE:.spec.containers[*].image'
+done
+
+# 4. Verify documents are ingested (k_retrieved > 0)
+for KC in ~/.kube/rag-ray-haystack-kubeconfig.yaml ~/.kube/aws-eks-dev-config.yaml ~/.kube/gcp-gke-dev-config.yaml; do
+  echo "--- $KC ---"
+  BACKEND=$(KUBECONFIG="$KC" kubectl -n rag-app get pod -l app.kubernetes.io/component=backend -o name | head -1)
+  KUBECONFIG="$KC" kubectl -n rag-app exec "$BACKEND" -- curl -s localhost:8000/healthz | python3 -m json.tool
+done
+```

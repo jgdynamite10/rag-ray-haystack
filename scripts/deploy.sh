@@ -45,6 +45,20 @@ if [[ -n "${IMAGE_TAG}" ]]; then
   IMAGE_OVERRIDES+=("--set" "frontend.image.tag=${FRONTEND_TAG}")
 fi
 
+ensure_node_labels() {
+  local kc="$1"
+  echo "Ensuring node role labels (node.kubernetes.io/role)..."
+  for node in $(KUBECONFIG="$kc" kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+    has_gpu=$(KUBECONFIG="$kc" kubectl get node "$node" -o jsonpath='{.metadata.labels.nvidia\.com/gpu\.present}' 2>/dev/null || true)
+    if [[ "$has_gpu" == "true" ]]; then
+      KUBECONFIG="$kc" kubectl label node "$node" node.kubernetes.io/role=gpu --overwrite >/dev/null
+    else
+      KUBECONFIG="$kc" kubectl label node "$node" node.kubernetes.io/role=cpu --overwrite >/dev/null
+    fi
+  done
+  echo "Node labels applied."
+}
+
 ensure_monitoring() {
   local kc="$1"
   echo "Ensuring monitoring stack is installed..."
@@ -80,6 +94,7 @@ ensure_monitoring() {
 case "${ACTION}" in
   apply)
     echo "Deploying ${RELEASE} to ${NAMESPACE} using ${PROVIDER}/${ENVIRONMENT}"
+    ensure_node_labels "${KUBECONFIG_PATH}"
     ensure_monitoring "${KUBECONFIG_PATH}"
     KUBECONFIG="${KUBECONFIG_PATH}" helm -n "${NAMESPACE}" upgrade --install "${RELEASE}" deploy/helm/rag-app \
       --create-namespace \
