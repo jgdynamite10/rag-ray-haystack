@@ -81,22 +81,11 @@ See [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md) for individual runs a
 
 ---
 
-## Dashboard Screenshots
+## Dashboard
 
-### Cost & Performance Scorecard
-Executive view comparing costs and key performance metrics across all three providers.
+*Live Grafana dashboard snapshot during a single benchmark run.*
 
-![Cost & Performance Scorecard](docs/images/dashboard-cost-scorecard.png)
-
-### Performance Monitoring
-Real-time throughput, latency, GPU utilization, and memory usage across providers.
-
-![Performance Dashboard](docs/images/dashboard-performance.png)
-
-### RAG Application UI
-The chat interface with PDF upload, streaming responses, and real-time metrics.
-
-![RAG UI](docs/images/rag-ui.png)
+![Live Grafana dashboard snapshot during a single benchmark run](docs/images/itdm-dashboard-clean.png)
 
 ---
 
