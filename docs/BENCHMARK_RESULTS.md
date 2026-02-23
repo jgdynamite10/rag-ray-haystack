@@ -63,7 +63,7 @@ This document tracks benchmark results across all three cloud providers over tim
 **Timestamp:** 2026-02-21T20:45:36 CST (2026-02-22T02:45:36 UTC)  
 **Backend Version:** 0.3.10  
 **Test Configuration:** 500 requests, 50 concurrency, 256 max output tokens  
-**Note:** First run (post-region-change). All providers single-zone, Central US corridor, identical images (backend 0.3.10, frontend 0.3.5, vLLM v0.6.2, Qdrant v1.12.6), consistent pod-to-node placement, 5 Qdrant points each. EKS moved to us-east-2 (Ohio). GKE LB IP updated to 34.69.214.163.
+**Note:** First run (post-region-change). All providers single-zone, Central US corridor, identical images (backend 0.3.10, frontend 0.3.5, vLLM v0.6.2, Qdrant v1.12.6), consistent pod-to-node placement, 5 Qdrant points each. EKS moved to us-east-2 (Ohio). GKE LB IP updated.
 
 ### North-South (500 requests, 50 concurrency)
 
