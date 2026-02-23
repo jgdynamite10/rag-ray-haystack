@@ -145,10 +145,8 @@ High-signal directories/files you will use when replicating deployments and benc
 | `docs/BENCHMARK_RESULTS.md` | Historical benchmark results across all providers |
 | `docs/ARCHITECTURE.md` | Detailed architecture diagrams |
 | `docs/COST_MODEL.md` | Cost analysis across providers |
-| `docs/PROJECT_STATE.public.md` | Project state / scope / progress notes |
-| `docs/OPERATIONS.public.md` | Ops notes: environments, debugging, reliability guidance |
 
-> **New to the repo?** Read `docs/PROJECT_STATE.public.md` first, then `docs/OPERATIONS.public.md`.
+> **New to the repo?** Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system overview, then [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for step-by-step instructions.
 
 ---
 
