@@ -45,36 +45,39 @@ A Grafana dashboard intended to summarize:
 
 ---
 
-## Benchmark Results — 5-Run Average (February 19, 2026)
+## Benchmark Results — Median of 7 Runs (February 22, 2026)
 
-5 consecutive runs × 500 requests = **2,500 requests per provider**. Backend 0.3.10, all providers single-zone, identical images.
+7 runs × 500 requests = **3,500 requests per provider**. Backend 0.3.10, all providers single-zone Central US corridor, identical images.
 
-### North-South Average
+🏆 = best value in row
 
-| Metric | Akamai LKE | AWS EKS | GCP GKE |
-|--------|------------|---------|---------|
-| **Success** | 2,500/2,500 ✅ | 2,500/2,500 ✅ | 2,481/2,500 ⚠️ |
-| **TTFT p50** | 4,574 ms | 5,080 ms | **4,312 ms** 🏆 |
-| **TTFT p95** | **7,403 ms** 🏆 | 12,729 ms | 8,854 ms |
-| **Latency p50** | **15,672 ms** 🏆 | 18,905 ms | 19,679 ms |
-| **Latency p95** | **18,166 ms** 🏆 | 26,856 ms | 23,664 ms |
-| **TPOT p50** | **44.0 ms** 🏆 | 53.9 ms | 60.0 ms |
-| **Tokens/sec** | **16.46** 🏆 | 14.22 | 13.36 |
-| **Duration** | **167s** 🏆 | 206s | 225s |
-
-### East-West Network Average
+### North-South Median
 
 | Metric | Akamai LKE | AWS EKS | GCP GKE |
 |--------|------------|---------|---------|
-| **TCP Throughput** | 1.04 Gbps | **4.31 Gbps** 🏆 | 3.85 Gbps |
-| **Retransmits** | 3,347 | **2,210** 🏆 | 2,288 |
+| **Success (total)** | 3,498/3,500 ✅ | 3,475/3,500 ⚠️ | 3,495/3,500 ✅ |
+| **TTFT p50** | 4,556 ms | **1,518 ms** 🏆 | 2,325 ms |
+| **TTFT p95** | 9,410 ms | 6,989 ms | **6,391 ms** 🏆 |
+| **Latency p50** | **14,245 ms** 🏆 | 15,023 ms | 15,968 ms |
+| **Latency p95** | 22,201 ms | **19,983 ms** 🏆 | 20,119 ms |
+| **TPOT p50** | **37.9 ms** 🏆 | 54.2 ms | 56.6 ms |
+| **TPOT p95** | **45.3 ms** 🏆 | 58.3 ms | 60.8 ms |
+| **Tokens/sec** | **17.70** 🏆 | 16.22 | 15.30 |
+| **Duration** | **155s** 🏆 | 172s | 181s |
+
+### East-West Network Median
+
+| Metric | Akamai LKE | AWS EKS | GCP GKE |
+|--------|------------|---------|---------|
+| **TCP Throughput** | 0.93 Gbps | **4.87 Gbps** 🏆 | 3.96 Gbps |
+| **Retransmits** | 3,663 | 3,234 | **0** 🏆 |
 
 ### Cost Comparison
 
 | Provider | Monthly (w/ network) | Hourly | Cost vs LKE |
 |----------|---------------------|--------|-------------|
 | **Akamai LKE** | **$433** 🏆 | **$0.59** | — |
-| **AWS EKS** | $769 | $1.05 | +78% |
+| **AWS EKS** | $768 | $1.05 | +77% |
 | **GCP GKE** | $807 | $1.11 | +86% |
 
 See [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md) for individual runs and historical results.
