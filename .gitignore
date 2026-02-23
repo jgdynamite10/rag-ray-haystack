@@ -30,6 +30,10 @@ terraform.tfvars
 # --- Archived dashboards (local only) ---
 /grafana/dashboards/Old-dashboards/
 
+# --- Private dashboard images (local only) ---
+/docs/images/dashboard-cost-scorecard.jpg
+/docs/images/dashboard-gpu-metrics.jpg
+
 # --- Secrets / env ---
 .env
 .env.*
