@@ -14,8 +14,8 @@ If unsure about an API/version, write it as a TODO and isolate it to one file.
 CONTEXT RULES:
 - Always read docs/PROJECT_STATE.local.md if it exists; otherwise read docs/PROJECT_STATE.public.md.
 - Always read docs/OPERATIONS.local.md if it exists; otherwise read docs/OPERATIONS.public.md.
+- Both PROJECT_STATE and OPERATIONS files (public and local) are private and must not be committed to git.
 - Never ask the user to paste tokens, kubeconfigs, or credentials into chat.
-- Any command output included in docs/PROJECT_STATE.public.md must be sanitized (no tokens, cluster IDs, node names, IPs, kubeconfig paths).
 
 
 

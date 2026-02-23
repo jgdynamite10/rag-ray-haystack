@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #181b1f;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 40px;
+    width: 820px;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: #9ca3af;
+    margin-bottom: 28px;
+  }
+  .subtitle strong { color: #e0e0e0; }
+  h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 12px;
+    margin-top: 28px;
+  }
+  h2::before {
+    content: '🔗 ';
+    font-size: 16px;
+  }
+  h2.north::before { content: ''; }
+  h2.cost::before { content: ''; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  th {
+    background: #23272e;
+    color: #93c5fd;
+    font-weight: 600;
+    text-align: center;
+    padding: 10px 16px;
+    border: 1px solid #2d3139;
+  }
+  th:first-child { text-align: left; }
+  td {
+    padding: 9px 16px;
+    border: 1px solid #2d3139;
+    text-align: center;
+    background: #1e2228;
+  }
+  td:first-child {
+    text-align: left;
+    font-weight: 600;
+    color: #d1d5db;
+    background: #1c2026;
+  }
+  tr:nth-child(even) td { background: #1a1e24; }
+  tr:nth-child(even) td:first-child { background: #191d22; }
+  .winner { color: #fbbf24; font-weight: 700; }
+  .trophy::after { content: ' 🏆'; }
+  .check::after { content: ' ✅'; }
+  .warn { color: #f59e0b; }
+  .warn::after { content: ' ⚠️'; }
+</style>
+</head>
+<body>
+
+<h1>Benchmark Results — Median of 7 Runs (February 22, 2026)</h1>
+<p class="subtitle">7 consecutive runs × 500 requests = <strong>3,500 requests per provider</strong>.</p>
+
+<h2 class="north">North-South Median</h2>
+<table>
+  <tr><th>Metric</th><th>Akamai LKE</th><th>AWS EKS</th><th>GCP GKE</th></tr>
+  <tr><td>Success (total)</td><td class="check">3,498/3,500</td><td class="warn">3,475/3,500</td><td class="check">3,495/3,500</td></tr>
+  <tr><td>TTFT p50</td><td>4,556 ms</td><td class="winner trophy">1,518 ms</td><td>2,325 ms</td></tr>
+  <tr><td>TTFT p95</td><td>9,410 ms</td><td>6,989 ms</td><td class="winner trophy">6,391 ms</td></tr>
+  <tr><td>Latency p50</td><td class="winner trophy">14,245 ms</td><td>15,023 ms</td><td>15,968 ms</td></tr>
+  <tr><td>Latency p95</td><td>22,201 ms</td><td class="winner trophy">19,983 ms</td><td>20,119 ms</td></tr>
+  <tr><td>TPOT p50</td><td class="winner trophy">37.9 ms</td><td>54.2 ms</td><td>56.6 ms</td></tr>
+  <tr><td>TPOT p95</td><td class="winner trophy">45.3 ms</td><td>58.3 ms</td><td>60.8 ms</td></tr>
+  <tr><td>Tokens/sec</td><td class="winner trophy">17.70</td><td>16.22</td><td>15.30</td></tr>
+  <tr><td>Duration</td><td class="winner trophy">155s</td><td>172s</td><td>181s</td></tr>
+</table>
+
+<h2>East-West Network Median</h2>
+<table>
+  <tr><th>Metric</th><th>Akamai LKE</th><th>AWS EKS</th><th>GCP GKE</th></tr>
+  <tr><td>TCP Throughput</td><td>0.93 Gbps</td><td class="winner trophy">4.87 Gbps</td><td>3.96 Gbps</td></tr>
+  <tr><td>Retransmits</td><td>3,663</td><td>3,234</td><td class="winner trophy">0</td></tr>
+</table>
+
+<h2 class="cost">Cost Comparison</h2>
+<table>
+  <tr><th>Provider</th><th>Monthly (w/ network)</th><th>Hourly</th><th>Cost vs LKE</th></tr>
+  <tr><td>Akamai LKE</td><td class="winner trophy">$433</td><td>$0.59</td><td>—</td></tr>
+  <tr><td>AWS EKS</td><td>$768</td><td>$1.05</td><td>+77%</td></tr>
+  <tr><td>GCP GKE</td><td>$807</td><td>$1.11</td><td>+86%</td></tr>
+</table>
+
+</body>
+</html>

@@ -7,9 +7,12 @@ terraform.tfstate
 terraform.tfstate.*
 terraform.tfvars
 
-# --- Local-only project context (do not commit) ---
+# --- Project context (private - do not commit) ---
 /docs/PROJECT_STATE.local.md
+/docs/PROJECT_STATE.public.md
 /docs/OPERATIONS.local.md
+/docs/OPERATIONS.public.md
+/docs/IMPLEMENTATION_CHECKLIST.md
 /docs/CONTEXT.local.md
 /docs/ENDPOINTS.local.md
 
