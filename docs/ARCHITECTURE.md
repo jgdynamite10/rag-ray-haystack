@@ -148,74 +148,7 @@ Changing any component affects benchmark results:
 
 ## Architecture diagram
 
-```mermaid
-flowchart TB
-  subgraph External
-    User[User Browser]
-    Grafana[Grafana<br/>Akamai VM]
-  end
-
-  subgraph K8s Cluster
-    subgraph Ingress Layer
-      AppLB[App LoadBalancer<br/>NodeBalancer / ELB / GCLB]
-      PromLB[Prometheus LoadBalancer]
-    end
-
-    subgraph Application
-      Frontend[Frontend<br/>React + Nginx]
-      Backend[Ray Serve Backend<br/>Haystack + vLLM Client]
-      Qdrant[(Qdrant<br/>Vector DB)]
-      VLLM[vLLM Server<br/>GPU]
-    end
-
-    subgraph Orchestration
-      KubeRay[KubeRay Operator]
-    end
-
-    subgraph Monitoring
-      Prom[(Prometheus)]
-      Push[Pushgateway]
-      DCGM[DCGM Exporter<br/>GPU Metrics]
-    end
-  end
-
-  User -->|HTTPS| AppLB
-  AppLB --> Frontend
-  AppLB --> Backend
-  Frontend -->|/api proxy| Backend
-  Backend -->|retrieve| Qdrant
-  Backend -->|stream chat| VLLM
-  KubeRay -.->|manages| Backend
-  
-  Backend -->|push job metrics| Push
-  Prom -->|scrape /metrics| Backend
-  Prom -->|scrape| Push
-  Prom -->|scrape| DCGM
-  Grafana -->|query| PromLB
-  PromLB --> Prom
-```
-
-### Multi-Cluster Monitoring
-
-```
-┌─────────────────────────────────────────────────────────┐
-│              Akamai VM (External)                       │
-│                   Grafana                               │
-│           (Unified dashboards)                          │
-└─────────┬─────────────┬─────────────┬───────────────────┘
-          │             │             │
-          ▼             ▼             ▼
-   ┌────────────┐ ┌────────────┐ ┌────────────┐
-   │ LKE Prom LB│ │ EKS Prom LB│ │ GKE Prom LB│
-   └──────┬─────┘ └──────┬─────┘ └──────┬─────┘
-          ▼              ▼              ▼
-   ┌────────────┐ ┌────────────┐ ┌────────────┐
-   │  LKE       │ │  EKS       │ │  GKE       │
-   │ Prometheus │ │ Prometheus │ │ Prometheus │
-   │ Pushgateway│ │ Pushgateway│ │ Pushgateway│
-   │ DCGM       │ │ DCGM       │ │ DCGM       │
-   └────────────┘ └────────────┘ └────────────┘
-```
+![Architecture](images/architecture.png)
 
 ## Observability
 
