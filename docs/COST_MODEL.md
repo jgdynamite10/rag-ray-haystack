@@ -636,7 +636,7 @@ This section documents the **actual deployed infrastructure** queried directly f
 4. **AWS networking adds significant cost**: NAT Gateway ($32.85/mo) + data processing + cross-AZ traffic
 5. **GCP networking is moderate**: $12/mo for 100GB egress, no NAT required, single-zone avoids inter-zone charges
 6. **Storage is massively over-provisioned**: 10GB allocated, <1MB used on all providers
-7. **All providers use 2 dedicated vCPU**: LKE g6-standard-2 (4GB), AWS t3.medium (4GB), GCP e2-standard-2 (8GB). GCP's `e2-medium` (shared-core) was unusable — see DEPLOYMENT.md for details
+7. **All providers use 2 vCPU (shared/burstable class)**: LKE g6-standard-2 (4GB, shared), AWS t3.medium (4GB, burstable), GCP e2-standard-2 (8GB, shared with full vCPU allocation). GCP's `e2-medium` (shared-core, 50% time) was unusable — see DEPLOYMENT.md for details
 8. **AWS multi-AZ deployment** spans 3 zones (highest availability but higher network cost)
 9. **GCP/LKE single-zone** deployments have no inter-zone charges but lower fault tolerance
 

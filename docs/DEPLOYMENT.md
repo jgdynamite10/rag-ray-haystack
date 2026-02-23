@@ -1047,10 +1047,10 @@ GCP's `e2-medium` is marketed as "2 vCPU, 4 GB" which looks equivalent to AWS `t
 
 | Instance | Provider | vCPU | Core Type | K8s Allocatable CPU | $/hr |
 |----------|----------|------|-----------|---------------------|------|
-| `t3.medium` | AWS | 2 | Burstable (full baseline) | ~1,930m | $0.0416 |
-| `g6-standard-2` | Akamai | 2 | Dedicated | ~1,900m | $0.036 |
+| `t3.medium` | AWS | 2 | Burstable (credit-based) | ~1,930m | $0.0416 |
+| `g6-standard-2` | Akamai | 2 | Shared | ~1,900m | $0.036 |
 | `e2-medium` | GCP | 2 | **Shared (50% time)** | **~940m** | $0.0335 |
-| `e2-standard-2` | GCP | 2 | Dedicated | ~1,930m | $0.067 |
+| `e2-standard-2` | GCP | 2 | Shared (full vCPU) | ~1,930m | $0.067 |
 
 **What happens in practice:**
 
@@ -1071,7 +1071,7 @@ Even scaling to 3 or 4 `e2-medium` nodes doesn't fully solve it — a single Ray
 
 AWS burstable instances (`t3` family) use a credit-based system, but Kubernetes sees the **full 2 vCPU** as allocatable (~1,930m). The burst mechanism only throttles sustained CPU above baseline — it doesn't reduce the Kubernetes scheduler's view of available capacity. AWS baseline for `t3.medium` is 20% of 2 vCPU = 400m sustained, but the scheduler sees 2,000m.
 
-**The fix:** Use `e2-standard-2` (2 dedicated vCPU, 8 GB, $0.067/hr). The extra 4 GB of RAM over `e2-medium` is unused but harmless. The dedicated cores provide the same ~1,930m allocatable CPU as `t3.medium`.
+**The fix:** Use `e2-standard-2` (2 full vCPUs, 8 GB, $0.067/hr). The extra 4 GB of RAM over `e2-medium` is unused but harmless. The full vCPU allocation provides the same ~1,930m allocatable CPU as `t3.medium` and `g6-standard-2`.
 
 **Cost impact:** GCP CPU nodes cost $0.067/hr vs $0.0416/hr (AWS) and $0.036/hr (Akamai). This adds ~$49/month over the cheapest option but is required for the pods to schedule.
 
