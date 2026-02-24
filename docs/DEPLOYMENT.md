@@ -13,10 +13,6 @@ This guide covers deploying the RAG system to Akamai LKE, AWS EKS, and GCP GKE.
 - gcloud CLI (for GKE)
 - linode-cli (for LKE)
 
----
-
-## Quickstart (Fast Path)
-
 ### GPU instances by provider
 
 | Provider | Instance | GPU | vRAM |
@@ -24,78 +20,6 @@ This guide covers deploying the RAG system to Akamai LKE, AWS EKS, and GCP GKE.
 | Akamai | g2-gpu-rtx4000a1-s | RTX 4000 Ada | 20 GB |
 | AWS | g6.xlarge | NVIDIA L4 | 24 GB |
 | GCP | g2-standard-8 | NVIDIA L4 | 24 GB |
-
-### End-to-end Akamai LKE (cluster → app)
-
-1. Clone the repo
-
-```bash
-git clone https://github.com/jgdynamite10/rag-ray-haystack
-cd rag-ray-haystack
-```
-
-2. Create the cluster (Terraform)
-
-```bash
-cp infra/terraform/akamai-lke/terraform.tfvars.example infra/terraform/akamai-lke/terraform.tfvars
-terraform -chdir=infra/terraform/akamai-lke init
-terraform -chdir=infra/terraform/akamai-lke apply
-```
-
-3. Fetch kubeconfig and install dependencies
-
-```bash
-make kubeconfig PROVIDER=akamai-lke ENV=dev
-export KUBECONFIG=~/.kube/akamai-lke-dev-config.yaml
-```
-
-Install KubeRay operator:
-
-```bash
-KUBECONFIG_PATH="$KUBECONFIG" make install-kuberay PROVIDER=akamai-lke ENV=dev
-```
-
-Install GPU Operator + Node Feature Discovery:
-
-```bash
-helm repo add nvidia-gpu https://nvidia.github.io/gpu-operator
-helm repo add nfd https://kubernetes-sigs.github.io/node-feature-discovery/charts
-helm repo update
-helm upgrade --install gpu-operator nvidia-gpu/gpu-operator \
-  --namespace gpu-operator --create-namespace
-helm upgrade --install node-feature-discovery nfd/node-feature-discovery \
-  --namespace node-feature-discovery --create-namespace
-```
-
-Apply GPU labels/taints (required for vLLM scheduling):
-
-```bash
-KUBECONFIG_PATH="$KUBECONFIG" make fix-gpu PROVIDER=akamai-lke ENV=dev
-```
-
-4. Deploy app images (replace with your registry/tag):
-
-```bash
-export IMAGE_REGISTRY=ghcr.io/<owner>
-export IMAGE_TAG=0.3.9
-make deploy PROVIDER=akamai-lke ENV=dev IMAGE_REGISTRY=$IMAGE_REGISTRY IMAGE_TAG=$IMAGE_TAG
-```
-
-5. Verify workloads
-
-```bash
-KUBECONFIG_PATH="$KUBECONFIG" make verify PROVIDER=akamai-lke ENV=dev NAMESPACE=rag-app RELEASE=rag-app
-kubectl -n rag-app get svc
-```
-
-Optional in-cluster streaming check:
-
-```bash
-kubectl -n rag-app port-forward svc/rag-app-rag-app-backend 8000:8000
-curl -N -X POST http://localhost:8000/query/stream \
-  -H "Content-Type: application/json" \
-  -d '{"query":"Explain what this system is and why vLLM matters."}'
-```
 
 ---
 
