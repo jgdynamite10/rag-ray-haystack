@@ -49,36 +49,7 @@ A Grafana dashboard intended to summarize:
 
 7 runs × 500 requests = **3,500 requests per provider**. Backend 0.3.10, all providers single-zone Central US corridor, identical images.
 
-🏆 = best value in row
-
-### North-South Median
-
-| Metric | Akamai LKE | AWS EKS | GCP GKE |
-|--------|------------|---------|---------|
-| **Success (total)** | 3,498/3,500 ✅ | 3,475/3,500 ⚠️ | 3,495/3,500 ✅ |
-| **TTFT p50** | 4,556 ms | **1,518 ms** 🏆 | 2,325 ms |
-| **TTFT p95** | 9,410 ms | 6,989 ms | **6,391 ms** 🏆 |
-| **Latency p50** | **14,245 ms** 🏆 | 15,023 ms | 15,968 ms |
-| **Latency p95** | 22,201 ms | **19,983 ms** 🏆 | 20,119 ms |
-| **TPOT p50** | **37.9 ms** 🏆 | 54.2 ms | 56.6 ms |
-| **TPOT p95** | **45.3 ms** 🏆 | 58.3 ms | 60.8 ms |
-| **Tokens/sec** | **17.70** 🏆 | 16.22 | 15.30 |
-| **Duration** | **155s** 🏆 | 172s | 181s |
-
-### East-West Network Median
-
-| Metric | Akamai LKE | AWS EKS | GCP GKE |
-|--------|------------|---------|---------|
-| **TCP Throughput** | 0.93 Gbps | **4.87 Gbps** 🏆 | 3.96 Gbps |
-| **Retransmits** | 3,663 | 3,234 | **0** 🏆 |
-
-### Cost Comparison
-
-| Provider | Monthly (w/ network) | Hourly | Cost vs LKE |
-|----------|---------------------|--------|-------------|
-| **Akamai LKE** | **$433** 🏆 | **$0.59** | — |
-| **AWS EKS** | $768 | $1.05 | +77% |
-| **GCP GKE** | $807 | $1.11 | +86% |
+![Benchmark Results — Median of 7 Runs](docs/images/benchmark-median-7-runs.jpg)
 
 See [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md) for individual runs and historical results.
 

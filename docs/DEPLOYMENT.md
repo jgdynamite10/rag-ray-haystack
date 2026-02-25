@@ -91,6 +91,10 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 
 ### Step 4: Deploy Pushgateway
 
+> **Use the manifest, not the Helm chart.** The Helm chart creates a service with a different
+> name than what the EW netprobe jobs and ServiceMonitor expect. The manifest ensures the
+> correct service name `prometheus-pushgateway`.
+
 ```bash
 kubectl apply -f deploy/monitoring/pushgateway.yaml
 ```
@@ -309,6 +313,10 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 
 ### Step 4: Deploy Pushgateway
 
+> **Use the manifest, not the Helm chart.** The Helm chart creates a service with a different
+> name than what the EW netprobe jobs and ServiceMonitor expect. The manifest ensures the
+> correct service name `prometheus-pushgateway`.
+
 ```bash
 kubectl apply -f deploy/monitoring/pushgateway.yaml
 ```
@@ -420,6 +428,10 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 ```
 
 ### Step 4: Deploy Pushgateway
+
+> **Use the manifest, not the Helm chart.** The Helm chart (`prometheus-community/prometheus-pushgateway`)
+> creates a service named `pushgateway-prometheus-pushgateway`, but the EW netprobe jobs and
+> ServiceMonitor expect `prometheus-pushgateway`. The manifest ensures the correct name.
 
 ```bash
 kubectl apply -f deploy/monitoring/pushgateway.yaml
@@ -620,6 +632,72 @@ All providers use the same model for fair benchmarking comparison:
 - **Model**: `Qwen/Qwen2.5-3B-Instruct`
 - **Served Name**: `rag-default`
 - **Max Model Length**: 2048 tokens
+
+---
+
+## Running Benchmarks
+
+### Quick Start
+
+```bash
+# 1. Copy and configure the benchmark runner
+cp scripts/run_all_benchmarks.sh.example scripts/run_all_benchmarks.sh
+chmod +x scripts/run_all_benchmarks.sh
+# Edit with your actual frontend endpoints and kubeconfig paths
+
+# 2. Run all 6 benchmarks (3 NS + 3 EW) in parallel
+./scripts/run_all_benchmarks.sh
+```
+
+### Individual Benchmark Scripts
+
+**North-South (NS)** — measures streaming inference latency through the external LoadBalancer:
+
+```bash
+./scripts/benchmark/run_ns.sh <provider> \
+  --url http://<FRONTEND-IP>/api/query/stream \
+  --requests 100 --concurrency 10 --warmup 10
+```
+
+**East-West (EW)** — measures in-cluster network (TCP throughput, UDP jitter, latency):
+
+```bash
+./scripts/netprobe/run_ew.sh \
+  --provider <provider> \
+  --kubeconfig ~/.kube/<provider>-config.yaml
+```
+
+### EW Metrics in Grafana
+
+EW benchmarks push metrics to each provider's Pushgateway via the in-cluster iperf3 job.
+For metrics to appear in Grafana:
+
+1. **Pushgateway must be deployed** using the manifest (not the Helm chart):
+   ```bash
+   kubectl apply -f deploy/monitoring/pushgateway.yaml
+   ```
+2. **Prometheus must scrape Pushgateway** — the manifest includes a ServiceMonitor with
+   `release: prometheus` label, which the kube-prometheus-stack auto-discovers.
+3. **Grafana datasources** must point to each provider's Prometheus instance.
+
+The ITDM Unified Dashboard queries `ew_tcp_throughput_gbps`, `ew_tcp_retransmits`,
+`ew_udp_jitter_ms`, and `ew_latency_avg_ms` metrics with `provider` labels.
+
+### Result Storage
+
+Results are saved to `benchmarks/` with the following structure:
+
+```
+benchmarks/
+  ns/
+    akamai-lke/  2026-MM-DDTHHMMSSZ.json
+    aws-eks/     2026-MM-DDTHHMMSSZ.json
+    gcp-gke/     2026-MM-DDTHHMMSSZ.json
+  ew/
+    akamai-lke/  2026-MM-DDTHHMMSSZ.json
+    aws-eks/     2026-MM-DDTHHMMSSZ.json
+    gcp-gke/     2026-MM-DDTHHMMSSZ.json
+```
 
 ---
 
